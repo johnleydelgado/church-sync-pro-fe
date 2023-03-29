@@ -2,3 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@100;400;500;600;700&display=swap');
+.react-daterange-picker__wrapper {
+  @apply border-green-700 bg-white rounded-lg p-2;
+}

@@ -1,5 +1,6 @@
 export const route = {
   ROOT: "/",
+  AUTH_GOOGLE: "/auth/callback/google",
   SECONDARY_LOGIN: "/qbo-planning-center-login",
   SIGNUP: "/signup",
   SUBSCRIPTION: "/subscription",

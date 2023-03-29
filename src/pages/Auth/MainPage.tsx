@@ -1,12 +1,13 @@
-import React, { FC } from "react";
-import { Route, Routes } from "react-router-dom";
+import React, { FC } from 'react'
+import { Route, Routes } from 'react-router-dom'
 
-import { LoginPage, SecondaryLoginPage, SignUpPage, SubscriptionPage } from ".";
-import ErrorPage from "../../common/components/Route/ErrorPage";
-import PrivateRoute from "../../common/components/Route/PrivateRoute";
-import { route } from "../../common/constant/route";
-import { unAuthGuard } from "../../common/utils/routeGuards";
-import { DashboardPage } from "../Main";
+import { LoginPage, SecondaryLoginPage, SignUpPage, SubscriptionPage } from '.'
+import GoogleCallBack from './callback/GoogleCallBack'
+import ErrorPage from '../../common/components/Route/ErrorPage'
+import PrivateRoute from '../../common/components/Route/PrivateRoute'
+import { route } from '../../common/constant/route'
+import { authGuard, unAuthGuard } from '../../common/utils/routeGuards'
+import { DashboardPage } from '../Main'
 
 interface indexProps {}
 
@@ -18,6 +19,12 @@ const MainPage: FC<indexProps> = () => {
           path={route.ROOT}
           element={
             <PrivateRoute Component={LoginPage} guards={[unAuthGuard]} />
+          }
+        />
+        <Route
+          path={route.AUTH_GOOGLE}
+          element={
+            <PrivateRoute Component={GoogleCallBack} guards={[unAuthGuard]} />
           }
         />
         <Route
@@ -44,13 +51,13 @@ const MainPage: FC<indexProps> = () => {
         <Route
           path={route.DASHBOARD}
           element={
-            <PrivateRoute Component={DashboardPage} guards={[unAuthGuard]} />
+            <PrivateRoute Component={DashboardPage} guards={[authGuard]} />
           }
         />
         <Route path="*" element={<ErrorPage />} />
       </Routes>
     </div>
-  );
-};
+  )
+}
 
-export default MainPage;
+export default MainPage

@@ -1,3 +1,29 @@
 {
-  "extends": "universe/native"
+    "parser": "@typescript-eslint/parser",
+    "plugins": ["@typescript-eslint", "react-hooks"],
+    "extends": [
+      "eslint:recommended",
+      "plugin:@typescript-eslint/recommended",
+      "plugin:react/recommended",
+      "plugin:react-hooks/recommended"
+    ],
+    "env": {
+      "browser": true,
+      "node": true,
+      "es6": true
+    },
+    "rules": {
+      "@typescript-eslint/no-empty-interface": "off",
+      "react/react-in-jsx-scope": "off",
+      "no-empty-pattern": "off",
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-unused-vars": "off",
+      "react/jsx-filename-extension": [1, { "extensions": [".ts", ".tsx"] }]
+      // Add your custom rules here
+    },
+    "settings": {
+      "react": {
+        "version": "detect"
+      }
+    }
 }
