@@ -1,31 +1,47 @@
-import { createSlice } from "@reduxjs/toolkit";
+import { createSlice, PayloadAction } from '@reduxjs/toolkit'
 
 export interface thirdPartyTokens {
-  qbo_access_token: string | null;
-  qbo_refresh_token: string | null;
-  qbo_realm_id: string | null;
-  PlanningCenter: string | null;
+  qbo_access_token: string | null
+  qbo_refresh_token: string | null
+  qbo_realm_id: string | null
+  PlanningCenter: string | null
+}
+
+export interface UserInfo {
+  churchName?: string
+  firstName?: string
+  lastName?: string
+  email: string
+  isSubscribe?: string
 }
 
 interface CommonState {
-  openModals: any[];
-  isFetching: boolean;
-  thirdPartyTokens?: thirdPartyTokens;
+  openModals: any[]
+  isFetching: boolean
+  user: UserInfo
+  thirdPartyTokens?: thirdPartyTokens
 }
 
 const initialState: CommonState = {
   openModals: [],
   isFetching: false,
+  user: {
+    churchName: '',
+    firstName: '',
+    lastName: '',
+    email: '',
+    isSubscribe: '0',
+  },
   thirdPartyTokens: {
     qbo_access_token: null,
     qbo_refresh_token: null,
     qbo_realm_id: null,
     PlanningCenter: null,
   },
-};
+}
 
 export const common = createSlice({
-  name: "common",
+  name: 'common',
   initialState,
   reducers: {
     /**
@@ -37,7 +53,7 @@ export const common = createSlice({
       state.openModals =
         state.openModals.filter((x) => x === action.payload).length > 0
           ? state.openModals
-          : [...state.openModals, action.payload];
+          : [...state.openModals, action.payload]
     },
     /**
      * CLOSE_MODAL
@@ -48,16 +64,27 @@ export const common = createSlice({
       state.openModals =
         state.openModals.filter((x) => x === action.payload).length > 0
           ? state.openModals.filter((x) => x !== action.payload)
-          : state.openModals;
+          : state.openModals
     },
     setThirdPartyTokens: (state, action) => {
-      state.thirdPartyTokens = action.payload;
-      // state.isSyncing = action.payload;
+      state.thirdPartyTokens = action.payload
+    },
+    setUserData: (state, action: PayloadAction<UserInfo>) => {
+      state.user = action.payload
+    },
+    resetUserData: (state) => {
+      state.user = initialState.user
     },
   },
-});
+})
 
 // Action creators are generated for each case reducer function
-export const { OPEN_MODAL, CLOSE_MODAL, setThirdPartyTokens } = common.actions;
+export const {
+  OPEN_MODAL,
+  CLOSE_MODAL,
+  setThirdPartyTokens,
+  setUserData,
+  resetUserData,
+} = common.actions
 
-export default common.reducer;
+export default common.reducer

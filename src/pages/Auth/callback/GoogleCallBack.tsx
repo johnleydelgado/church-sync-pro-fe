@@ -1,4 +1,8 @@
+import { createUser } from '@/common/api/user'
+import { failNotification } from '@/common/utils/toast'
+import { setUserData } from '@/redux/common'
 import React, { FC, useEffect } from 'react'
+import { useDispatch } from 'react-redux'
 import Session from 'supertokens-web-js/recipe/session'
 import { thirdPartySignInAndUp } from 'supertokens-web-js/recipe/thirdpartyemailpassword'
 
@@ -7,18 +11,21 @@ interface googleCallbackProps {}
 
 // eslint-disable-next-line no-empty-pattern
 const GoogleCallBack: FC<googleCallbackProps> = ({}) => {
+  const dispatch = useDispatch()
+
   async function handleGoogleCallback() {
     try {
       const response = await thirdPartySignInAndUp()
 
       if (response.status === 'OK') {
+        const { email } = response.user
+        dispatch(setUserData({ email }))
         if (response.createdNewUser) {
-          // sign up successful
+          await createUser({ email })
+          window.location.assign(route.SIGNUP)
         } else {
-          // sign in successful
+          window.location.assign(route.SECONDARY_LOGIN)
         }
-        if (response.createdNewUser) window.location.assign(route.SIGNUP)
-        else window.location.assign(route.SECONDARY_LOGIN)
       } else {
         // SuperTokens requires that the third party provider
         // gives an email for the user. If that's not the case, sign up / in
@@ -26,17 +33,19 @@ const GoogleCallBack: FC<googleCallbackProps> = ({}) => {
 
         // As a hack to solve this, you can override the backend functions to create a fake email for the user.
 
-        window.alert(
-          'No email provided by social login. Please use another form of login',
-        )
+        failNotification({
+          title:
+            'No email provided by social login. Please use another form of login',
+        })
+
         window.location.assign('/') // redirect back to login page
       }
     } catch (err: any) {
       if (err.isSuperTokensGeneralError === true) {
         // this may be a custom error message sent from the API by you.
-        window.alert(err.message)
+        failNotification({ title: err.message })
       } else {
-        window.alert('Oops! Something went wrong.')
+        failNotification({ title: 'Oops! Something went wrong.' })
       }
     }
   }

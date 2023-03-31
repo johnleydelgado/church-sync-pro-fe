@@ -9,10 +9,11 @@ import pcLogin from '../../../common/assets/planning-center-btn.png'
 import qboLogin from '../../../common/assets/qbo_login.png'
 import Loading from '../../../common/components/loading/Loading'
 import { storage, storageKey } from '../../../common/utils/storage'
-import { setThirdPartyTokens } from '../../../redux/common'
+import { resetUserData, setThirdPartyTokens } from '../../../redux/common'
 import { RootState } from '../../../redux/store'
 import checkToken from '@/common/utils/tokenVerification'
 import { SlLogout } from 'react-icons/sl'
+import { shouldLoadRoute } from '@/common/utils/supertoken'
 
 interface indexProps {}
 
@@ -105,12 +106,14 @@ const SecondaryLogin: FC<indexProps> = () => {
   }, [dispatch, thirdPartyTokens])
 
   const checkSession = useCallback(async () => {
-    const sessionExist = await doesSessionExist()
-    if (!sessionExist) window.location.href = '/'
+    if (!(await shouldLoadRoute())) {
+      window.location.href = '/'
+    }
   }, [])
 
   async function onLogout() {
     await signOut()
+    dispatch(resetUserData())
     window.location.href = '/'
   }
 

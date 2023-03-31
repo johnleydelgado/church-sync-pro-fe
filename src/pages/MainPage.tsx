@@ -1,13 +1,19 @@
 import React, { FC } from 'react'
 import { Route, Routes } from 'react-router-dom'
 
-import { LoginPage, SecondaryLoginPage, SignUpPage, SubscriptionPage } from '.'
-import GoogleCallBack from './callback/GoogleCallBack'
-import ErrorPage from '../../common/components/Route/ErrorPage'
-import PrivateRoute from '../../common/components/Route/PrivateRoute'
-import { route } from '../../common/constant/route'
-import { authGuard, unAuthGuard } from '../../common/utils/routeGuards'
-import { DashboardPage } from '../Main'
+import {
+  LoginPage,
+  SecondaryLoginPage,
+  SignUpPage,
+  SubscriptionPage,
+} from './Auth'
+import GoogleCallBack from './Auth/callback/GoogleCallBack'
+
+import PrivateRoute from '@/common/components/Route/PrivateRoute'
+import ErrorPage from '@/common/components/Route/ErrorPage'
+import { authGuard, unAuthGuard } from '@/common/utils/routeGuards'
+import { DashboardPage } from './Main'
+import { route } from '@/common/constant/route'
 
 interface indexProps {}
 

@@ -9,9 +9,13 @@ import SuperTokens from 'supertokens-web-js'
 import EmailPassword from 'supertokens-web-js/recipe/emailpassword'
 import Session from 'supertokens-web-js/recipe/session'
 import ThirdPartyEmailPassword from 'supertokens-web-js/recipe/thirdpartyemailpassword'
+import EmailVerification from 'supertokens-web-js/recipe/emailverification'
+import { ToastContainer } from 'react-toastify'
 
-import MainUnAuthPage from './pages/Auth/MainPage'
+import MainUnAuthPage from './pages/MainPage'
 import { persistor, store } from './redux/store'
+import 'react-toastify/dist/ReactToastify.css'
+
 function App() {
   const queryClient = new QueryClient()
 
@@ -38,6 +42,7 @@ function App() {
                 <Route path="/*" element={<MainUnAuthPage />} />
               </Routes>
             </Router>
+            <ToastContainer />
           </DndProvider>
         </QueryClientProvider>
       </PersistGate>

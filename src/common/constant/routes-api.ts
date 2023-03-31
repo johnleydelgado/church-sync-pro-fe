@@ -1,6 +1,11 @@
 const pcRoutes = {
-  getBatches: "/pc/getBatches",
-  getFunds: "/pc/getFunds",
-};
+  getBatches: '/pc/getBatches',
+  getFunds: '/pc/getFunds',
+}
 
-export { pcRoutes };
+const userRoutes = {
+  updateUser: '/user/updateUser',
+  createUser: '/user/createUser',
+}
+
+export { pcRoutes, userRoutes }

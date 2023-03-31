@@ -4,45 +4,45 @@ import {
   HiShoppingBag,
   HiViewBoards,
   HiBookmark,
-} from "react-icons/hi";
+} from 'react-icons/hi'
 
 interface PageProps {
-  name: string;
-  icon: any;
-  link: string;
+  name: string
+  icon: any
+  link: string
 }
 
 const pages: PageProps[] = [
   {
-    name: "Dashboard",
-    link: "/dashboard",
+    name: 'Dashboard',
+    link: '/dashboard',
     icon: <HiChartPie size={30} />,
   },
   {
-    name: "Bookmark",
-    link: "/bookmark",
+    name: 'Client Toggle',
+    link: '/client-toggle',
     icon: <HiBookmark size={30} />,
   },
   {
-    name: "Inbox",
-    link: "/inbox",
+    name: 'Home',
+    link: '/home',
     icon: <HiInbox size={30} />,
   },
   {
-    name: "Board",
-    link: "/board",
+    name: 'Transaction',
+    link: '/transaction',
     icon: <HiViewBoards size={30} />,
   },
   {
-    name: "Shop",
-    link: "/shop",
+    name: 'Automation',
+    link: '/automation',
     icon: <HiShoppingBag size={30} />,
   },
   {
-    name: "Pie",
-    link: "/pie",
+    name: 'Settings',
+    link: '/settings',
     icon: <HiChartPie size={30} />,
   },
-];
+]
 
-export default pages;
+export default pages
