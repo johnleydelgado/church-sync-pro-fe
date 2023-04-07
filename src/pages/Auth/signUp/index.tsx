@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { TextInput, Button } from 'flowbite-react'
 import { useFormik } from 'formik'
-import { FC, useEffect, useState } from 'react'
+import { FC, useCallback, useEffect, useState } from 'react'
 import {
   HiOutlineMail,
   HiEye,
@@ -10,45 +10,23 @@ import {
 } from 'react-icons/hi'
 import { BiChurch } from 'react-icons/bi'
 import { emailPasswordSignUp } from 'supertokens-web-js/recipe/thirdpartyemailpassword'
-import { object } from 'yup'
-import * as yup from 'yup'
 
 import bgImage from '../../../common/assets/bg_2.png'
-import { sendEmail, shouldLoadRoute } from '@/common/utils/supertoken'
+import { shouldLoadRoute } from '@/common/utils/supertoken'
 import { failNotification } from '@/common/utils/toast'
 import { AiOutlineUser } from 'react-icons/ai'
-import { updateUser } from '@/common/api/user'
 import { route } from '@/common/constant/route'
 import { useSelector } from 'react-redux'
 import { RootState } from '@/redux/store'
-
-export const validationSchema = object({
-  email: yup.string().required('Email is a required field').email(),
-  churchName: yup.string().required('Church Name is a required field'),
-  firstName: yup.string().required('First Name is a required field'),
-  lastName: yup.string().required('Last Name is a required field'),
-  password: yup.string().required('Password is a required field'),
-})
-
-export interface UserProps {
-  churchName: string
-  firstName: string
-  lastName: string
-  email: string
-  password: string
-}
+import {
+  UserSignUpProps,
+  signUpValidationSchema,
+  signUpInitialValues,
+} from '@/common/constant/formik'
 
 interface SignUpProps {}
 const SignUp: FC<SignUpProps> = () => {
   const { user } = useSelector((state: RootState) => state.common)
-
-  const initialValues: UserProps = {
-    churchName: '',
-    firstName: '',
-    lastName: '',
-    email: user.email,
-    password: '',
-  }
 
   const [showPassword, setShowPassword] = useState<boolean>(false)
 
@@ -60,7 +38,7 @@ const SignUp: FC<SignUpProps> = () => {
     lastName,
     email,
     password,
-  }: UserProps) {
+  }: UserSignUpProps) {
     try {
       const response = await emailPasswordSignUp({
         formFields: [
@@ -113,19 +91,19 @@ const SignUp: FC<SignUpProps> = () => {
     }
   }
 
-  const checkSession = async () => {
-    if ((await shouldLoadRoute()) && signUpSuccess) {
+  const checkSession = useCallback(async () => {
+    if ((await shouldLoadRoute({ email: user.email })) && signUpSuccess) {
       window.location.href = route.SECONDARY_LOGIN
     }
-  }
+  }, [signUpSuccess, user.email])
 
   useEffect(() => {
     checkSession()
-  }, [signUpSuccess])
+  }, [checkSession])
 
   const formik = useFormik({
-    initialValues,
-    validationSchema,
+    initialValues: { ...signUpInitialValues, email: user.email },
+    validationSchema: signUpValidationSchema,
     onSubmit: (values) => {
       const { ...rest } = values
       signUpClicked(rest)

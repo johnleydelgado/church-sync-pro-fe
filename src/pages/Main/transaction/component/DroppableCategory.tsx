@@ -47,7 +47,7 @@ const DroppableCategory: React.FC<Props> = ({ onDrop }) => {
       <td className="">
         {items.project ? (
           <div className="h-10">
-            <p className="p-2 text-center">{items.project}</p>
+            <p className="p-2 text-left">{items.project}</p>
           </div>
         ) : null}
       </td>
@@ -57,42 +57,42 @@ const DroppableCategory: React.FC<Props> = ({ onDrop }) => {
       >
         {items.name ? (
           <div className="border-dotted border-2 border-sky-500 rounded-md h-10">
-            <p className="p-2 text-center">{items.name}</p>
+            <p className="p-2 text-left">{items.name}</p>
           </div>
         ) : null}
       </td>
       <td className="">
         {items.description ? (
           <div className="h-10">
-            <p className="p-2 text-center">{items.description}</p>
+            <p className="p-2 text-left">{items.description}</p>
           </div>
         ) : null}
       </td>
       <td className="">
         {items.description ? (
           <div className="h-10">
-            <p className="p-2 text-center">{items.description}</p>
+            <p className="p-2 text-left">{items.description}</p>
           </div>
         ) : null}
       </td>
       <td className="">
         {items.description ? (
           <div className="h-10">
-            <p className="p-2 text-center">{items.description}</p>
+            <p className="p-2 text-left">{items.description}</p>
           </div>
         ) : null}
       </td>
       <td className="">
         {items.description ? (
           <div className="h-10">
-            <p className="p-2 text-center">{items.description}</p>
+            <p className="p-2 text-left">{items.description}</p>
           </div>
         ) : null}
       </td>
       <td className="">
         {items.description ? (
           <div className="h-10">
-            <p className="p-2 text-center">{items.description}</p>
+            <p className="p-2 text-right">{items.description}</p>
           </div>
         ) : null}
       </td>

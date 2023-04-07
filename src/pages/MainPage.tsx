@@ -12,14 +12,14 @@ import GoogleCallBack from './Auth/callback/GoogleCallBack'
 import PrivateRoute from '@/common/components/Route/PrivateRoute'
 import ErrorPage from '@/common/components/Route/ErrorPage'
 import { authGuard, unAuthGuard } from '@/common/utils/routeGuards'
-import { DashboardPage } from './Main'
-import { route } from '@/common/constant/route'
+import { mainRoute, route } from '@/common/constant/route'
+import { SettingsPage, TransactionPage } from './Main'
 
 interface indexProps {}
 
 const MainPage: FC<indexProps> = () => {
   return (
-    <div className="h-screen bg-slate-400">
+    <div className="h-screen bg-slate-100">
       <Routes>
         <Route
           path={route.ROOT}
@@ -55,9 +55,15 @@ const MainPage: FC<indexProps> = () => {
           }
         />
         <Route
-          path={route.DASHBOARD}
+          path={mainRoute.TRANSACTION}
           element={
-            <PrivateRoute Component={DashboardPage} guards={[authGuard]} />
+            <PrivateRoute Component={TransactionPage} guards={[authGuard]} />
+          }
+        />
+        <Route
+          path={mainRoute.SETTINGS}
+          element={
+            <PrivateRoute Component={SettingsPage} guards={[authGuard]} />
           }
         />
         <Route path="*" element={<ErrorPage />} />

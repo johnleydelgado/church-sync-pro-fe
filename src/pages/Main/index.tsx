@@ -1,3 +1,4 @@
-import DashboardPage from "./dashboard";
+import TransactionPage from './transaction'
+import SettingsPage from './settings'
 
-export { DashboardPage };
+export { TransactionPage, SettingsPage }

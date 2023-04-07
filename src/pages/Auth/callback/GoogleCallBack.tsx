@@ -13,45 +13,46 @@ interface googleCallbackProps {}
 const GoogleCallBack: FC<googleCallbackProps> = ({}) => {
   const dispatch = useDispatch()
 
-  async function handleGoogleCallback() {
-    try {
-      const response = await thirdPartySignInAndUp()
+  useEffect(() => {
+    const handleGoogleCallback = async () => {
+      try {
+        const response = await thirdPartySignInAndUp()
 
-      if (response.status === 'OK') {
-        const { email } = response.user
-        dispatch(setUserData({ email }))
-        if (response.createdNewUser) {
-          await createUser({ email })
-          window.location.assign(route.SIGNUP)
+        if (response.status === 'OK') {
+          const { email } = response.user
+          dispatch(setUserData({ email }))
+          if (response.createdNewUser) {
+            await createUser({ email })
+            window.location.assign(route.SIGNUP)
+          } else {
+            window.location.assign(route.SECONDARY_LOGIN)
+          }
         } else {
-          window.location.assign(route.SECONDARY_LOGIN)
+          // SuperTokens requires that the third party provider
+          // gives an email for the user. If that's not the case, sign up / in
+          // will fail.
+
+          // As a hack to solve this, you can override the backend functions to create a fake email for the user.
+
+          failNotification({
+            title:
+              'No email provided by social login. Please use another form of login',
+          })
+
+          window.location.assign('/') // redirect back to login page
         }
-      } else {
-        // SuperTokens requires that the third party provider
-        // gives an email for the user. If that's not the case, sign up / in
-        // will fail.
-
-        // As a hack to solve this, you can override the backend functions to create a fake email for the user.
-
-        failNotification({
-          title:
-            'No email provided by social login. Please use another form of login',
-        })
-
-        window.location.assign('/') // redirect back to login page
-      }
-    } catch (err: any) {
-      if (err.isSuperTokensGeneralError === true) {
-        // this may be a custom error message sent from the API by you.
-        failNotification({ title: err.message })
-      } else {
-        failNotification({ title: 'Oops! Something went wrong.' })
+      } catch (err: any) {
+        if (err.isSuperTokensGeneralError === true) {
+          // this may be a custom error message sent from the API by you.
+          failNotification({ title: err.message })
+        } else {
+          failNotification({ title: 'Oops! Something went wrong.' })
+        }
       }
     }
-  }
-  useEffect(() => {
     handleGoogleCallback()
-  }, [])
+  }, [dispatch])
+
   return (
     <div className="flex justify-center items-center h-screen bg-white">
       <div className="grid gap-2">

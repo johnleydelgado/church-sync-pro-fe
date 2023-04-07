@@ -1,19 +1,19 @@
 import axios from 'axios'
 import React, { FC, useCallback, useEffect, useRef, useState } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
-import { doesSessionExist, signOut } from 'supertokens-web-js/recipe/session'
-
+import { signOut } from 'supertokens-web-js/recipe/session'
+import { storage, storageKey } from '@/common/utils/storage'
 import LoginButton from './components/LoginButton'
 import bgImage from '../../../common/assets/doodle.png'
 import pcLogin from '../../../common/assets/planning-center-btn.png'
 import qboLogin from '../../../common/assets/qbo_login.png'
 import Loading from '../../../common/components/loading/Loading'
-import { storage, storageKey } from '../../../common/utils/storage'
 import { resetUserData, setThirdPartyTokens } from '../../../redux/common'
 import { RootState } from '../../../redux/store'
 import checkToken from '@/common/utils/tokenVerification'
-import { SlLogout } from 'react-icons/sl'
-import { shouldLoadRoute } from '@/common/utils/supertoken'
+import { doesEmailExistRoute } from '@/common/utils/supertoken'
+import { route } from '@/common/constant/route'
+import { addTokenInUser } from '@/common/api/user'
 
 interface indexProps {}
 
@@ -22,6 +22,7 @@ const SecondaryLogin: FC<indexProps> = () => {
   const [loading, setLoading] = useState<boolean>(false)
 
   const { thirdPartyTokens } = useSelector((state: RootState) => state.common)
+  const { email } = useSelector((state: RootState) => state.common.user)
 
   const qboToken = storage.getToken(storageKey.QBQ_ACCESS_TOKEN)
   const pcToken = storage.getToken(storageKey.PC_ACCESS_TOKEN)
@@ -47,13 +48,19 @@ const SecondaryLogin: FC<indexProps> = () => {
 
     if (realmId) {
       setLoading(true)
-      console.log('realmId', realmId)
       try {
         const res = await axios.post('http://localhost:8080/csp/callBackQBO', {
           url,
         })
         const { access_token, refresh_token, tokenJwt } = res.data
         if (access_token) {
+          await addTokenInUser({
+            access_token_qbo: access_token,
+            refresh_token_qbo: refresh_token,
+            realm_id: realmId,
+            email,
+          })
+
           dispatch(
             setThirdPartyTokens({
               ...thirdPartyTokens,
@@ -71,7 +78,7 @@ const SecondaryLogin: FC<indexProps> = () => {
         setLoading(false)
       }
     }
-  }, [dispatch, thirdPartyTokens])
+  }, [dispatch, thirdPartyTokens, email])
 
   const loadPC = useCallback(async () => {
     const urlParams = new URLSearchParams(window.location.search)
@@ -85,8 +92,14 @@ const SecondaryLogin: FC<indexProps> = () => {
         const res = await axios.post('http://localhost:8080/csp/callBackPC', {
           code: hasCode,
         })
-        console.log(res.data)
         const { access_token, refresh_token, tokenJwt } = res.data
+
+        await addTokenInUser({
+          access_token_pc: access_token,
+          refresh_token_pc: refresh_token,
+          email,
+        })
+
         if (access_token) {
           dispatch(
             setThirdPartyTokens({
@@ -103,18 +116,20 @@ const SecondaryLogin: FC<indexProps> = () => {
         setLoading(false)
       }
     }
-  }, [dispatch, thirdPartyTokens])
+  }, [dispatch, thirdPartyTokens, email])
 
   const checkSession = useCallback(async () => {
-    if (!(await shouldLoadRoute())) {
-      window.location.href = '/'
+    if (!(await doesEmailExistRoute({ email }))) {
+      window.location.href = route.SIGNUP
     }
-  }, [])
+  }, [email])
 
   async function onLogout() {
     await signOut()
     dispatch(resetUserData())
-    window.location.href = '/'
+    storage.removeToken(storageKey.PC_ACCESS_TOKEN)
+    storage.removeToken(storageKey.QBQ_ACCESS_TOKEN)
+    window.location.href = route.ROOT
   }
 
   useEffect(() => {

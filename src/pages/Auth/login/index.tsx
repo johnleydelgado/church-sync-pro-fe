@@ -3,43 +3,27 @@ import { failNotification } from '@/common/utils/toast'
 import { TextInput, Checkbox, Label, Button } from 'flowbite-react'
 import React, { FC, useEffect, useState } from 'react'
 import { FcGoogle } from 'react-icons/fc'
-import { FiFacebook } from 'react-icons/fi'
 import {
   HiOutlineMail,
-  HiLockClosed,
   HiEye,
   HiOutlineLockClosed,
   HiEyeOff,
 } from 'react-icons/hi'
 import { useNavigate } from 'react-router'
-import { doesSessionExist } from 'supertokens-web-js/recipe/session'
 import { getAuthorisationURLWithQueryParamsAndSetState } from 'supertokens-web-js/recipe/thirdpartyemailpassword'
 import { emailPasswordSignIn } from 'supertokens-web-js/recipe/thirdpartyemailpassword'
-import { object } from 'yup'
-import * as yup from 'yup'
 
 import bgImage from '../../../common/assets/bg_1.png'
 import { route } from '../../../common/constant/route'
 import { useFormik } from 'formik'
 import { useDispatch } from 'react-redux'
 import { setUserData } from '@/redux/common'
+import {
+  signInInitialValues,
+  signInValidationSchema,
+} from '@/common/constant/formik'
 
 interface LoginProps {}
-
-export interface UserProps {
-  email: string
-  password: string
-}
-
-const initialValues: UserProps = {
-  email: '',
-  password: '',
-}
-
-const validationSchema = object({
-  email: yup.string().required('Email is a required field !').email(),
-  password: yup.string().required('Password is a required field !'),
-})
 
 const Login: FC<LoginProps> = () => {
   const navigate = useNavigate()
@@ -122,8 +106,8 @@ const Login: FC<LoginProps> = () => {
   }
 
   const formik = useFormik({
-    initialValues,
-    validationSchema,
+    initialValues: signInInitialValues,
+    validationSchema: signInValidationSchema,
     onSubmit: (values) => {
       const { ...rest } = values
       signInClicked(rest)

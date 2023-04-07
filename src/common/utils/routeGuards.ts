@@ -10,7 +10,7 @@ const pcToken = storage.getToken(storageKey.PC_ACCESS_TOKEN)
 const unAuthGuard = {
   failCondition: !!checkToken(qboToken) && !!checkToken(pcToken),
   requestDone: true,
-  onFail: route.DASHBOARD,
+  onFail: route.TRANSACTION,
 }
 
 const authGuard = {

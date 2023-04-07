@@ -14,9 +14,9 @@ interface PageProps {
 
 const pages: PageProps[] = [
   {
-    name: 'Dashboard',
-    link: '/dashboard',
-    icon: <HiChartPie size={30} />,
+    name: 'Transaction',
+    link: '/transaction',
+    icon: <HiViewBoards size={30} />,
   },
   {
     name: 'Client Toggle',
@@ -27,11 +27,6 @@ const pages: PageProps[] = [
     name: 'Home',
     link: '/home',
     icon: <HiInbox size={30} />,
-  },
-  {
-    name: 'Transaction',
-    link: '/transaction',
-    icon: <HiViewBoards size={30} />,
   },
   {
     name: 'Automation',

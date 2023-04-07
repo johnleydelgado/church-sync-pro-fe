@@ -7,7 +7,7 @@ import { useLocation } from 'react-router'
 import Session from 'supertokens-web-js/recipe/session'
 
 import pages from './constant'
-import { storage, storageKey } from '../../utils/storage'
+import { storage, storageKey } from '@/common/utils/storage'
 
 interface SideBarProps {
   isTrigger: boolean
@@ -46,7 +46,7 @@ const ItemSideBar = ({
    duration-100 hover:bg-green-400 ${
      pathName === link ? 'bg-green-400' : ''
    } rounded-md`}
-        href="/"
+        href={link}
       >
         {icon}
         <p className="font-thin">{name}</p>
@@ -68,7 +68,6 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
       await Session.signOut()
       storage.removeToken(storageKey.PC_ACCESS_TOKEN)
       storage.removeToken(storageKey.QBQ_ACCESS_TOKEN)
-
       // Redirect the user to the login page or reload the page to update the authentication status
       window.location.reload()
     } catch (error) {
@@ -115,24 +114,24 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
           ))}
         </div>
         {isTrigger ? (
-          <div
+          <button
             className="mt-auto transition transform duration-100 hover:bg-green-300 hover:text-primary text-white"
             onClick={logoutHandler}
           >
-            <a className="flex gap-x-8  p-8 items-center" href="/">
+            <div className="flex gap-x-8  p-8 items-center">
               <HiOutlineLogout size={30} />
-            </a>
-          </div>
+            </div>
+          </button>
         ) : (
-          <div
+          <button
             className="mt-auto transition transform duration-100 hover:bg-green-300 hover:text-primary text-white"
             onClick={logoutHandler}
           >
-            <a className="flex gap-x-8  p-8 items-center" href="/">
+            <div className="flex gap-x-8  p-8 items-center">
               <HiOutlineLogout size={30} />
               <p className="font-thin">Sign Out</p>
-            </a>
-          </div>
+            </div>
+          </button>
         )}
       </div>
     </aside>

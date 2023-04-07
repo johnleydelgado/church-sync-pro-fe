@@ -37,16 +37,17 @@ interface DashboardProps {}
 
 const Dashboard: FC<DashboardProps> = () => {
   const [value, setValue] = useState([new Date(), new Date()])
+  const { thirdPartyTokens, user } = useSelector(
+    (state: RootState) => state.common,
+  )
 
   const { data, isLoading } = useQuery<FundProps[]>(['getFunds'], async () => {
     return await pcGetFunds({
-      refresh_token: thirdPartyTokens?.PlanningCenter,
+      email: user.email,
     })
   })
 
   const [modifiedData, setModifiedData] = useState<FundProps[] | null>(null)
-
-  const { thirdPartyTokens } = useSelector((state: RootState) => state.common)
 
   const handleDateChange = (newValue: string | Date) => {
     if (
@@ -127,7 +128,7 @@ const Dashboard: FC<DashboardProps> = () => {
                     </th>
                   </tr>
                 </thead>
-                <tbody className="[&>*]:h-20">
+                <tbody className="[&>*]:h-20 text-left">
                   <DroppableCategory onDrop={handleDrop} />
                   <DroppableCategory onDrop={handleDrop} />
                   <DroppableCategory onDrop={handleDrop} />

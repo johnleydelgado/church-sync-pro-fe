@@ -1,14 +1,15 @@
 import Session from 'supertokens-web-js/recipe/session'
 import { EmailVerificationClaim } from 'supertokens-web-js/recipe/emailverification'
 import { sendVerificationEmail } from 'supertokens-web-js/recipe/emailverification'
+import { doesEmailExist } from 'supertokens-web-js/recipe/emailpassword'
 import { failNotification, successNotification } from './toast'
 
-async function shouldLoadRoute(): Promise<boolean> {
+async function shouldLoadRoute({ email }: { email: string }): Promise<boolean> {
   if (await Session.doesSessionExist()) {
-    const userId = await Session.getUserId()
-    console.log('Session', userId)
+    // const userId = await Session.getUserId()
+    const isEmailExist = await doesEmailExist({ email })
     const validationErrors = await Session.validateClaims()
-    if (validationErrors.length === 0) {
+    if (validationErrors.length === 0 && isEmailExist.doesExist) {
       // user has verified their email address
       return true
     } else {
@@ -20,6 +21,20 @@ async function shouldLoadRoute(): Promise<boolean> {
     }
   }
   // a session does not exist, or email is not verified
+  return false
+}
+
+async function doesEmailExistRoute({
+  email,
+}: {
+  email: string
+}): Promise<boolean> {
+  // const userId = await Session.getUserId()
+  const isEmailExist = await doesEmailExist({ email })
+  if (isEmailExist.doesExist) {
+    // user has verified their email address
+    return true
+  }
   return false
 }
 
@@ -46,4 +61,4 @@ async function sendEmail() {
   }
 }
 
-export { shouldLoadRoute, sendEmail }
+export { shouldLoadRoute, sendEmail, doesEmailExistRoute }
