@@ -7,6 +7,8 @@ import LoginButton from './components/LoginButton'
 import bgImage from '../../../common/assets/doodle.png'
 import pcLogin from '../../../common/assets/planning-center-btn.png'
 import qboLogin from '../../../common/assets/qbo_login.png'
+import stripeLogin from '../../../common/assets/stripe.png'
+
 import Loading from '../../../common/components/loading/Loading'
 import { resetUserData, setThirdPartyTokens } from '../../../redux/common'
 import { RootState } from '../../../redux/store'
@@ -14,6 +16,8 @@ import checkToken from '@/common/utils/tokenVerification'
 import { doesEmailExistRoute } from '@/common/utils/supertoken'
 import { route } from '@/common/constant/route'
 import { addTokenInUser } from '@/common/api/user'
+import { authApi } from '@/common/api/auth'
+const { REACT_APP_API_PATH } = process.env
 
 interface indexProps {}
 
@@ -30,14 +34,17 @@ const SecondaryLogin: FC<indexProps> = () => {
   const dispatch = useDispatch()
 
   const qboLoginHandler = async () => {
-    const res = await axios.get('http://localhost:8080/csp/authQB')
-    const authUri = res.data
+    const authUri = await authApi('authQB')
     window.location.href = authUri
   }
 
   const pcLoginHandler = async () => {
-    const res = await axios.get('http://localhost:8080/csp/authPC')
-    const authUri = res.data
+    const authUri = await authApi('authPC')
+    window.location.href = authUri
+  }
+
+  const stripeLoginHandler = async () => {
+    const authUri = await authApi('authStripe')
     window.location.href = authUri
   }
 
@@ -49,7 +56,7 @@ const SecondaryLogin: FC<indexProps> = () => {
     if (realmId) {
       setLoading(true)
       try {
-        const res = await axios.post('http://localhost:8080/csp/callBackQBO', {
+        const res = await axios.post(`${REACT_APP_API_PATH}callBackQBO`, {
           url,
         })
         const { access_token, refresh_token, tokenJwt } = res.data
@@ -83,13 +90,14 @@ const SecondaryLogin: FC<indexProps> = () => {
   const loadPC = useCallback(async () => {
     const urlParams = new URLSearchParams(window.location.search)
     const hasCode = urlParams.get('code')
-    const realmId = urlParams.get('realmId')
+    const realmId = urlParams.get('realmId') //qbo
+    const scope = urlParams.get('scope') //stripe
 
-    if (hasCode && !realmId) {
+    if (hasCode && !realmId && !scope) {
       setLoading(true)
       console.log('hasCode', hasCode)
       try {
-        const res = await axios.post('http://localhost:8080/csp/callBackPC', {
+        const res = await axios.post(`${REACT_APP_API_PATH}callBackPC`, {
           code: hasCode,
         })
         const { access_token, refresh_token, tokenJwt } = res.data
@@ -108,6 +116,43 @@ const SecondaryLogin: FC<indexProps> = () => {
             }),
           )
           storage.setLocalToken(tokenJwt, storageKey.PC_ACCESS_TOKEN)
+        }
+      } catch (e: any) {
+        console.log(e)
+        // NOTE: create a redirect or history here
+      } finally {
+        setLoading(false)
+      }
+    }
+  }, [dispatch, thirdPartyTokens, email])
+
+  const loadStripe = useCallback(async () => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const hasCode = urlParams.get('code')
+    const scope = urlParams.get('scope') //stripe
+
+    if (hasCode && scope) {
+      setLoading(true)
+      try {
+        const res = await axios.post(`${REACT_APP_API_PATH}callBackStripe`, {
+          code: hasCode,
+        })
+        const { access_token, refresh_token } = res.data
+
+        await addTokenInUser({
+          access_token_stripe: access_token,
+          refresh_token_stripe: refresh_token,
+          email,
+        })
+
+        if (access_token) {
+          dispatch(
+            setThirdPartyTokens({
+              ...thirdPartyTokens,
+              stripe_access_token: access_token,
+              stripe_refresh_token: refresh_token,
+            }),
+          )
         }
       } catch (e: any) {
         console.log(e)
@@ -139,13 +184,20 @@ const SecondaryLogin: FC<indexProps> = () => {
     if (!subscribed.current && hasCode) {
       loadQbo()
       loadPC()
+      loadStripe()
     }
     return () => {
       subscribed.current = true
     }
   }, [checkSession, loadPC, loadQbo])
 
-  if (!!checkToken(qboToken) && !!checkToken(pcToken)) window.location.reload()
+  if (
+    !!checkToken(qboToken) &&
+    !!checkToken(pcToken) &&
+    !!thirdPartyTokens?.stripe_access_token
+  ) {
+    window.location.reload()
+  }
 
   return (
     <div className="h-screen bg-slate-400">
@@ -179,6 +231,12 @@ const SecondaryLogin: FC<indexProps> = () => {
                 onClick={pcLoginHandler}
                 name="Already connected to Planning Center"
                 isHide={!!checkToken(pcToken)}
+              />
+              <LoginButton
+                loginImage={stripeLogin}
+                onClick={stripeLoginHandler}
+                name="Already connected to Stripe Connect"
+                isHide={!!thirdPartyTokens?.stripe_access_token}
               />
               <button
                 className="px-4 py-2 flex gap-4 items-center transform transition-transform hover:scale-105

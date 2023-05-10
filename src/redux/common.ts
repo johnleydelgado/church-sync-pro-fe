@@ -5,6 +5,8 @@ export interface thirdPartyTokens {
   qbo_refresh_token: string | null
   qbo_realm_id: string | null
   PlanningCenter: string | null
+  stripe_access_token: string | null
+  stripe_refresh_token: string | null
 }
 
 export interface UserInfo {
@@ -37,6 +39,8 @@ const initialState: CommonState = {
     qbo_refresh_token: null,
     qbo_realm_id: null,
     PlanningCenter: null,
+    stripe_access_token: null,
+    stripe_refresh_token: null,
   },
 }
 
@@ -74,6 +78,7 @@ export const common = createSlice({
     },
     resetUserData: (state) => {
       state.user = initialState.user
+      state.thirdPartyTokens = initialState.thirdPartyTokens
     },
   },
 })

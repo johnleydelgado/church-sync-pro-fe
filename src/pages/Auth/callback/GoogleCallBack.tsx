@@ -17,7 +17,7 @@ const GoogleCallBack: FC<googleCallbackProps> = ({}) => {
     const handleGoogleCallback = async () => {
       try {
         const response = await thirdPartySignInAndUp()
-
+        console.log('test', response)
         if (response.status === 'OK') {
           const { email } = response.user
           dispatch(setUserData({ email }))
@@ -42,6 +42,7 @@ const GoogleCallBack: FC<googleCallbackProps> = ({}) => {
           window.location.assign('/') // redirect back to login page
         }
       } catch (err: any) {
+        console.log('err', err)
         if (err.isSuperTokensGeneralError === true) {
           // this may be a custom error message sent from the API by you.
           failNotification({ title: err.message })

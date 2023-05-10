@@ -1,13 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import axios from 'axios'
-import { faker } from '@faker-js/faker'
-import { pcRoutes, qboRoutes } from '../constant/routes-api'
-import { GroupBase, OptionsOrGroups } from 'react-select'
-const BASE_PATH = 'http://localhost:8080/csp/'
+import { qboRoutes } from '../constant/routes-api'
+const { REACT_APP_API_PATH } = process.env
 
 const apiCall = axios.create({
-  baseURL: BASE_PATH,
+  baseURL: REACT_APP_API_PATH,
   headers: {
     'Content-type': 'application/json',
   },

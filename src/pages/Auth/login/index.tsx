@@ -24,11 +24,20 @@ import {
 } from '@/common/constant/formik'
 
 interface LoginProps {}
+const { REACT_APP_GOOGLE_CALLBACK_URL, REACT_APP_HOST_BE } = process.env
 
 const Login: FC<LoginProps> = () => {
   const navigate = useNavigate()
   const [showPassword, setShowPassword] = useState<boolean>(false)
   const dispatch = useDispatch()
+
+  console.log('REACT_APP_HOST_BE', {
+    appInfo: {
+      apiDomain: REACT_APP_HOST_BE as string,
+      apiBasePath: '/auth',
+      appName: 'church sync pro',
+    },
+  })
 
   async function googleSignInClicked() {
     try {
@@ -37,7 +46,7 @@ const Login: FC<LoginProps> = () => {
 
         // This is where Google should redirect the user back after login or error.
         // This URL goes on the Google's dashboard as well.
-        authorisationURL: 'http://localhost:3000/auth/callback/google',
+        authorisationURL: REACT_APP_GOOGLE_CALLBACK_URL as string,
       })
 
       /*

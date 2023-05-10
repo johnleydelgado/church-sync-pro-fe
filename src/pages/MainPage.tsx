@@ -13,7 +13,12 @@ import PrivateRoute from '@/common/components/Route/PrivateRoute'
 import ErrorPage from '@/common/components/Route/ErrorPage'
 import { authGuard, unAuthGuard } from '@/common/utils/routeGuards'
 import { mainRoute, route } from '@/common/constant/route'
-import { SettingsPage, TransactionPage } from './Main'
+import {
+  SettingsPage,
+  TransactionPage,
+  TransactionStripeViewDetailsPage,
+  TransactionViewDetailsPage,
+} from './Main'
 
 interface indexProps {}
 
@@ -58,6 +63,24 @@ const MainPage: FC<indexProps> = () => {
           path={mainRoute.TRANSACTION}
           element={
             <PrivateRoute Component={TransactionPage} guards={[authGuard]} />
+          }
+        />
+        <Route
+          path={mainRoute.TRANSACTION_VIEWPAGE}
+          element={
+            <PrivateRoute
+              Component={TransactionViewDetailsPage}
+              guards={[authGuard]}
+            />
+          }
+        />
+        <Route
+          path={mainRoute.TRANSACTION_STRIPE_VIEWPAGE}
+          element={
+            <PrivateRoute
+              Component={TransactionStripeViewDetailsPage}
+              guards={[authGuard]}
+            />
           }
         />
         <Route

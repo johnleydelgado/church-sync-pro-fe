@@ -6,8 +6,6 @@ import { useMutation, useQuery } from 'react-query'
 import { useSelector } from 'react-redux'
 
 import { RootState } from '../../../redux/store'
-import '@wojtekmaj/react-daterange-picker/dist/DateRangePicker.css'
-import 'react-calendar/dist/Calendar.css'
 import { Button, Checkbox, Label } from 'flowbite-react'
 import { QboGetAllQboData } from '@/common/api/qbo'
 import Dropdown, { components } from 'react-select'
@@ -19,7 +17,8 @@ import {
 } from '@/common/api/user'
 import { isEmpty } from 'lodash'
 import { failNotification, successNotification } from '@/common/utils/toast'
-import { CgKey } from 'react-icons/cg'
+import { Tab } from '@headlessui/react'
+import Registration from './component/Registration'
 
 const Input = (props: any) => (
   <components.Input
@@ -57,30 +56,49 @@ export interface BqoDataSelectProps {
 
 interface SettingsProps {}
 
+function classNames(...classes: string[]) {
+  return classes.filter(Boolean).join(' ')
+}
+
 const Settings: FC<SettingsProps> = () => {
   const { thirdPartyTokens, user } = useSelector(
     (state: RootState) => state.common,
   )
 
-  const { data, isLoading } = useQuery<FundProps[]>(['getFunds'], async () => {
-    return await pcGetFunds({
-      email: user.email,
-    })
-  })
+  const { data, isLoading } = useQuery<FundProps[]>(
+    ['getFunds'], // Same query key as in the first page
 
-  const { data: userData } = useQuery(['getUserRelated'], async () => {
-    return await getUserRelated(user.email)
-  })
+    async () => {
+      return await pcGetFunds({ email: user.email })
+    },
+    { staleTime: Infinity },
+  )
+
+  const { data: userData } = useQuery(
+    ['getUserRelated'],
+    async () => {
+      return await getUserRelated(user.email)
+    },
+    { staleTime: Infinity },
+  )
 
   const { data: qboData, isLoading: isQboDataLoading } =
-    useQuery<BqoDataSelectProps>(['getAllQboData'], async () => {
-      return await QboGetAllQboData({
-        email: user.email,
-      })
-    })
+    useQuery<BqoDataSelectProps>(
+      ['getAllQboData'],
+      async () => {
+        return await QboGetAllQboData({
+          email: user.email,
+        })
+      },
+      { staleTime: Infinity },
+    )
 
   const [settingsData, setSettingsData] = useState<qboSettings[]>([])
   const [isAutomationEnable, setIsAutomationEnable] = useState<boolean>(false)
+  const [categories] = useState({
+    Donation: [],
+    Registration: [],
+  })
 
   // create user settings
   const { mutate, isLoading: isSavingSettings } = useMutation<
@@ -161,8 +179,8 @@ const Settings: FC<SettingsProps> = () => {
 
   useEffect(() => {
     if (!isEmpty(userData?.data?.UserSetting)) {
-      const data = userData.data.UserSetting.settingsData
-      setSettingsData(data)
+      const settingsData = userData.data.UserSetting.settingsData
+      setSettingsData(settingsData)
       setIsAutomationEnable(userData?.data.UserSetting.isAutomationEnable)
     }
   }, [userData])
@@ -198,7 +216,7 @@ const Settings: FC<SettingsProps> = () => {
       {isLoading || isSavingSettings || isQboDataLoading ? (
         <Loading />
       ) : (
-        <div className="bg-[#fbfafd] -m-6 p-6">
+        <div className="bg-[#fbfafd] -m-6 p-6 h-full">
           <p className="text-4xl pb-8 text-slate-700">Settings</p>
           <div className="flex flex-col gap-2">
             <p className="text-xl text-slate-600">Automatic Transaction</p>
@@ -219,77 +237,136 @@ const Settings: FC<SettingsProps> = () => {
               </label>
             </div>
           </div>
-          {data?.map((item, index) => (
-            <div
-              key={index}
-              className={`grid grid-cols-2 gap-2 py-4 ${
-                index === data.length - 1 ? '' : 'border-b-[1px]'
-              } `}
-            >
-              <div className="col-span-1 flex flex-col pr-6">
-                <p className="font-semibold text-slate-700">
-                  {item.attributes.name}
-                </p>
-                <p className="font-medium text-slate-500 text-sm">
-                  {item.attributes.description}
-                </p>
-              </div>
-              {isEmpty(qboData) && isEmpty(item.attributes.name) ? null : (
-                <div className="flex flex-col col-span-1 gap-4">
-                  {/* Accounts */}
-                  <p>Accounts</p>
-                  <Dropdown
-                    options={qboData?.accounts}
-                    components={{ Input }}
-                    onChange={(val) =>
-                      selectHandler({
-                        val,
-                        fundName: item.attributes.name,
-                        category: 'account',
-                      })
+          <Tab.Group>
+            <div className="flex justify-center">
+              <Tab.List className="flex space-x-1 rounded-xl bg-primary p-1 w-96">
+                {Object.keys(categories).map((category) => (
+                  <Tab
+                    key={category}
+                    className={({ selected }) =>
+                      classNames(
+                        'w-full rounded-lg py-2.5 text-sm font-medium leading-5 text-white',
+                        selected
+                          ? 'bg-green-500 shadow'
+                          : 'text-white hover:bg-white/[0.12] hover:text-white',
+                      )
                     }
-                    value={findDefaultValue(item.attributes.name, 'account')}
-                    className="w-72"
-                  />
-                  {/* Classes */}
-                  <p>Classes</p>
-                  <Dropdown
-                    options={qboData?.classes}
-                    components={{ Input }}
-                    onChange={(val) =>
-                      selectHandler({
-                        val,
-                        fundName: item.attributes.name,
-                        category: 'class',
-                      })
-                    }
-                    value={findDefaultValue(item.attributes.name, 'class')}
-                    className="w-72"
-                  />
-                  {/* Customers */}
-                  <p>Customers</p>
-                  <Dropdown
-                    options={qboData?.customers}
-                    components={{ Input }}
-                    onChange={(val) =>
-                      selectHandler({
-                        val,
-                        fundName: item.attributes.name,
-                        category: 'customer',
-                      })
-                    }
-                    value={findDefaultValue(item.attributes.name, 'customer')}
-                    className="w-72"
-                  />
-                </div>
-              )}
+                  >
+                    {category}
+                  </Tab>
+                ))}
+              </Tab.List>
             </div>
-          ))}
-          <div className="flex justify-end">
-            <Button className="bg-green-400" onClick={() => handleSubmit()}>
-              Save
-            </Button>
-          </div>
+
+            <Tab.Panels className="mt-2">
+              <Tab.Panel
+                key={0}
+                className={classNames(
+                  'rounded-xl bg-white p-4 px-8',
+                  'ring-white ring-opacity-60 ring-offset-2 ring-offset-blue-400 focus:outline-none focus:ring-2',
+                )}
+              >
+                {data?.map((item, index) => (
+                  <div
+                    key={index}
+                    className={`grid grid-cols-2 gap-2 py-4 ${
+                      index === data.length - 1 ? '' : 'border-b-[1px]'
+                    } `}
+                  >
+                    <div className="col-span-1 flex flex-col pr-6">
+                      <p className="font-semibold text-slate-700">
+                        {item.attributes.name}
+                      </p>
+                      <p className="font-medium text-slate-500 text-sm">
+                        {item.attributes.description}
+                      </p>
+                    </div>
+                    {isEmpty(qboData) &&
+                    isEmpty(item.attributes.name) ? null : (
+                      <div className="flex flex-col col-span-1 gap-4">
+                        {/* Accounts */}
+                        <p>Accounts</p>
+                        <Dropdown
+                          options={qboData?.accounts}
+                          components={{ Input }}
+                          onChange={(val) =>
+                            selectHandler({
+                              val,
+                              fundName: item.attributes.name,
+                              category: 'account',
+                            })
+                          }
+                          value={findDefaultValue(
+                            item.attributes.name,
+                            'account',
+                          )}
+                          className="w-72"
+                        />
+                        {/* Classes */}
+                        <p>Classes</p>
+                        <Dropdown
+                          options={qboData?.classes}
+                          components={{ Input }}
+                          onChange={(val) =>
+                            selectHandler({
+                              val,
+                              fundName: item.attributes.name,
+                              category: 'class',
+                            })
+                          }
+                          value={findDefaultValue(
+                            item.attributes.name,
+                            'class',
+                          )}
+                          className="w-72"
+                        />
+                        {/* Projects */}
+                        <p>Projects</p>
+                        <Dropdown
+                          options={qboData?.customers}
+                          components={{ Input }}
+                          onChange={(val) =>
+                            selectHandler({
+                              val,
+                              fundName: item.attributes.name,
+                              category: 'customer',
+                            })
+                          }
+                          value={findDefaultValue(
+                            item.attributes.name,
+                            'customer',
+                          )}
+                          className="w-72"
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))}
+                <div className="flex justify-end">
+                  <Button
+                    className="bg-green-400"
+                    onClick={() => handleSubmit()}
+                  >
+                    Save
+                  </Button>
+                </div>
+              </Tab.Panel>
+
+              <Tab.Panel
+                key={1}
+                className={classNames(
+                  'rounded-xl bg-white p-4 px-8',
+                  'ring-white ring-opacity-60 ring-offset-2 ring-offset-blue-400 focus:outline-none focus:ring-2',
+                )}
+              >
+                <Registration
+                  qboData={qboData}
+                  isAutomationEnable={isAutomationEnable}
+                  userData={userData}
+                />
+              </Tab.Panel>
+            </Tab.Panels>
+          </Tab.Group>
         </div>
       )}
     </MainLayout>

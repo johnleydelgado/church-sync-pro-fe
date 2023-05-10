@@ -8,14 +8,14 @@ interface MainLayoutProps {
 }
 
 const MainLayout: FC<MainLayoutProps> = ({ children }) => {
-  const [isTrigger, setIsTrigger] = useState(true)
+  const [isTrigger, setIsTrigger] = useState(false)
 
   return (
     <div className="font-montserrat h-screen font-medium bg-slate-100 flex flex-col">
       <NavBar />
       <SideBar isTrigger={isTrigger} setIsTrigger={setIsTrigger} />
       <div
-        className={`transform duration-200 delay-150 h-full bg-slate-100 p-6 flex-1 ${
+        className={`transform duration-200 delay-150 h-full bg-[#fbfafd] p-6 flex-1 ${
           isTrigger ? `ml-24` : 'ml-64'
         }`}
       >

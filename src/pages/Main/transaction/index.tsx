@@ -1,53 +1,74 @@
-import { pcGetFunds } from '@/common/api/planning-center'
+import { pcGetBatches, pcGetFunds } from '@/common/api/planning-center'
 import Loading from '@/common/components/loading/Loading'
 import MainLayout from '@/common/components/main-layout/MainLayout'
 import React, { FC, useEffect, useState } from 'react'
 import { useQuery } from 'react-query'
 import { useSelector } from 'react-redux'
-import DateRangePicker from '@wojtekmaj/react-daterange-picker'
-
 import { RootState } from '../../../redux/store'
-import '@wojtekmaj/react-daterange-picker/dist/DateRangePicker.css'
-import 'react-calendar/dist/Calendar.css'
-import Item from './component/Item'
-import DroppableCategory from './component/DroppableCategory'
+import { isEmpty } from 'lodash'
+import { manualSync } from '@/common/api/user'
+import { failNotification, successNotification } from '@/common/utils/toast'
+import BatchTable from './component/BatchTable'
+import { getStripePayouts, syncStripePayout } from '@/common/api/stripe'
+import StripePayoutTable from './component/StripePayoutTable'
+import Stripe from 'stripe'
+import { FundProps } from '../settings'
+import ReactDatePicker from 'react-datepicker'
+import 'react-datepicker/dist/react-datepicker.css'
+import SelectDateRange from '@/common/components/Select/SelectDateRange'
 
-interface AttributesProps {
-  color: string
-  created_at: string
-  default: boolean
-  deletable: string
-  description: string
-  ledger_code: null
-  name: string
-  updated_at: string
-  visibility: string
+export interface AttributesProps {
+  batch: { id: string; attributes: any }
+  donations: [{ donation: object; designation: object; fund: object }]
 }
 
-export interface FundProps {
-  attributes: AttributesProps
-  links: { self: string }
-  type: string
-  isClick: boolean
-  project: string | ''
-  description: string | ''
+export interface BatchesProps {
+  batches: AttributesProps[]
+  synchedBatches: [{ id: string; batchId: string; createdAt: Date }]
 }
 
 interface DashboardProps {}
 
 const Dashboard: FC<DashboardProps> = () => {
   const [value, setValue] = useState([new Date(), new Date()])
-  const { thirdPartyTokens, user } = useSelector(
-    (state: RootState) => state.common,
+  const { user } = useSelector((state: RootState) => state.common)
+
+  const [isBatch, setIsBatch] = useState<boolean>(true)
+
+  const [batchSyncing, setBatchSynching] = useState([
+    { batchId: '', trigger: false },
+  ])
+
+  const { data, isLoading, refetch, isRefetching } = useQuery<BatchesProps>(
+    ['getBatches'],
+    async () => {
+      return await pcGetBatches(user.email)
+    },
+    {
+      staleTime: Infinity,
+    },
   )
 
-  const { data, isLoading } = useQuery<FundProps[]>(['getFunds'], async () => {
+  const {
+    data: stripePayoutData,
+    isLoading: isLoadingStripePayoutData,
+    refetch: refetchStripePayoutData,
+    isRefetching: isRefetchingStripePayoutData,
+  } = useQuery<Stripe.Charge[]>(
+    ['getStripePayouts'],
+    async () => {
+      return await getStripePayouts(user.email)
+    },
+    {
+      staleTime: Infinity,
+    },
+  )
+
+  const { data: fundData } = useQuery<FundProps[]>(['getFunds'], async () => {
     return await pcGetFunds({
       email: user.email,
     })
   })
-
-  const [modifiedData, setModifiedData] = useState<FundProps[] | null>(null)
 
   const handleDateChange = (newValue: string | Date) => {
     if (
@@ -58,85 +79,171 @@ const Dashboard: FC<DashboardProps> = () => {
     }
   }
 
-  const handleDrop = (name: string) => {
-    console.log(`Dropped ${name}`)
+  // const handleDrop = (name: string) => {
+  //   console.log(`Dropped ${name}`)
+  // }
+
+  const triggerSyncBatch = async ({
+    dataBatch,
+    batchId,
+    batchName,
+  }: {
+    dataBatch: any
+    batchId: string
+    batchName: string
+  }): Promise<void> => {
+    const checkifExist = batchSyncing.find((el) => el.batchId === batchId)
+    if (!isEmpty(checkifExist)) {
+      failNotification({ title: 'Already Synched !' })
+      return
+    }
+
+    try {
+      setBatchSynching((prev) => [...prev, { batchId, trigger: true }])
+      const result = await manualSync({ email: user.email, dataBatch, batchId })
+      if (result.success) {
+        successNotification({ title: `Batch: ${batchName} successfully sync` })
+        refetch()
+      } else {
+        failNotification({ title: 'Error' })
+      }
+    } catch (e) {
+      failNotification({ title: 'Error' })
+    } finally {
+      setBatchSynching((prevBatchSyncing) => {
+        const batchIndex = prevBatchSyncing.findIndex(
+          (batch) => batch.batchId === batchId,
+        )
+        if (batchIndex !== -1) {
+          const updatedBatchSyncing = [...prevBatchSyncing]
+          updatedBatchSyncing[batchIndex] = {
+            batchId: batchId,
+            trigger: false,
+          }
+          return updatedBatchSyncing
+        }
+        return prevBatchSyncing
+      })
+    }
   }
 
-  useEffect(() => {
-    if (data) {
-      const newData = data.map((item: FundProps) => ({
-        ...item,
-        isClick: false,
-      }))
+  const triggerSyncStripe = async ({
+    stripeData,
+    payoutDate,
+  }: {
+    stripeData: any
+    payoutDate: string
+  }) => {
+    try {
+      setBatchSynching((prev) => [
+        ...prev,
+        { batchId: payoutDate, trigger: true },
+      ])
+      const filterFundName = fundData?.length
+        ? fundData.map((item) => item.attributes.name)
+        : []
+      await Promise.all(
+        stripeData.map(async (a: { description: string }) => {
+          const description = a.description
+          const regex = /#(\d+)/ // match the #
+          const match = description?.match(regex)
 
-      setModifiedData(newData)
+          if (match) {
+            const donationId = match[1]
+            const index = filterFundName?.findIndex((word) =>
+              description.includes(word),
+            )
+            const str = filterFundName[index]
+            if (index !== -1) {
+              if (str) {
+                const response = await syncStripePayout(
+                  user.email,
+                  String(donationId),
+                  String(str),
+                  payoutDate,
+                )
+
+                if (response === 'success') {
+                  successNotification({
+                    title: `Stripe payout successfully sync`,
+                  })
+                  refetch()
+                } else {
+                  failNotification({ title: 'Error' })
+                }
+              }
+            }
+          }
+        }),
+      )
+    } catch (e) {
+      failNotification({ title: 'Error' })
+    } finally {
+      setBatchSynching((prevBatchSyncing) => {
+        const batchIndex = prevBatchSyncing.findIndex(
+          (batch) => batch.batchId === payoutDate,
+        )
+        if (batchIndex !== -1) {
+          const updatedBatchSyncing = [...prevBatchSyncing]
+          updatedBatchSyncing[batchIndex] = {
+            batchId: payoutDate,
+            trigger: false,
+          }
+          return updatedBatchSyncing
+        }
+        return prevBatchSyncing
+      })
     }
-  }, [data])
+  }
 
   return (
     <MainLayout>
-      {isLoading ? (
+      {isLoading ||
+      isRefetching ||
+      isLoadingStripePayoutData ||
+      isRefetchingStripePayoutData ? (
         <Loading />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-4 md:grid-rows-1 h-full gap-4">
-          <div className="rounded-lg p-4 bg-white  sm:col-span-2  md:col-span-1">
-            <p>PCO Fields</p>
-            <div className="flex flex-col gap-4 pt-4">
-              {modifiedData?.map((item, index) => (
-                <Item
-                  data={item}
-                  index={index}
-                  modifiedData={modifiedData}
-                  setModifiedData={setModifiedData}
-                  key={Math.random()}
-                />
-              ))}
-            </div>
-          </div>
-          <div className="rounded-lg p-8 bg-white  sm:col-span-2 md:col-span-3">
+        <div className="flex h-full gap-4">
+          <div className="rounded-lg p-8 bg-white w-screen">
             <div className="justify-between flex">
-              <span className="font-medium text-2xl">
-                Create your Transaction
-              </span>
-              <DateRangePicker onChange={handleDateChange} value={value} />
+              <span className="font-medium text-2xl">Transaction History</span>
+              {/* <SelectDateRange onChange={handleDateChange} value={value} /> */}
+              <SelectDateRange />
+            </div>
+            <div className="flex gap-4">
+              <button
+                className={`${
+                  isBatch ? 'underline text-green-500' : 'text-gray-400'
+                } flex items-center gap-1`}
+                onClick={() => setIsBatch(true)}
+              >
+                <p>Batch</p>
+              </button>
+              <p> | </p>
+              <button
+                className={`${
+                  !isBatch ? 'underline text-green-500' : 'text-gray-400'
+                } flex items-center gap-1`}
+                onClick={() => setIsBatch(false)}
+              >
+                <p>Stripe Payout</p>
+              </button>
             </div>
             {/* Table */}
-            <div className="relative overflow-x-auto pt-8">
-              <table className="w-full text-sm text-left text-gray-500">
-                <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700">
-                  <tr className="[&>*]:px-6 [&>*]:py-3">
-                    <th scope="col" className="">
-                      Project
-                    </th>
-                    <th scope="col" className="">
-                      Category
-                    </th>
-                    <th scope="col" className="">
-                      Description
-                    </th>
-                    <th scope="col" className="">
-                      Payment Method
-                    </th>
-                    <th scope="col" className="">
-                      Ref
-                    </th>
-                    <th scope="col" className="">
-                      Amount
-                    </th>
-                    <th scope="col" className="text-right">
-                      Class
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="[&>*]:h-20 text-left">
-                  <DroppableCategory onDrop={handleDrop} />
-                  <DroppableCategory onDrop={handleDrop} />
-                  <DroppableCategory onDrop={handleDrop} />
-                  <DroppableCategory onDrop={handleDrop} />
-                  <DroppableCategory onDrop={handleDrop} />
-                </tbody>
-              </table>
-            </div>
+            {isBatch ? (
+              <BatchTable
+                data={data}
+                batchSyncing={batchSyncing}
+                triggerSync={triggerSyncBatch}
+              />
+            ) : (
+              <StripePayoutTable
+                data={stripePayoutData}
+                triggerSync={triggerSyncStripe}
+                batchSyncing={batchSyncing}
+              />
+            )}
           </div>
         </div>
       )}

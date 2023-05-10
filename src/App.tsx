@@ -15,13 +15,14 @@ import { ToastContainer } from 'react-toastify'
 import MainUnAuthPage from './pages/MainPage'
 import { persistor, store } from './redux/store'
 import 'react-toastify/dist/ReactToastify.css'
+import { useEffect, useMemo } from 'react'
+const { REACT_APP_HOST_BE } = process.env
 
 function App() {
   const queryClient = new QueryClient()
-
   SuperTokens.init({
     appInfo: {
-      apiDomain: 'http://localhost:8080',
+      apiDomain: REACT_APP_HOST_BE as string,
       apiBasePath: '/auth',
       appName: 'church sync pro',
     },
@@ -31,6 +32,34 @@ function App() {
       EmailPassword.init(),
     ],
   })
+
+  const secretValue = useMemo(() => {
+    const cachedValue = localStorage.getItem('secretValue')
+    if (cachedValue) {
+      // setIsLoading(false);
+      return cachedValue
+    }
+    return null
+  }, [])
+
+  useEffect(() => {
+    const cachedValue = localStorage.getItem('secretValue')
+    if (secretValue === null) {
+      console.log('does it goes here ?', cachedValue)
+      const fetchSecret = async () => {
+        // const client = new SecretManagerServiceClient();
+        // const [version] = await client.accessSecretVersion({
+        //   name: 'projects/YOUR_PROJECT_ID/secrets/YOUR_SECRET_NAME/versions/latest',
+        // });
+        // const value = version.payload.data.toString();
+        localStorage.setItem('secretValue', 'test')
+        // setIsLoading(false);
+      }
+      fetchSecret()
+    } else {
+      // setIsLoading(false);
+    }
+  }, [secretValue])
 
   return (
     <Provider store={store}>

@@ -34,7 +34,7 @@ const ItemSideBar = ({
       <a
         className={`flex gap-x-8 items-center p-2 transition transform hover:text-primary
    duration-100 hover:bg-green-400 rounded-md ${
-     pathName === link ? 'bg-green-400' : ''
+     pathName?.includes(link || '') ? 'bg-green-400' : ''
    }`}
         href="/"
       >
@@ -44,12 +44,12 @@ const ItemSideBar = ({
       <a
         className={`flex gap-x-8 items-center p-2 transition transform hover:text-primary
    duration-100 hover:bg-green-400 ${
-     pathName === link ? 'bg-green-400' : ''
+     pathName?.includes(link || '') ? 'bg-green-400' : ''
    } rounded-md`}
         href={link}
       >
         {icon}
-        <p className="font-thin">{name}</p>
+        <p className="font-normal">{name}</p>
       </a>
     )}
   </>

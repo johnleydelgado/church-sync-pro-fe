@@ -12,5 +12,7 @@ export const route = {
 
 export const mainRoute = {
   TRANSACTION: '/transaction',
+  TRANSACTION_VIEWPAGE: '/transaction/view-page/:batchId',
+  TRANSACTION_STRIPE_VIEWPAGE: '/transaction/view-page-stripe/:payoutDate',
   SETTINGS: '/settings',
 }

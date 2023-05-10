@@ -3,10 +3,10 @@
 import axios from 'axios'
 import { faker } from '@faker-js/faker'
 import { pcRoutes } from '../constant/routes-api'
-const BASE_PATH = 'http://localhost:8080/csp/'
+const { REACT_APP_API_PATH } = process.env
 
 const apiCall = axios.create({
-  baseURL: BASE_PATH,
+  baseURL: REACT_APP_API_PATH,
   headers: {
     'Content-type': 'application/json',
   },
@@ -31,4 +31,34 @@ const pcGetFunds = async ({ email }: { email: string | null | undefined }) => {
   }
 }
 
-export { pcGetFunds }
+const pcGetBatches = async (email: string | null | undefined) => {
+  // await axios.get
+  const url = pcRoutes.getBatches
+  try {
+    const response = await apiCall.get(url + `?email=${email}`)
+    console.log('a', response.data)
+    const data = response.data.data
+    return data
+  } catch (e: any) {
+    return []
+  }
+}
+
+const pcGetRegistrationEvents = async (email: string | null | undefined) => {
+  // await axios.get
+  const url = pcRoutes.getRegistrationEvents
+  try {
+    const response = await apiCall.get(url + `?email=${email}`)
+    const data = response.data.data.map((item: any) => {
+      return {
+        value: item.attributes.name || '',
+        label: item.attributes.name || '',
+      }
+    })
+    return data
+  } catch (e: any) {
+    return []
+  }
+}
+
+export { pcGetFunds, pcGetBatches, pcGetRegistrationEvents }

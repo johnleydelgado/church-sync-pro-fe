@@ -3,7 +3,7 @@
 import axios from 'axios'
 import { faker } from '@faker-js/faker'
 import { userRoutes } from '../constant/routes-api'
-const BASE_PATH = 'http://localhost:8080/csp/'
+const { REACT_APP_API_PATH } = process.env
 
 export interface UserProps {
   churchName?: string
@@ -18,6 +18,8 @@ export interface TokensProps {
   refresh_token_pc?: string
   access_token_qbo?: string
   refresh_token_qbo?: string
+  access_token_stripe?: string
+  refresh_token_stripe?: string
   realm_id?: string
   email: string
 }
@@ -29,14 +31,27 @@ export interface qboSettings {
   customer?: { value: string; label: string }
 }
 
+export interface qboRegistrationSettings {
+  registration: string | null | undefined
+  account?: { value: string; label: string }
+  class?: { value: string; label: string }
+  customer?: { value: string; label: string }
+}
+
 export interface SettingQBOProps {
   email: string
   settingsData?: qboSettings[]
   isAutomationEnable: boolean
 }
 
+export interface SettingRegistrationQBOProps {
+  email: string
+  settingRegistrationData?: qboRegistrationSettings[]
+  isAutomationEnable: boolean
+}
+
 const apiCall = axios.create({
-  baseURL: BASE_PATH,
+  baseURL: REACT_APP_API_PATH,
   headers: {
     'Content-type': 'application/json',
   },
@@ -75,7 +90,9 @@ const addTokenInUser = async ({ ...rest }: TokensProps) => {
   }
 }
 
-const createSettings = async ({ ...rest }: SettingQBOProps) => {
+const createSettings = async ({
+  ...rest
+}: SettingQBOProps | SettingRegistrationQBOProps) => {
   // await axios.get
   const url = userRoutes.createSettings
   try {
@@ -97,10 +114,28 @@ const getUserRelated = async (email: string) => {
   }
 }
 
+const manualSync = async ({
+  ...rest
+}: {
+  email: string
+  dataBatch: any
+  batchId: string
+}) => {
+  // await axios.get
+  const url = userRoutes.manualSync
+  try {
+    const response = await apiCall.post(url, rest)
+    return response.data
+  } catch (e: any) {
+    return []
+  }
+}
+
 export {
   updateUser,
   createUser,
   addTokenInUser,
   createSettings,
   getUserRelated,
+  manualSync,
 }
