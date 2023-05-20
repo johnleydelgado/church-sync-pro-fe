@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { FC, useEffect } from 'react'
-import { CgArrowLeft } from 'react-icons/cg'
+import React, { FC, useEffect, useState } from 'react'
+import { CgArrowLeft, CgChevronDoubleDown } from 'react-icons/cg'
 import { HiOutlineLogout } from 'react-icons/hi'
 import { useMediaQuery } from 'react-responsive'
 import { useLocation } from 'react-router'
@@ -8,6 +8,22 @@ import Session from 'supertokens-web-js/recipe/session'
 
 import pages from './constant'
 import { storage, storageKey } from '@/common/utils/storage'
+import { useDispatch } from 'react-redux'
+import {
+  resetUserData,
+  setReTriggerIsUserTokens,
+  setUserData,
+} from '@/redux/common'
+import { useSelector } from 'react-redux'
+import { RootState } from '@/redux/store'
+import Dropdown, { components } from 'react-select'
+import { Button } from '@material-tailwind/react'
+import { BiChevronDown } from 'react-icons/bi'
+import { useQuery } from 'react-query'
+import { AccountTokenDataProps } from '@/pages/Main/accounts-token/AccountTokens'
+import { getTokenList, updateUserToken } from '@/common/api/user'
+import { isEmpty } from 'lodash'
+import { failNotification } from '@/common/utils/toast'
 
 interface SideBarProps {
   isTrigger: boolean
@@ -20,7 +36,15 @@ interface ItemSideBarProps {
   isTrigger: boolean
   link?: string
   pathName?: string
+  isHide?: boolean
 }
+
+const Input = (props: any) => (
+  <components.Input
+    {...props}
+    inputClassName="outline-none border-none shadow-none focus:ring-transparent"
+  />
+)
 
 const ItemSideBar = ({
   icon,
@@ -28,9 +52,10 @@ const ItemSideBar = ({
   isTrigger,
   link,
   pathName,
+  isHide,
 }: ItemSideBarProps) => (
   <>
-    {isTrigger ? (
+    {isHide ? null : isTrigger ? (
       <a
         className={`flex gap-x-8 items-center p-2 transition transform hover:text-primary
    duration-100 hover:bg-green-400 rounded-md ${
@@ -58,6 +83,31 @@ const ItemSideBar = ({
 const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
   const location = useLocation()
   const isTabletOrMobile = useMediaQuery({ query: '(max-width: 1224px)' })
+  const [organizationList, setOrginazationList] = useState([
+    { value: '', label: '' },
+  ])
+  const [showDropdownOrg, setShowDropdownOrg] = useState<boolean>(false)
+
+  const userData = useSelector((item: RootState) => item.common.user)
+  const { email, id } = useSelector((item: RootState) => item.common.user)
+  const reTriggerIsUserTokens = useSelector(
+    (item: RootState) => item.common.reTriggerIsUserTokens,
+  )
+
+  const { isShowSettings, isShowTransaction } = useSelector(
+    (state: RootState) => state.common,
+  )
+  const dispatch = useDispatch()
+
+  const { data, refetch, isRefetching } = useQuery<AccountTokenDataProps[]>(
+    ['getTokenList'],
+    async () => {
+      if (email) return await getTokenList(email)
+    },
+    {
+      staleTime: Infinity,
+    },
+  )
 
   useEffect(() => {
     setIsTrigger(() => isTabletOrMobile)
@@ -66,14 +116,48 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
   const logoutHandler = async () => {
     try {
       await Session.signOut()
+      dispatch(resetUserData())
       storage.removeToken(storageKey.PC_ACCESS_TOKEN)
       storage.removeToken(storageKey.QBQ_ACCESS_TOKEN)
+      storage.removeToken(storageKey.PERSONAL_TOKEN)
+      storage.removeToken(storageKey.TOKENS)
       // Redirect the user to the login page or reload the page to update the authentication status
       window.location.reload()
     } catch (error) {
       console.error('Logout failed:', error)
     }
   }
+
+  const selectOrganizationHandler = async (
+    val: string,
+    organizationName: string,
+  ) => {
+    const res = await updateUserToken({
+      email: email,
+      enableEntity: true,
+      tokenEntityId: Number(val),
+    })
+    if (res) {
+      dispatch(setUserData({ ...userData, churchName: organizationName }))
+      dispatch(setReTriggerIsUserTokens(!reTriggerIsUserTokens))
+      refetch()
+    } else {
+      failNotification({ title: res.message })
+    }
+  }
+
+  useEffect(() => {
+    if (!isEmpty(data)) {
+      const temp = data?.map((a) => {
+        return {
+          value: String(a.id) || '',
+          label: a.tokens[0]?.organization_name || '',
+        }
+      })
+
+      setOrginazationList(temp || [])
+    }
+  }, [data])
 
   return (
     <aside
@@ -90,26 +174,50 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
         >
           <CgArrowLeft className="text-white" size={30} />
         </div>
-        <div className="flex p-8 w-full">
+        <div className="flex pt-8 px-8 w-full">
           <p className="text-white p-2">
             {!isTrigger ? 'Church Sync Pro' : 'CSP'}
           </p>
         </div>
+        {!isEmpty(data) && !isEmpty(data?.find((a) => a.isEnabled)) ? (
+          <div className="flex flex-col items-center w-full gap-4 pb-8">
+            <Button
+              className="bg-green-300 bg-opacity-50 w-full rounded-none text-start flex items-center gap-2 justify-between"
+              onClick={() => setShowDropdownOrg(!showDropdownOrg)}
+            >
+              {data?.find((a) => a.isEnabled)?.tokens[0]?.organization_name}
+              <BiChevronDown size={24} />
+            </Button>
+            {showDropdownOrg ? (
+              <Dropdown
+                options={organizationList}
+                components={{ Input }}
+                placeholder="Search...."
+                onChange={(val) =>
+                  selectOrganizationHandler(val?.value || '', val?.label || '')
+                }
+                // value={data?.find((a) => a.isEnabled)?.id}
+                className="w-11/12"
+              />
+            ) : null}
+          </div>
+        ) : null}
+
         <div
           className={` text-white transform transition-all delay-300 duration-200  ${
             isTrigger ? 'px-4 items-center' : 'px-8'
           } flex flex-col gap-8`}
         >
-          {/* <div className="flex gap-x-8 items-center bg-green-400 p-2 rounded-md">
-            <HiChartPie size={30} />
-            <p className="font-semibold">Pie Chart</p>
-          </div> */}
           {pages.map((el) => (
             <ItemSideBar
               {...el}
               isTrigger={isTrigger}
               pathName={location.pathname}
               key={el.name}
+              isHide={
+                (el.name === 'Transaction' && !isShowTransaction) ||
+                (el.name === 'Settings' && !isShowSettings)
+              }
             />
           ))}
         </div>

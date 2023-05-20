@@ -12,6 +12,7 @@ import { pcGetBatches } from '@/common/api/planning-center'
 import { useSelector } from 'react-redux'
 import { string } from 'yup'
 import { getUnixTime } from 'date-fns'
+import Empty from '@/common/components/empty/Empty'
 
 interface BatchTableProps {
   data: Stripe.Charge[] | undefined
@@ -28,6 +29,7 @@ const StripePayoutTable: FC<BatchTableProps> = ({
   batchSyncing,
 }) => {
   const { user } = useSelector((state: RootState) => state.common)
+  console.log('stripe data', data)
 
   const { data: dataBatches } = useQuery<{
     batches: [{ donations: [] }]
@@ -62,7 +64,7 @@ const StripePayoutTable: FC<BatchTableProps> = ({
     return false
   }
 
-  return (
+  return !isEmpty(data) ? (
     <div className="relative overflow-x-auto pt-8">
       <table className="w-full text-sm text-left text-gray-500">
         <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700">
@@ -178,6 +180,8 @@ const StripePayoutTable: FC<BatchTableProps> = ({
         </tbody>
       </table>
     </div>
+  ) : (
+    <Empty />
   )
 }
 

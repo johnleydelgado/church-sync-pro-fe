@@ -8,16 +8,11 @@ async function shouldLoadRoute({ email }: { email: string }): Promise<boolean> {
   if (await Session.doesSessionExist()) {
     // const userId = await Session.getUserId()
     const isEmailExist = await doesEmailExist({ email })
-    const validationErrors = await Session.validateClaims()
-    if (validationErrors.length === 0 && isEmailExist.doesExist) {
+    if (isEmailExist.doesExist) {
       // user has verified their email address
       return true
     } else {
-      for (const err of validationErrors) {
-        if (err.validatorId === EmailVerificationClaim.id) {
-          // email is not verified
-        }
-      }
+      console.log('a')
     }
   }
   // a session does not exist, or email is not verified

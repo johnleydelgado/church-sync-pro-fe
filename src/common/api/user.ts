@@ -50,6 +50,30 @@ export interface SettingRegistrationQBOProps {
   isAutomationEnable: boolean
 }
 
+interface Token {
+  id?: number
+  token_type: 'stripe' | 'qbo' | 'pco' | string
+  access_token: string | null
+  refresh_token: string | null
+  realm_id: string | null
+}
+
+export interface UserTokenProps {
+  id?: number
+  email?: string
+  userId?: number
+  token_type?: 'stripe' | 'pco' | 'qbo' | string
+  access_token?: string
+  refresh_token?: string
+  realm_id?: string
+  organization_name?: string
+  tokenEntityId?: number
+  isSelected?: boolean
+  isDeleted?: boolean
+  enableEntity?: boolean
+  tokens?: Token[]
+}
+
 const apiCall = axios.create({
   baseURL: REACT_APP_API_PATH,
   headers: {
@@ -131,6 +155,52 @@ const manualSync = async ({
   }
 }
 
+const isUserHaveTokens = async (email: string) => {
+  const url = userRoutes.isUserHaveTokens
+  const data = JSON.stringify({ email })
+  try {
+    const response = await apiCall.post(url, data)
+    return response.data.data
+  } catch (e: any) {
+    return null
+  }
+}
+
+const getTokenList = async (email: string) => {
+  const url = userRoutes.getTokenList
+  const data = JSON.stringify({ email })
+  try {
+    const response = await apiCall.post(url, data)
+    return response.data.data
+  } catch (e: any) {
+    return null
+  }
+}
+
+const updateUserToken = async (tokenData: UserTokenProps) => {
+  const url = userRoutes.updateUserToken
+  const data = JSON.stringify(tokenData)
+
+  try {
+    const response = await apiCall.post(url, data)
+    return response.data.data
+  } catch (e: any) {
+    return null
+  }
+}
+
+const deleteUserToken = async (id: number) => {
+  const url = userRoutes.deleteUserToken
+  const data = JSON.stringify({ id })
+
+  try {
+    const response = await apiCall.post(url, data)
+    return response.data
+  } catch (e: any) {
+    return null
+  }
+}
+
 export {
   updateUser,
   createUser,
@@ -138,4 +208,8 @@ export {
   createSettings,
   getUserRelated,
   manualSync,
+  isUserHaveTokens,
+  getTokenList,
+  updateUserToken,
+  deleteUserToken,
 }

@@ -65,9 +65,7 @@ const Dashboard: FC<DashboardProps> = () => {
   )
 
   const { data: fundData } = useQuery<FundProps[]>(['getFunds'], async () => {
-    return await pcGetFunds({
-      email: user.email,
-    })
+    return await pcGetFunds({ email: user.email })
   })
 
   const handleDateChange = (newValue: string | Date) => {
@@ -196,6 +194,8 @@ const Dashboard: FC<DashboardProps> = () => {
     }
   }
 
+  console.log('data', data)
+
   return (
     <MainLayout>
       {isLoading ||
@@ -206,10 +206,13 @@ const Dashboard: FC<DashboardProps> = () => {
       ) : (
         <div className="flex h-full gap-4">
           <div className="rounded-lg p-8 bg-white w-screen">
-            <div className="justify-between flex">
+            <div className="justify-between flex w-full">
               <span className="font-medium text-2xl">Transaction History</span>
+
               {/* <SelectDateRange onChange={handleDateChange} value={value} /> */}
-              <SelectDateRange />
+              <div>
+                <SelectDateRange />
+              </div>
             </div>
             <div className="flex gap-4">
               <button

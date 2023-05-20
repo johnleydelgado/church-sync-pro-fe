@@ -21,12 +21,23 @@ const { REACT_APP_API_PATH } = process.env
 
 interface indexProps {}
 
+interface LoadingProps {
+  stripeLoading: boolean
+  pcoLoading: boolean
+  qboLoading: boolean
+}
+
 const SecondaryLogin: FC<indexProps> = () => {
   const subscribed = useRef(false)
   const [loading, setLoading] = useState<boolean>(false)
 
   const { thirdPartyTokens } = useSelector((state: RootState) => state.common)
   const { email } = useSelector((state: RootState) => state.common.user)
+  const [isBtnLoading, setIsBtnLoading] = useState<LoadingProps>({
+    stripeLoading: false,
+    pcoLoading: false,
+    qboLoading: false,
+  })
 
   const qboToken = storage.getToken(storageKey.QBQ_ACCESS_TOKEN)
   const pcToken = storage.getToken(storageKey.PC_ACCESS_TOKEN)
@@ -34,16 +45,19 @@ const SecondaryLogin: FC<indexProps> = () => {
   const dispatch = useDispatch()
 
   const qboLoginHandler = async () => {
+    setIsBtnLoading({ ...isBtnLoading, qboLoading: true })
     const authUri = await authApi('authQB')
     window.location.href = authUri
   }
 
   const pcLoginHandler = async () => {
+    setIsBtnLoading({ ...isBtnLoading, pcoLoading: true })
     const authUri = await authApi('authPC')
     window.location.href = authUri
   }
 
   const stripeLoginHandler = async () => {
+    setIsBtnLoading({ ...isBtnLoading, stripeLoading: true })
     const authUri = await authApi('authStripe')
     window.location.href = authUri
   }
@@ -225,18 +239,21 @@ const SecondaryLogin: FC<indexProps> = () => {
                 onClick={qboLoginHandler}
                 name="Already connected to Qbo"
                 isHide={!!checkToken(qboToken)}
+                isLoading={isBtnLoading.qboLoading}
               />
               <LoginButton
                 loginImage={pcLogin}
                 onClick={pcLoginHandler}
                 name="Already connected to Planning Center"
                 isHide={!!checkToken(pcToken)}
+                isLoading={isBtnLoading.pcoLoading}
               />
               <LoginButton
                 loginImage={stripeLogin}
                 onClick={stripeLoginHandler}
                 name="Already connected to Stripe Connect"
                 isHide={!!thirdPartyTokens?.stripe_access_token}
+                isLoading={isBtnLoading.stripeLoading}
               />
               <button
                 className="px-4 py-2 flex gap-4 items-center transform transition-transform hover:scale-105

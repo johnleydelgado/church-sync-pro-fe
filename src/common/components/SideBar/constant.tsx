@@ -1,42 +1,47 @@
+import { mainRoute } from '@/common/constant/route'
+import { HiBookmark, HiHome } from 'react-icons/hi'
+
+import { MdManageAccounts } from 'react-icons/md'
+import { BiTransfer } from 'react-icons/bi'
+import { AiOutlineCloudSync } from 'react-icons/ai'
+import { FiSettings } from 'react-icons/fi'
 import {
-  HiChartPie,
-  HiInbox,
-  HiShoppingBag,
-  HiViewBoards,
-  HiBookmark,
-} from 'react-icons/hi'
+  authGuardHaveToken,
+  authGuardHaveSettings,
+} from '@/common/utils/routeGuards'
 
 interface PageProps {
   name: string
   icon: any
   link: string
+  isHide?: boolean
 }
 
 const pages: PageProps[] = [
   {
     name: 'Transaction',
     link: '/transaction',
-    icon: <HiViewBoards size={30} />,
+    icon: <BiTransfer size={30} />,
   },
   {
-    name: 'Client Toggle',
-    link: '/client-toggle',
-    icon: <HiBookmark size={30} />,
+    name: 'Account Tokens',
+    link: mainRoute.PCO_QBO_STRIPE,
+    icon: <MdManageAccounts size={30} />,
   },
   {
     name: 'Home',
     link: '/home',
-    icon: <HiInbox size={30} />,
+    icon: <HiHome size={30} />,
   },
   {
     name: 'Automation',
     link: '/automation',
-    icon: <HiShoppingBag size={30} />,
+    icon: <AiOutlineCloudSync size={30} />,
   },
   {
     name: 'Settings',
     link: '/settings',
-    icon: <HiChartPie size={30} />,
+    icon: <FiSettings size={30} />,
   },
 ]
 

@@ -15,4 +15,6 @@ export const mainRoute = {
   TRANSACTION_VIEWPAGE: '/transaction/view-page/:batchId',
   TRANSACTION_STRIPE_VIEWPAGE: '/transaction/view-page-stripe/:payoutDate',
   SETTINGS: '/settings',
+  PCO_QBO_STRIPE: '/pco-qbo-stripe',
+  PCO_QBO_STRIPE_SYNC: '/sync-pco-qbo-stripe',
 }

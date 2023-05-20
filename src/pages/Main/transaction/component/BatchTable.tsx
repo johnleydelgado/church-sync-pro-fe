@@ -5,6 +5,7 @@ import { isEmpty } from 'lodash'
 import { AiOutlineSync } from 'react-icons/ai'
 import { HiCheckCircle } from 'react-icons/hi'
 import { Link } from 'react-router-dom'
+import Empty from '@/common/components/empty/Empty'
 
 interface BatchTableProps {
   data: BatchesProps | undefined
@@ -21,7 +22,7 @@ const BatchTable: FC<BatchTableProps> = ({
   triggerSync,
   batchSyncing,
 }) => {
-  return (
+  return !isEmpty(data) ? (
     <div className="relative overflow-x-auto pt-8">
       <table className="w-full text-sm text-left text-gray-500">
         <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700">
@@ -136,6 +137,8 @@ const BatchTable: FC<BatchTableProps> = ({
         </tbody>
       </table>
     </div>
+  ) : (
+    <Empty />
   )
 }
 

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { TextInput, Button } from 'flowbite-react'
+import { TextInput, Button, Spinner } from 'flowbite-react'
 import { useFormik } from 'formik'
 import { FC, useCallback, useEffect, useState } from 'react'
 import {
@@ -23,13 +23,22 @@ import {
   signUpValidationSchema,
   signUpInitialValues,
 } from '@/common/constant/formik'
+import { useDispatch } from 'react-redux'
+import { setUserData } from '@/redux/common'
+import { storageKey } from '@/common/utils/storage'
+import { getUserRelated } from '@/common/api/user'
 
 interface SignUpProps {}
+
+const delay = (ms: any) => new Promise((res) => setTimeout(res, ms))
+
 const SignUp: FC<SignUpProps> = () => {
   const { user } = useSelector((state: RootState) => state.common)
 
-  const [showPassword, setShowPassword] = useState<boolean>(false)
+  const dispatch = useDispatch()
 
+  const [showPassword, setShowPassword] = useState<boolean>(false)
+  const [isLoading, setIsLoading] = useState<boolean>(false)
   const [signUpSuccess, setSignUpSuccess] = useState<boolean>(false)
 
   async function signUpClicked({
@@ -39,6 +48,7 @@ const SignUp: FC<SignUpProps> = () => {
     email,
     password,
   }: UserSignUpProps) {
+    setIsLoading(true)
     try {
       const response = await emailPasswordSignUp({
         formFields: [
@@ -77,7 +87,12 @@ const SignUp: FC<SignUpProps> = () => {
         })
       } else {
         // sendEmail()
+        await delay(2000)
+        const userData = await getUserRelated(email)
+        dispatch(setUserData({ email, id: userData.data.id || 0 }))
+        localStorage.setItem(storageKey.PERSONAL_TOKEN, email)
         setSignUpSuccess(true)
+        window.location.reload()
       }
     } catch (err: any) {
       console.log('err', err)
@@ -88,12 +103,14 @@ const SignUp: FC<SignUpProps> = () => {
       } else {
         failNotification({ title: 'Oops! Something went wrong.' })
       }
+    } finally {
+      setIsLoading(false)
     }
   }
 
   const checkSession = useCallback(async () => {
     if ((await shouldLoadRoute({ email: user.email })) && signUpSuccess) {
-      window.location.href = route.SECONDARY_LOGIN
+      window.location.href = route.TRANSACTION
     }
   }, [signUpSuccess, user.email])
 
@@ -106,7 +123,7 @@ const SignUp: FC<SignUpProps> = () => {
     validationSchema: signUpValidationSchema,
     onSubmit: (values) => {
       const { ...rest } = values
-      signUpClicked(rest)
+      if (!isLoading) signUpClicked(rest)
     },
   })
 
@@ -218,7 +235,7 @@ const SignUp: FC<SignUpProps> = () => {
             className="bg-primary rounded-md shadow-sm h-12 my-4 hover:bg-slate-600 [&>*]:text-white"
             type="submit"
           >
-            Create account
+            {isLoading ? <Spinner className="mr-8" /> : <p>Create account</p>}
           </Button>
         </form>
       </div>

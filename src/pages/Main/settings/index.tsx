@@ -19,6 +19,8 @@ import { isEmpty } from 'lodash'
 import { failNotification, successNotification } from '@/common/utils/toast'
 import { Tab } from '@headlessui/react'
 import Registration from './component/Registration'
+import { useDispatch } from 'react-redux'
+import { setReTriggerIsUserTokens } from '@/redux/common'
 
 const Input = (props: any) => (
   <components.Input
@@ -63,6 +65,11 @@ function classNames(...classes: string[]) {
 const Settings: FC<SettingsProps> = () => {
   const { thirdPartyTokens, user } = useSelector(
     (state: RootState) => state.common,
+  )
+  const dispatch = useDispatch()
+
+  const reTriggerIsUserTokens = useSelector(
+    (item: RootState) => item.common.reTriggerIsUserTokens,
   )
 
   const { data, isLoading } = useQuery<FundProps[]>(
@@ -132,6 +139,7 @@ const Settings: FC<SettingsProps> = () => {
 
     await mutate({ email: user.email, settingsData, isAutomationEnable })
     successNotification({ title: 'Settings successfully saved !' })
+    dispatch(setReTriggerIsUserTokens(!reTriggerIsUserTokens))
   }
 
   const selectHandler = ({

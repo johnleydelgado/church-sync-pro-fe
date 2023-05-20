@@ -48,7 +48,7 @@ const SelectDateRange: FC<SelectDateRangeProps> = ({}) => {
   }) => (
     <input
       onChange={onChange}
-      placeholder={placeholder}
+      placeholder="Select date range"
       value={value}
       onClick={onClick}
       className="bg-gray-100 rounded-xl p-2 w-60 items-center flex justify-center"

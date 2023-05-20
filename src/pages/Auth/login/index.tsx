@@ -1,6 +1,6 @@
 import { shouldLoadRoute } from '@/common/utils/supertoken'
 import { failNotification } from '@/common/utils/toast'
-import { TextInput, Checkbox, Label, Button } from 'flowbite-react'
+import { TextInput, Checkbox, Label, Button, Spinner } from 'flowbite-react'
 import React, { FC, useEffect, useState } from 'react'
 import { FcGoogle } from 'react-icons/fc'
 import {
@@ -22,6 +22,8 @@ import {
   signInInitialValues,
   signInValidationSchema,
 } from '@/common/constant/formik'
+import { storageKey } from '@/common/utils/storage'
+import { getUserRelated } from '@/common/api/user'
 
 interface LoginProps {}
 const { REACT_APP_GOOGLE_CALLBACK_URL, REACT_APP_HOST_BE } = process.env
@@ -30,6 +32,7 @@ const Login: FC<LoginProps> = () => {
   const navigate = useNavigate()
   const [showPassword, setShowPassword] = useState<boolean>(false)
   const dispatch = useDispatch()
+  const [googleLoading, setGoogleLoading] = useState<boolean>(false)
 
   console.log('REACT_APP_HOST_BE', {
     appInfo: {
@@ -40,26 +43,30 @@ const Login: FC<LoginProps> = () => {
   })
 
   async function googleSignInClicked() {
-    try {
-      const authUrl = await getAuthorisationURLWithQueryParamsAndSetState({
-        providerId: 'google',
+    setGoogleLoading(true)
 
-        // This is where Google should redirect the user back after login or error.
-        // This URL goes on the Google's dashboard as well.
-        authorisationURL: REACT_APP_GOOGLE_CALLBACK_URL as string,
-      })
-
-      /*
-        Example value of authUrl: https://accounts.google.com/o/oauth2/v2/auth/oauthchooseaccount?scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email&access_type=offline&include_granted_scopes=true&response_type=code&client_id=1060725074195-kmeum4crr01uirfl2op9kd5acmi9jutn.apps.googleusercontent.com&state=5a489996a28cafc83ddff&redirect_uri=https%3A%2F%2Fsupertokens.io%2Fdev%2Foauth%2Fredirect-to-app&flowName=GeneralOAuthFlow
-        */
-      // we redirect the user to google for auth.
-      window.location.assign(authUrl)
-    } catch (err: any) {
-      if (err.isSuperTokensGeneralError === true) {
-        // this may be a custom error message sent from the API by you.
-        failNotification({ title: err.message })
-      } else {
-        failNotification({ title: 'Oops! Something went wrong.' })
+    if (!googleLoading) {
+      try {
+        const authUrl = await getAuthorisationURLWithQueryParamsAndSetState({
+          providerId: 'google',
+          // This is where Google should redirect the user back after login or error.
+          // This URL goes on the Google's dashboard as well.
+          authorisationURL: REACT_APP_GOOGLE_CALLBACK_URL as string,
+        })
+        /*
+          Example value of authUrl: https://accounts.google.com/o/oauth2/v2/auth/oauthchooseaccount?scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email&access_type=offline&include_granted_scopes=true&response_type=code&client_id=1060725074195-kmeum4crr01uirfl2op9kd5acmi9jutn.apps.googleusercontent.com&state=5a489996a28cafc83ddff&redirect_uri=https%3A%2F%2Fsupertokens.io%2Fdev%2Foauth%2Fredirect-to-app&flowName=GeneralOAuthFlow
+          */
+        // we redirect the user to google for auth.
+        window.location.assign(authUrl)
+      } catch (err: any) {
+        if (err.isSuperTokensGeneralError === true) {
+          // this may be a custom error message sent from the API by you.
+          failNotification({ title: err.message })
+        } else {
+          failNotification({ title: 'Oops! Something went wrong.' })
+        }
+      } finally {
+        setGoogleLoading(false)
       }
     }
   }
@@ -79,7 +86,6 @@ const Login: FC<LoginProps> = () => {
         ],
       })
 
-      console.log('response', response)
       if (response.status === 'FIELD_ERROR') {
         // one of the input formFields failed validaiton
         response.formFields.forEach((formField) => {
@@ -97,8 +103,10 @@ const Login: FC<LoginProps> = () => {
         // one of the input formFields failed validaiton
         failNotification({ title: 'Please check email or password !' })
       } else {
-        dispatch(setUserData({ email })) //TODO put all data here
-        window.location.href = route.SECONDARY_LOGIN
+        const userData = await getUserRelated(email)
+        dispatch(setUserData({ email, id: userData.data.id || 0 }))
+        localStorage.setItem(email, storageKey.PERSONAL_TOKEN)
+        // window.location.href = route.SECONDARY_LOGIN
       }
     } catch (err: any) {
       console.log('err', err)
@@ -151,6 +159,7 @@ const Login: FC<LoginProps> = () => {
             className="flex justify-center items-center w-full rounded-xl shadow-lg p-4 cursor-pointer hover:bg-slate-200"
             onClick={googleSignInClicked}
           >
+            {googleLoading ? <Spinner className="mr-8" /> : null}
             <FcGoogle size={32} className="mr-4" />
             <span className="text-md font-serif text-slate-700">
               Login or Sig up with google

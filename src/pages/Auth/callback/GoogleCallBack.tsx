@@ -1,4 +1,4 @@
-import { createUser } from '@/common/api/user'
+import { createUser, getUserRelated } from '@/common/api/user'
 import { failNotification } from '@/common/utils/toast'
 import { setUserData } from '@/redux/common'
 import React, { FC, useEffect } from 'react'
@@ -7,6 +7,7 @@ import Session from 'supertokens-web-js/recipe/session'
 import { thirdPartySignInAndUp } from 'supertokens-web-js/recipe/thirdpartyemailpassword'
 
 import { route } from '../../../common/constant/route'
+import { storageKey } from '@/common/utils/storage'
 interface googleCallbackProps {}
 
 // eslint-disable-next-line no-empty-pattern
@@ -16,16 +17,22 @@ const GoogleCallBack: FC<googleCallbackProps> = ({}) => {
   useEffect(() => {
     const handleGoogleCallback = async () => {
       try {
+        console.log('go here ?')
         const response = await thirdPartySignInAndUp()
         console.log('test', response)
         if (response.status === 'OK') {
           const { email } = response.user
-          dispatch(setUserData({ email }))
           if (response.createdNewUser) {
             await createUser({ email })
+            const userData = await getUserRelated(email)
+            dispatch(setUserData({ email, id: userData.data.id || 0 }))
+            localStorage.setItem(storageKey.PERSONAL_TOKEN, email)
             window.location.assign(route.SIGNUP)
           } else {
-            window.location.assign(route.SECONDARY_LOGIN)
+            const userData = await getUserRelated(email)
+            dispatch(setUserData({ email, id: userData.data.id || 0 }))
+            localStorage.setItem(storageKey.PERSONAL_TOKEN, email)
+            window.location.assign(route.TRANSACTION)
           }
         } else {
           // SuperTokens requires that the third party provider

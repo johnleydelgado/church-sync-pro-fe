@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit'
+import { number, string } from 'yup'
 
 export interface thirdPartyTokens {
   qbo_access_token: string | null
@@ -10,6 +11,7 @@ export interface thirdPartyTokens {
 }
 
 export interface UserInfo {
+  id?: number
   churchName?: string
   firstName?: string
   lastName?: string
@@ -22,12 +24,17 @@ interface CommonState {
   isFetching: boolean
   user: UserInfo
   thirdPartyTokens?: thirdPartyTokens
+  selectedThirdPartyId: number
+  reTriggerIsUserTokens: boolean
+  isShowSettings: boolean
+  isShowTransaction: boolean
 }
 
 const initialState: CommonState = {
   openModals: [],
   isFetching: false,
   user: {
+    id: 0,
     churchName: '',
     firstName: '',
     lastName: '',
@@ -42,6 +49,10 @@ const initialState: CommonState = {
     stripe_access_token: null,
     stripe_refresh_token: null,
   },
+  selectedThirdPartyId: 0,
+  reTriggerIsUserTokens: false,
+  isShowSettings: false,
+  isShowTransaction: false,
 }
 
 export const common = createSlice({
@@ -76,8 +87,21 @@ export const common = createSlice({
     setUserData: (state, action: PayloadAction<UserInfo>) => {
       state.user = action.payload
     },
+    setSelectedThirdPartyId: (state, action) => {
+      state.selectedThirdPartyId = action.payload
+    },
+    setReTriggerIsUserTokens: (state, action: PayloadAction<boolean>) => {
+      state.reTriggerIsUserTokens = action.payload
+    },
+    setIsShowSettings: (state, action: PayloadAction<boolean>) => {
+      state.isShowSettings = action.payload
+    },
+    setIsShowTransaction: (state, action: PayloadAction<boolean>) => {
+      state.isShowTransaction = action.payload
+    },
     resetUserData: (state) => {
       state.user = initialState.user
+      state.selectedThirdPartyId = initialState.selectedThirdPartyId
       state.thirdPartyTokens = initialState.thirdPartyTokens
     },
   },
@@ -89,6 +113,10 @@ export const {
   CLOSE_MODAL,
   setThirdPartyTokens,
   setUserData,
+  setSelectedThirdPartyId,
+  setReTriggerIsUserTokens,
+  setIsShowSettings,
+  setIsShowTransaction,
   resetUserData,
 } = common.actions
 

@@ -201,7 +201,7 @@ const Registration: FC<RegistrationProps> = ({
   useEffect(() => {
     if (!isEmpty(userData?.data?.UserSetting)) {
       const settingsData = userData.data.UserSetting.settingRegistrationData
-      setRegistrationSettingsData(settingsData)
+      setRegistrationSettingsData(settingsData || [])
       // setIsAutomationEnable(userData?.data.UserSetting.isAutomationEnable)
     }
   }, [userData])

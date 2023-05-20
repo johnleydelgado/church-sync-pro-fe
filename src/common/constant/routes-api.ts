@@ -20,6 +20,10 @@ const userRoutes = {
   createSettings: '/user/createSettings',
   getUserRelated: '/user/getUserRelated',
   manualSync: '/user/manualSync',
+  isUserHaveTokens: '/user/isUserHaveTokens',
+  getTokenList: '/user/getTokenList',
+  updateUserToken: '/user/updateUserToken',
+  deleteUserToken: '/user/deleteUserToken',
 }
 
 export { pcRoutes, userRoutes, qboRoutes, stripeRoutes }
