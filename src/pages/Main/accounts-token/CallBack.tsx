@@ -1,7 +1,9 @@
 import Loading from '@/common/components/loading/Loading'
 import { mainRoute } from '@/common/constant/route'
+import { setAccountState } from '@/redux/common'
 import axios from 'axios'
 import React, { FC, useCallback, useEffect, useRef, useState } from 'react'
+import { useDispatch } from 'react-redux'
 import { useNavigate } from 'react-router'
 
 interface CallBackProps {}
@@ -11,6 +13,7 @@ const CallBack: FC<CallBackProps> = ({}) => {
   const subscribed = useRef(false)
   const navigate = useNavigate()
   const [loading, setLoading] = useState<boolean>(false)
+  const dispatch = useDispatch()
 
   const loadQbo = useCallback(async () => {
     const url = window.location.href
@@ -24,14 +27,15 @@ const CallBack: FC<CallBackProps> = ({}) => {
         })
         const { access_token, refresh_token, tokenJwt } = res.data
         if (access_token) {
-          navigate(mainRoute.PCO_QBO_STRIPE, {
-            state: {
+          dispatch(
+            setAccountState({
               type: 'qbo',
               access_token,
               refresh_token,
               realm_id: realmId,
-            },
-          })
+            }),
+          )
+          navigate(mainRoute.SETTINGS)
         }
       } catch (e: any) {
         console.log(e)
@@ -57,9 +61,10 @@ const CallBack: FC<CallBackProps> = ({}) => {
 
         const { access_token, refresh_token, tokenJwt } = res.data
         if (access_token) {
-          navigate(mainRoute.PCO_QBO_STRIPE, {
-            state: { type: 'pco', access_token, refresh_token },
-          })
+          dispatch(
+            setAccountState({ type: 'pco', access_token, refresh_token }),
+          )
+          navigate(mainRoute.SETTINGS)
         }
       } catch (e: any) {
         console.log(e)
@@ -83,9 +88,10 @@ const CallBack: FC<CallBackProps> = ({}) => {
         })
         const { access_token, refresh_token, tokenJwt } = res.data
         if (access_token) {
-          navigate(mainRoute.PCO_QBO_STRIPE, {
-            state: { type: 'stripe', access_token, refresh_token },
-          })
+          dispatch(
+            setAccountState({ type: 'stripe', access_token, refresh_token }),
+          )
+          navigate(mainRoute.SETTINGS)
         }
       } catch (e: any) {
         console.log(e)

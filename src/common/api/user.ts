@@ -66,15 +66,15 @@ export interface UserTokenProps {
   access_token?: string
   refresh_token?: string
   realm_id?: string
-  organization_name?: string
-  tokenEntityId?: number
-  isSelected?: boolean
-  isDeleted?: boolean
-  enableEntity?: boolean
-  tokens?: Token[]
+  // organization_name?: string
+  // tokenEntityId?: number
+  // isSelected?: boolean
+  // isDeleted?: boolean
+  // enableEntity?: boolean
+  // tokens?: Token[]
 }
 
-const apiCall = axios.create({
+export const apiCall = axios.create({
   baseURL: REACT_APP_API_PATH,
   headers: {
     'Content-type': 'application/json',
@@ -162,7 +162,7 @@ const isUserHaveTokens = async (email: string) => {
     const response = await apiCall.post(url, data)
     return response.data.data
   } catch (e: any) {
-    return null
+    throw new Error(e.message)
   }
 }
 
@@ -173,7 +173,7 @@ const getTokenList = async (email: string) => {
     const response = await apiCall.post(url, data)
     return response.data.data
   } catch (e: any) {
-    return null
+    throw new Error(e.message)
   }
 }
 
@@ -201,6 +201,78 @@ const deleteUserToken = async (id: number) => {
   }
 }
 
+const sendEmailInvitation = async (
+  name: string,
+  email: string,
+  clientId: number,
+) => {
+  const url = userRoutes.sendEmailInvitation
+  const data = JSON.stringify({ name, emailTo: email, clientId })
+
+  try {
+    const response = await apiCall.post(url, data)
+    return response.data
+  } catch (e: any) {
+    return null
+  }
+}
+
+const checkValidInvitation = async (
+  email: string | null,
+  invitationToken: string | null,
+) => {
+  const url = userRoutes.checkValidInvitation
+  const data = JSON.stringify({ email, invitationToken })
+
+  try {
+    if (email && invitationToken) {
+      const response = await apiCall.post(url, data)
+      return response.data
+    }
+    return []
+  } catch (e: any) {
+    return null
+  }
+}
+
+interface bookkeeperListParams {
+  clientId?: number
+  bookkeeperId?: number
+}
+
+const bookkeeperList = async ({
+  clientId,
+  bookkeeperId,
+}: bookkeeperListParams) => {
+  const url = userRoutes.bookkeeperList
+  const data = JSON.stringify({ clientId, bookkeeperId })
+
+  try {
+    if (clientId || bookkeeperId) {
+      const response = await apiCall.post(url, data)
+      return response.data
+    }
+    return []
+  } catch (e: any) {
+    return null
+  }
+}
+
+const updateInvitationStatus = async (email: string, bookkeeperId?: number) => {
+  const url = userRoutes.updateInvitationStatus
+  const data = JSON.stringify({ email, bookkeeperId })
+
+  try {
+    if (email) {
+      const response = await apiCall.post(url, data)
+      return response.data
+    }
+    return []
+  } catch (e: any) {
+    return null
+  }
+}
+
 export {
   updateUser,
   createUser,
@@ -212,4 +284,8 @@ export {
   getTokenList,
   updateUserToken,
   deleteUserToken,
+  sendEmailInvitation,
+  checkValidInvitation,
+  bookkeeperList,
+  updateInvitationStatus,
 }

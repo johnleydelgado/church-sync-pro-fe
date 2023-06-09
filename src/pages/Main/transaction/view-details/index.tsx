@@ -80,11 +80,15 @@ const ViewDetails: FC<indexProps> = ({}) => {
   const navigation = useNavigate()
   const { user } = useSelector((state: RootState) => state.common)
   const [finalData, setFinalData] = useState<FinalDataProps>({})
+  const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
+
   // Assuming you have access to user.email in the second page
   const { data, isLoading } = useQuery(
     ['getBatches'], // Same query key as in the first page
     async () => {
-      return await pcGetBatches(user.email)
+      const email =
+        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
+      if (email) return await pcGetBatches(email)
     },
     {
       staleTime: Infinity, // The data will be considered fresh indefinitely
@@ -163,7 +167,7 @@ const ViewDetails: FC<indexProps> = ({}) => {
                   <div className="flex flex-col gap-2">
                     <p>No. Of Donations</p>
                     <p className="font-light text-slate-500 text-center">
-                      {finalData.batches?.donations.length}
+                      {finalData.batches?.donations?.length}
                     </p>
                   </div>
 

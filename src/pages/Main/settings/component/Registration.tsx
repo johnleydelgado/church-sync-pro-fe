@@ -36,6 +36,7 @@ const Registration: FC<RegistrationProps> = ({
 }) => {
   const [selectedRegistrationName, setSelectedRegistrationName] =
     useState<string>('')
+  const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
 
   const [registrationSettingsData, setRegistrationSettingsData] = useState<
     qboRegistrationSettings[]
@@ -83,8 +84,12 @@ const Registration: FC<RegistrationProps> = ({
   const { data: registrationData, isLoading: isLoadingRegistration } = useQuery(
     ['getRegistration'],
     async () => {
-      const res = await pcGetRegistrationEvents(user.email)
-      return res
+      const email =
+        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
+      if (email) {
+        const res = await pcGetRegistrationEvents(email)
+        return res
+      }
     },
     { staleTime: Infinity },
   )

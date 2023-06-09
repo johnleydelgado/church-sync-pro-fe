@@ -17,6 +17,13 @@ export interface UserInfo {
   lastName?: string
   email: string
   isSubscribe?: string
+  role?: 'bookkeeper' | 'client' | string
+}
+
+export interface BookkeeperInfo {
+  clientEmail: string
+  clientId?: number
+  churchName: string
 }
 
 interface CommonState {
@@ -28,6 +35,13 @@ interface CommonState {
   reTriggerIsUserTokens: boolean
   isShowSettings: boolean
   isShowTransaction: boolean
+  bookkeeper: BookkeeperInfo | null
+  accountState: {
+    type: string
+    access_token: string
+    refresh_token: string
+    realm_id?: string
+  } | null
 }
 
 const initialState: CommonState = {
@@ -40,6 +54,7 @@ const initialState: CommonState = {
     lastName: '',
     email: '',
     isSubscribe: '0',
+    role: '',
   },
   thirdPartyTokens: {
     qbo_access_token: null,
@@ -53,6 +68,12 @@ const initialState: CommonState = {
   reTriggerIsUserTokens: false,
   isShowSettings: false,
   isShowTransaction: false,
+  bookkeeper: {
+    clientEmail: '',
+    clientId: 0,
+    churchName: '',
+  },
+  accountState: null,
 }
 
 export const common = createSlice({
@@ -99,10 +120,17 @@ export const common = createSlice({
     setIsShowTransaction: (state, action: PayloadAction<boolean>) => {
       state.isShowTransaction = action.payload
     },
+    setAccountState: (state, action) => {
+      state.accountState = action.payload
+    },
+    setBookkeeper: (state, action: PayloadAction<BookkeeperInfo>) => {
+      state.bookkeeper = action.payload
+    },
     resetUserData: (state) => {
       state.user = initialState.user
       state.selectedThirdPartyId = initialState.selectedThirdPartyId
       state.thirdPartyTokens = initialState.thirdPartyTokens
+      state.bookkeeper = initialState.bookkeeper
     },
   },
 })
@@ -118,6 +146,8 @@ export const {
   setIsShowSettings,
   setIsShowTransaction,
   resetUserData,
+  setAccountState,
+  setBookkeeper,
 } = common.actions
 
 export default common.reducer

@@ -11,7 +11,7 @@ import Session from 'supertokens-web-js/recipe/session'
 import ThirdPartyEmailPassword from 'supertokens-web-js/recipe/thirdpartyemailpassword'
 import EmailVerification from 'supertokens-web-js/recipe/emailverification'
 import { ToastContainer } from 'react-toastify'
-
+import { ThemeProvider } from '@material-tailwind/react'
 import MainUnAuthPage from './pages/MainPage'
 import { persistor, store } from './redux/store'
 import 'react-toastify/dist/ReactToastify.css'
@@ -65,14 +65,16 @@ function App() {
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
         <QueryClientProvider client={queryClient}>
-          <DndProvider backend={HTML5Backend}>
-            <Router>
-              <Routes>
-                <Route path="/*" element={<MainUnAuthPage />} />
-              </Routes>
-            </Router>
-            <ToastContainer />
-          </DndProvider>
+          <ThemeProvider>
+            <DndProvider backend={HTML5Backend}>
+              <Router>
+                <Routes>
+                  <Route path="/*" element={<MainUnAuthPage />} />
+                </Routes>
+              </Router>
+              <ToastContainer />
+            </DndProvider>
+          </ThemeProvider>
         </QueryClientProvider>
       </PersistGate>
     </Provider>

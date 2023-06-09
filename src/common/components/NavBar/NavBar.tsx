@@ -1,7 +1,9 @@
+import { capitalAtFirstLetter } from '@/common/utils/helper'
 import { RootState } from '@/redux/store'
 import {
   Avatar,
   Button,
+  Input,
   Menu,
   MenuHandler,
   MenuItem,
@@ -10,47 +12,40 @@ import {
 } from '@material-tailwind/react'
 import { FC } from 'react'
 import { CgProfile } from 'react-icons/cg'
+import { MdPerson3 } from 'react-icons/md'
 import { useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
 interface NavBarProps {}
 
 const NavBar: FC<NavBarProps> = () => {
-  const { churchName } = useSelector((state: RootState) => state.common.user)
+  const { churchName, firstName, lastName } = useSelector(
+    (state: RootState) => state.common.user,
+  )
   return (
-    <nav className="bg-white relative left-0 top-0 right-0 px-2 py-2.5 sm:px-8 flex-shrink h-18">
-      <div className="mx-auto flex flex-wrap justify-end">
-        {/* <div className="cursor-pointer hover:bg-slate-200 rounded-md p-4 group">
+    <nav className="bg-white relative left-0 top-0 right-0 px-2 py-2.5 sm:px-8 flex-shrink h-24">
+      <div className="mx-auto flex flex-wrap">
+        <div className="flex justify-end w-full">
+          <div className="bg-bg-slate-400 flex shadow-md p-4 rounded-2xl items-center justify-center gap-2">
+            <div className="rounded-full p-2 bg-gray-400 text-white">
+              <MdPerson3 />
+            </div>
+            <p className="font-normal text-black">
+              {capitalAtFirstLetter(firstName)} {capitalAtFirstLetter(lastName)}
+            </p>
+            {/* <Input
+              className="w-full"
+              placeholder="Search...."
+              variant="outlined"
+            /> */}
+          </div>
+        </div>
+      </div>
+      {/* <div className="mx-auto flex flex-wrap justify-end"> */}
+      {/* <div className="cursor-pointer hover:bg-slate-200 rounded-md p-4 group">
           <CgMenuLeft className="transform scale-150 sm:scale-0 transition duration-500 group-hover:scale-125" />
         </div> */}
-        <div className="flex text-md lg:text-base gap-2 lg:gap-16 h-12 w-64 h-full justify-end">
-          <Menu
-            animate={{
-              mount: { y: 0 },
-              unmount: { y: 25 },
-            }}
-          >
-            <MenuHandler>
-              <div className="flex flex-col items-center gap-1">
-                <CgProfile size={32} />
-                <div>
-                  {/* <Typography variant="h6">Candice Wu</Typography> */}
-                  <Typography
-                    variant="small"
-                    color="gray"
-                    className="font-normal"
-                  >
-                    {churchName ? churchName : 'N/A'}
-                  </Typography>
-                </div>
-              </div>
-            </MenuHandler>
-            <MenuList className="py-2">
-              <MenuItem>Menu Item 1</MenuItem>
-              <MenuItem>Menu Item 2</MenuItem>
-              <MenuItem>Menu Item 3</MenuItem>
-            </MenuList>
-          </Menu>
-          {/* <Link to="/" className="group">
+      {/* <div className="flex text-md lg:text-base gap-2 lg:gap-16 h-12 w-64 h-full justify-end">
+          <Link to="/" className="group">
             <p>Home</p>
             <div className="bg-primary mt-2 ease-in  scale-0 transform h-px  transition  duration-200 group-hover:scale-125" />
           </Link>
@@ -67,9 +62,9 @@ const NavBar: FC<NavBarProps> = () => {
               Subscription
             </p>
             <div className="bg-primary mt-2 transform h-px  transition  duration-100 group-hover:scale-125" />
-          </Link> */}
-        </div>
-      </div>
+          </Link> 
+        </div> */}
+      {/* </div> */}
     </nav>
   )
 }

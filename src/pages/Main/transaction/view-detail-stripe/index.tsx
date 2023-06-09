@@ -35,14 +35,15 @@ const ViewDetails: FC<indexProps> = ({}) => {
   const { payoutDate } = useParams()
   const navigation = useNavigate()
   const { user } = useSelector((state: RootState) => state.common)
-  const [finalData, setFinalData] = useState({})
+  const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
+
   // Assuming you have access to user.email in the second page
   const { data: fundData, isLoading } = useQuery<FundProps[]>(
     ['getFunds'],
     async () => {
-      return await pcGetFunds({
-        email: user.email,
-      })
+      const email =
+        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
+      if (email) return await pcGetFunds({ email })
     },
   )
 
@@ -55,7 +56,9 @@ const ViewDetails: FC<indexProps> = ({}) => {
   const { data: batchesData, isLoading: isLoadingBatchData } = useQuery(
     ['getBatches'], // Same query key as in the first page
     async () => {
-      return await pcGetBatches(user.email)
+      const email =
+        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
+      if (email) return await pcGetBatches(email)
     },
     {
       staleTime: Infinity, // The data will be considered fresh indefinitely
@@ -65,7 +68,9 @@ const ViewDetails: FC<indexProps> = ({}) => {
   const { data: userData } = useQuery(
     ['getUserRelated'],
     async () => {
-      return await getUserRelated(user.email)
+      const email =
+        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
+      if (email) return await getUserRelated(email)
     },
     { staleTime: Infinity },
   )
@@ -78,7 +83,9 @@ const ViewDetails: FC<indexProps> = ({}) => {
   } = useQuery<FinalDataProps[]>(
     ['getStripePayouts', payoutDate, isLoading],
     async () => {
-      const stripePayoutRes = await getStripePayouts(user.email)
+      const email =
+        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
+      const stripePayoutRes = await getStripePayouts(email)
       const date = String(fromUnixTime(Number(payoutDate)))
 
       const filterFundName = fundData?.length

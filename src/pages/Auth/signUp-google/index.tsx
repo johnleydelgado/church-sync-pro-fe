@@ -29,20 +29,24 @@ import { storageKey } from '@/common/utils/storage'
 import { getUserRelated } from '@/common/api/user'
 import { useLocation } from 'react-router'
 import CommonTextField from '@/common/components/text-input/CommonTextField'
+import ModalRegistration from '@/common/components/modal/ModalRegistration'
+import useRegisterModal from '@/common/hooks/useRegisterModal'
+import useGoogleRegisterModal from '@/common/hooks/useGoogleRegisterModal'
 
 interface SignUpProps {}
 
 const delay = (ms: any) => new Promise((res) => setTimeout(res, ms))
 
-const SignUp: FC<SignUpProps> = () => {
+const SignUpGoogle: FC<SignUpProps> = () => {
   const { user } = useSelector((state: RootState) => state.common)
   const location = useLocation()
-  const userType = location.state?.type || 'bookkeeper'
   const dispatch = useDispatch()
 
   const [showPassword, setShowPassword] = useState<boolean>(false)
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [signUpSuccess, setSignUpSuccess] = useState<boolean>(false)
+
+  const { openModal, handleEvent, type } = useGoogleRegisterModal()
 
   async function signUpClicked({
     churchName,
@@ -61,7 +65,7 @@ const SignUp: FC<SignUpProps> = () => {
           { id: 'email', value: email },
           { id: 'password', value: password },
           { id: 'isSubscribe', value: '0' },
-          { id: 'role', value: userType },
+          { id: 'role', value: type },
         ],
       })
 
@@ -93,7 +97,6 @@ const SignUp: FC<SignUpProps> = () => {
           }
         })
       } else {
-        const { user: userDataF } = response
         // sendEmail()
         await delay(2000)
         const userData = await getUserRelated(email)
@@ -138,8 +141,18 @@ const SignUp: FC<SignUpProps> = () => {
     },
   })
 
+  useEffect(() => {
+    openModal()
+  }, [])
+
   return (
     <div className="h-screen flex flex-col lg:flex-row-reverse lg:bg-white">
+      <ModalRegistration
+        size="xs"
+        disabledOutsideClick
+        handleEventBookkeeper={() => handleEvent('bookkeeper')}
+        handleEventClient={() => handleEvent('client')}
+      />
       <div
         className="flex-grow m-6"
         style={{
@@ -173,7 +186,7 @@ const SignUp: FC<SignUpProps> = () => {
           className="flex flex-col gap-1 pt-6"
           onSubmit={formik.handleSubmit}
         >
-          {userType === 'client' ? (
+          {type === 'client' ? (
             <CommonTextField
               error={formik.errors.churchName}
               icon={BiChurch}
@@ -243,4 +256,4 @@ const SignUp: FC<SignUpProps> = () => {
   )
 }
 
-export default SignUp
+export default SignUpGoogle

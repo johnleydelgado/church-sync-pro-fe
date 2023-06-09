@@ -1,5 +1,7 @@
+/* eslint-disable @typescript-eslint/no-var-requires */
 /** @type {import('tailwindcss').Config} */
-module.exports = {
+const withMT = require("@material-tailwind/react/utils/withMT");
+module.exports = withMT({
   content: [
     './src/**/*.{js,jsx,ts,tsx}',
     'node_modules/flowbite-react/**/*.{js,jsx,ts,tsx}',
@@ -24,4 +26,4 @@ module.exports = {
     },
   },
   plugins: [require('flowbite/plugin')],
-}
+})

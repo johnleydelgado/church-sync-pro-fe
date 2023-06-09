@@ -26,12 +26,15 @@ const GoogleCallBack: FC<googleCallbackProps> = ({}) => {
             await createUser({ email })
             const userData = await getUserRelated(email)
             dispatch(setUserData({ email, id: userData.data.id || 0 }))
-            localStorage.setItem(storageKey.PERSONAL_TOKEN, email)
-            window.location.assign(route.SIGNUP)
+            // localStorage.setItem(storageKey.PERSONAL_TOKEN, email)
+            window.location.assign(route.SIGNUP_GOOGLE)
           } else {
             const userData = await getUserRelated(email)
-            dispatch(setUserData({ email, id: userData.data.id || 0 }))
-            localStorage.setItem(storageKey.PERSONAL_TOKEN, email)
+            const { id, role, firstName, lastName, churchName } = userData.data
+            dispatch(
+              setUserData({ id, role, firstName, lastName, churchName, email }),
+            )
+            localStorage.setItem(storageKey.PERSONAL_TOKEN, role)
             window.location.assign(route.TRANSACTION)
           }
         } else {

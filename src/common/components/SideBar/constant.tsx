@@ -24,8 +24,8 @@ const pages: PageProps[] = [
     icon: <BiTransfer size={30} />,
   },
   {
-    name: 'Account Tokens',
-    link: mainRoute.PCO_QBO_STRIPE,
+    name: 'Bookkeepers',
+    link: mainRoute.BOOKKEEPER,
     icon: <MdManageAccounts size={30} />,
   },
   {

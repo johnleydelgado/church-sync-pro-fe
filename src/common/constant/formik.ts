@@ -24,7 +24,7 @@ export const signUpInitialValues: UserSignUpProps = {
 
 export const signUpValidationSchema = object({
   email: yup.string().required('Email is a required field').email(),
-  churchName: yup.string().required('Church Name is a required field'),
+  churchName: yup.string(),
   firstName: yup.string().required('First Name is a required field'),
   lastName: yup.string().required('Last Name is a required field'),
   password: yup.string().required('Password is a required field'),

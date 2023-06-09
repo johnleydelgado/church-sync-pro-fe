@@ -11,6 +11,7 @@ import { storage, storageKey } from '@/common/utils/storage'
 import { useDispatch } from 'react-redux'
 import {
   resetUserData,
+  setBookkeeper,
   setReTriggerIsUserTokens,
   setUserData,
 } from '@/redux/common'
@@ -18,12 +19,16 @@ import { useSelector } from 'react-redux'
 import { RootState } from '@/redux/store'
 import Dropdown, { components } from 'react-select'
 import { Button } from '@material-tailwind/react'
-import { BiChevronDown } from 'react-icons/bi'
+import { BiChevronDown, BiChevronUp } from 'react-icons/bi'
 import { useQuery } from 'react-query'
-import { AccountTokenDataProps } from '@/pages/Main/accounts-token/AccountTokens'
-import { getTokenList, updateUserToken } from '@/common/api/user'
+import {
+  bookkeeperList,
+  getTokenList,
+  updateUserToken,
+} from '@/common/api/user'
 import { isEmpty } from 'lodash'
 import { failNotification } from '@/common/utils/toast'
+import useLogoutHandler from '@/common/hooks/useLogoutHandler'
 
 interface SideBarProps {
   isTrigger: boolean
@@ -37,6 +42,27 @@ interface ItemSideBarProps {
   link?: string
   pathName?: string
   isHide?: boolean
+}
+
+interface Token {
+  id?: number
+  userId: number
+  tokenEntityId: number
+  token_type: 'stripe' | 'qbo' | 'pco' | string
+  access_token: string | null
+  refresh_token: string | null
+  realm_id: string | null
+  isSelected: boolean
+  organization_name: string | null
+}
+
+interface AccountTokenDataProps {
+  id: number
+  isEnabled: false
+  email: string
+  tokens: Token[]
+  createAt?: string
+  updatedAt?: string
 }
 
 const Input = (props: any) => (
@@ -67,7 +93,7 @@ const ItemSideBar = ({
       </a>
     ) : (
       <a
-        className={`flex gap-x-8 items-center p-2 transition transform hover:text-primary
+        className={`flex gap-x-8 items-center px-4 py-2 transition transform hover:text-primary
    duration-100 hover:bg-green-400 ${
      pathName?.includes(link || '') ? 'bg-green-400' : ''
    } rounded-md`}
@@ -89,7 +115,9 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
   const [showDropdownOrg, setShowDropdownOrg] = useState<boolean>(false)
 
   const userData = useSelector((item: RootState) => item.common.user)
-  const { email, id } = useSelector((item: RootState) => item.common.user)
+  const { email, id, role } = useSelector((item: RootState) => item.common.user)
+  const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
+
   const reTriggerIsUserTokens = useSelector(
     (item: RootState) => item.common.reTriggerIsUserTokens,
   )
@@ -97,65 +125,53 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
   const { isShowSettings, isShowTransaction } = useSelector(
     (state: RootState) => state.common,
   )
-  const dispatch = useDispatch()
 
-  const { data, refetch, isRefetching } = useQuery<AccountTokenDataProps[]>(
-    ['getTokenList'],
+  const dispatch = useDispatch()
+  const { data, refetch } = useQuery(
+    ['bookkeeperListSidebar', role],
     async () => {
-      if (email) return await getTokenList(email)
+      if (id && role === 'bookkeeper') {
+        const res = await bookkeeperList({ bookkeeperId: id })
+        return res.data
+      }
     },
-    {
-      staleTime: Infinity,
-    },
+    { staleTime: Infinity },
   )
 
   useEffect(() => {
     setIsTrigger(() => isTabletOrMobile)
   }, [isTabletOrMobile, setIsTrigger])
 
-  const logoutHandler = async () => {
-    try {
-      await Session.signOut()
-      dispatch(resetUserData())
-      storage.removeToken(storageKey.PC_ACCESS_TOKEN)
-      storage.removeToken(storageKey.QBQ_ACCESS_TOKEN)
-      storage.removeToken(storageKey.PERSONAL_TOKEN)
-      storage.removeToken(storageKey.TOKENS)
-      // Redirect the user to the login page or reload the page to update the authentication status
-      window.location.reload()
-    } catch (error) {
-      console.error('Logout failed:', error)
-    }
+  const logoutHandler = useLogoutHandler()
+
+  const handleLogout = () => {
+    logoutHandler()
   }
 
-  const selectOrganizationHandler = async (
-    val: string,
-    organizationName: string,
-  ) => {
-    const res = await updateUserToken({
-      email: email,
-      enableEntity: true,
-      tokenEntityId: Number(val),
-    })
-    if (res) {
-      dispatch(setUserData({ ...userData, churchName: organizationName }))
-      dispatch(setReTriggerIsUserTokens(!reTriggerIsUserTokens))
-      refetch()
-    } else {
-      failNotification({ title: res.message })
-    }
+  const selectOrganizationHandler = async (val: string, churchName: string) => {
+    dispatch(setBookkeeper({ clientEmail: val, churchName }))
   }
 
   useEffect(() => {
     if (!isEmpty(data)) {
-      const temp = data?.map((a) => {
+      const temp = data?.map((a: any) => {
         return {
-          value: String(a.id) || '',
-          label: a.tokens[0]?.organization_name || '',
+          value: String(a.Client.email) || '',
+          label: a.Client.churchName,
         }
       })
 
-      setOrginazationList(temp || [])
+      if (!isEmpty(temp)) {
+        setOrginazationList(temp || [])
+        if (!bookkeeper?.churchName) {
+          dispatch(
+            setBookkeeper({
+              clientEmail: temp[0].value,
+              churchName: temp[0].label,
+            }),
+          )
+        }
+      }
     }
   }, [data])
 
@@ -179,24 +195,37 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
             {!isTrigger ? 'Church Sync Pro' : 'CSP'}
           </p>
         </div>
-        {!isEmpty(data) && !isEmpty(data?.find((a) => a.isEnabled)) ? (
+        {!isEmpty(data) ? (
           <div className="flex flex-col items-center w-full gap-4 pb-8">
             <Button
               className="bg-green-300 bg-opacity-50 w-full rounded-none text-start flex items-center gap-2 justify-between"
               onClick={() => setShowDropdownOrg(!showDropdownOrg)}
             >
-              {data?.find((a) => a.isEnabled)?.tokens[0]?.organization_name}
-              <BiChevronDown size={24} />
+              {bookkeeper?.churchName}
+              {showDropdownOrg ? (
+                <BiChevronUp size={24} />
+              ) : (
+                <BiChevronDown size={24} />
+              )}
             </Button>
             {showDropdownOrg ? (
               <Dropdown
                 options={organizationList}
                 components={{ Input }}
                 placeholder="Search...."
-                onChange={(val) =>
-                  selectOrganizationHandler(val?.value || '', val?.label || '')
+                onChange={(val) => {
+                  if (typeof val === 'object' && val !== null) {
+                    selectOrganizationHandler(val.value || '', val.label || '')
+                  }
+                }}
+                defaultValue={
+                  bookkeeper?.clientEmail
+                    ? {
+                        value: bookkeeper?.clientEmail,
+                        label: bookkeeper?.churchName,
+                      }
+                    : organizationList[0]
                 }
-                // value={data?.find((a) => a.isEnabled)?.id}
                 className="w-11/12"
               />
             ) : null}
@@ -215,8 +244,7 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
               pathName={location.pathname}
               key={el.name}
               isHide={
-                (el.name === 'Transaction' && !isShowTransaction) ||
-                (el.name === 'Settings' && !isShowSettings)
+                el.name === 'Bookkeepers' && userData.role === 'bookkeeper'
               }
             />
           ))}
@@ -224,7 +252,7 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
         {isTrigger ? (
           <button
             className="mt-auto transition transform duration-100 hover:bg-green-300 hover:text-primary text-white"
-            onClick={logoutHandler}
+            onClick={handleLogout}
           >
             <div className="flex gap-x-8  p-8 items-center">
               <HiOutlineLogout size={30} />
@@ -233,7 +261,7 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
         ) : (
           <button
             className="mt-auto transition transform duration-100 hover:bg-green-300 hover:text-primary text-white"
-            onClick={logoutHandler}
+            onClick={handleLogout}
           >
             <div className="flex gap-x-8  p-8 items-center">
               <HiOutlineLogout size={30} />

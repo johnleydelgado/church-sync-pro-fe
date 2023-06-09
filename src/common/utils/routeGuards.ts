@@ -25,13 +25,25 @@ const authGuard = {
 const authGuardHaveToken = {
   failCondition: !tokens,
   requestDone: true,
-  onFail: mainRoute.PCO_QBO_STRIPE,
+  onFail: personalToken === 'client' ? mainRoute.SETTINGS : mainRoute.DASHBOARD,
 }
 
 const authGuardHaveSettings = {
   failCondition: !settings,
   requestDone: true,
-  onFail: mainRoute.SETTINGS,
+  onFail: personalToken === 'client' ? mainRoute.SETTINGS : mainRoute.DASHBOARD,
 }
 
-export { authGuard, unAuthGuard, authGuardHaveToken, authGuardHaveSettings }
+const authProceedToTransaction = {
+  failCondition: !!settings,
+  requestDone: true,
+  onFail: mainRoute.TRANSACTION,
+}
+
+export {
+  authGuard,
+  unAuthGuard,
+  authGuardHaveToken,
+  authGuardHaveSettings,
+  authProceedToTransaction,
+}

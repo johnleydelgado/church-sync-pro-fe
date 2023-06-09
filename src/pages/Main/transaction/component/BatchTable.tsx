@@ -6,6 +6,8 @@ import { AiOutlineSync } from 'react-icons/ai'
 import { HiCheckCircle } from 'react-icons/hi'
 import { Link } from 'react-router-dom'
 import Empty from '@/common/components/empty/Empty'
+import usePagination from '@/common/hooks/usePagination'
+import Pagination from '@/common/components/pagination/Pagination'
 
 interface BatchTableProps {
   data: BatchesProps | undefined
@@ -22,7 +24,17 @@ const BatchTable: FC<BatchTableProps> = ({
   triggerSync,
   batchSyncing,
 }) => {
-  return !isEmpty(data) ? (
+  const {
+    currentPageData,
+    totalItems,
+    setCurrentPage,
+    currentPage,
+    itemPerPage,
+  } = usePagination({ filteredData: data, itemPerPage: 5 })
+
+  const finalData = currentPageData
+
+  return !isEmpty(finalData) ? (
     <div className="relative overflow-x-auto pt-8">
       <table className="w-full text-sm text-left text-gray-500">
         <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700">
@@ -51,8 +63,8 @@ const BatchTable: FC<BatchTableProps> = ({
           </tr>
         </thead>
         <tbody className="[&>*]:h-20 text-left">
-          {!isEmpty(data)
-            ? data.batches.map((item) => (
+          {!isEmpty(finalData)
+            ? finalData.map((item: any) => (
                 <tr
                   className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 [&>*]:px-6 [&>*]:py-4"
                   key={item.batch.id}
@@ -78,7 +90,7 @@ const BatchTable: FC<BatchTableProps> = ({
                   </td>
                   <td className="">
                     <div className="h-10">
-                      <p className="p-2 text-left">{item.donations.length}</p>
+                      <p className="p-2 text-left">{item.donations?.length}</p>
                     </div>
                   </td>
                   <td className="">
@@ -91,8 +103,8 @@ const BatchTable: FC<BatchTableProps> = ({
                   <td className="">
                     <div className="flex h-10 justify-end">
                       {isEmpty(
-                        data.synchedBatches.find(
-                          (el) => el.batchId === item.batch.id,
+                        data?.synchedBatches.find(
+                          (el: any) => el.batchId === item.batch.id,
                         ),
                       ) ? (
                         <button
@@ -106,12 +118,14 @@ const BatchTable: FC<BatchTableProps> = ({
                         >
                           <AiOutlineSync
                             className={`text-slate-400 cursor-pointer ${
-                              batchSyncing.find(
-                                (bc: { batchId: string }) =>
-                                  bc.batchId === item.batch.id,
-                              )?.trigger
-                                ? 'animate-spin'
-                                : 'animate-none'
+                              batchSyncing[0].batchId
+                                ? batchSyncing.find(
+                                    (bc: { batchId: string }) =>
+                                      bc.batchId === item.batch.id,
+                                  )?.trigger
+                                  ? 'animate-spin'
+                                  : 'animate-none'
+                                : null
                             }`}
                             size={28}
                           />
@@ -136,6 +150,16 @@ const BatchTable: FC<BatchTableProps> = ({
             : null}
         </tbody>
       </table>
+      {Math.ceil(totalItems / itemPerPage) > 1 ? (
+        <div className="flex flex-1 flex-col items-end justify-end p-6">
+          <Pagination
+            currentPage={currentPage}
+            onPageChange={(val) => setCurrentPage(val)}
+            totalPages={Math.ceil(totalItems / itemPerPage)}
+            itemPerPage={itemPerPage}
+          />
+        </div>
+      ) : null}
     </div>
   ) : (
     <Empty />

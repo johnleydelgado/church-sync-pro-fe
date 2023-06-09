@@ -32,6 +32,7 @@ interface DashboardProps {}
 const Dashboard: FC<DashboardProps> = () => {
   const [value, setValue] = useState([new Date(), new Date()])
   const { user } = useSelector((state: RootState) => state.common)
+  const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
 
   const [isBatch, setIsBatch] = useState<boolean>(true)
 
@@ -42,7 +43,10 @@ const Dashboard: FC<DashboardProps> = () => {
   const { data, isLoading, refetch, isRefetching } = useQuery<BatchesProps>(
     ['getBatches'],
     async () => {
-      return await pcGetBatches(user.email)
+      const email =
+        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
+      if (email) return await pcGetBatches(email)
+      return []
     },
     {
       staleTime: Infinity,
@@ -57,7 +61,10 @@ const Dashboard: FC<DashboardProps> = () => {
   } = useQuery<Stripe.Charge[]>(
     ['getStripePayouts'],
     async () => {
-      return await getStripePayouts(user.email)
+      const email =
+        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
+      if (email) return await getStripePayouts(email)
+      return []
     },
     {
       staleTime: Infinity,
@@ -65,7 +72,10 @@ const Dashboard: FC<DashboardProps> = () => {
   )
 
   const { data: fundData } = useQuery<FundProps[]>(['getFunds'], async () => {
-    return await pcGetFunds({ email: user.email })
+    const email =
+      user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
+    if (email) return await pcGetFunds({ email })
+    return []
   })
 
   const handleDateChange = (newValue: string | Date) => {
@@ -193,8 +203,6 @@ const Dashboard: FC<DashboardProps> = () => {
       })
     }
   }
-
-  console.log('data', data)
 
   return (
     <MainLayout>

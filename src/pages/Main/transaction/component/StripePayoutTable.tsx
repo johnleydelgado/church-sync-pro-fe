@@ -29,7 +29,7 @@ const StripePayoutTable: FC<BatchTableProps> = ({
   batchSyncing,
 }) => {
   const { user } = useSelector((state: RootState) => state.common)
-  console.log('stripe data', data)
+  const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
 
   const { data: dataBatches } = useQuery<{
     batches: [{ donations: [] }]
@@ -37,7 +37,9 @@ const StripePayoutTable: FC<BatchTableProps> = ({
   }>(
     ['getBatches'], // Same query key as in the first page
     async () => {
-      return await pcGetBatches(user.email)
+      const email =
+        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
+      if (email) return await pcGetBatches(email)
     },
     {
       staleTime: Infinity, // The data will be considered fresh indefinitely

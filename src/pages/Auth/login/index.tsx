@@ -1,7 +1,7 @@
 import { shouldLoadRoute } from '@/common/utils/supertoken'
 import { failNotification } from '@/common/utils/toast'
 import { TextInput, Checkbox, Label, Button, Spinner } from 'flowbite-react'
-import React, { FC, useEffect, useState } from 'react'
+import React, { FC, Fragment, useEffect, useState } from 'react'
 import { FcGoogle } from 'react-icons/fc'
 import {
   HiOutlineMail,
@@ -14,16 +14,19 @@ import { getAuthorisationURLWithQueryParamsAndSetState } from 'supertokens-web-j
 import { emailPasswordSignIn } from 'supertokens-web-js/recipe/thirdpartyemailpassword'
 
 import bgImage from '../../../common/assets/bg_1.png'
-import { route } from '../../../common/constant/route'
+import { mainRoute, route } from '../../../common/constant/route'
 import { useFormik } from 'formik'
 import { useDispatch } from 'react-redux'
-import { setUserData } from '@/redux/common'
+import { OPEN_MODAL, setBookkeeper, setUserData } from '@/redux/common'
 import {
   signInInitialValues,
   signInValidationSchema,
 } from '@/common/constant/formik'
 import { storageKey } from '@/common/utils/storage'
 import { getUserRelated } from '@/common/api/user'
+import ModalRegistration from '@/common/components/modal/ModalRegistration'
+import { MODALS_NAME } from '@/common/constant/modal'
+import useRegisterModal from '@/common/hooks/useRegisterModal'
 
 interface LoginProps {}
 const { REACT_APP_GOOGLE_CALLBACK_URL, REACT_APP_HOST_BE } = process.env
@@ -33,15 +36,6 @@ const Login: FC<LoginProps> = () => {
   const [showPassword, setShowPassword] = useState<boolean>(false)
   const dispatch = useDispatch()
   const [googleLoading, setGoogleLoading] = useState<boolean>(false)
-
-  console.log('REACT_APP_HOST_BE', {
-    appInfo: {
-      apiDomain: REACT_APP_HOST_BE as string,
-      apiBasePath: '/auth',
-      appName: 'church sync pro',
-    },
-  })
-
   async function googleSignInClicked() {
     setGoogleLoading(true)
 
@@ -70,6 +64,8 @@ const Login: FC<LoginProps> = () => {
       }
     }
   }
+
+  const { openModal, handleEvent } = useRegisterModal()
 
   async function signInClicked({
     email,
@@ -104,8 +100,14 @@ const Login: FC<LoginProps> = () => {
         failNotification({ title: 'Please check email or password !' })
       } else {
         const userData = await getUserRelated(email)
-        dispatch(setUserData({ email, id: userData.data.id || 0 }))
-        localStorage.setItem(email, storageKey.PERSONAL_TOKEN)
+        const { id, role, firstName, lastName, churchName } = userData.data
+        dispatch(
+          setUserData({ id, role, firstName, lastName, churchName, email }),
+        )
+        // dispatch(setBookkeeper({clientEmail:}))
+
+        localStorage.setItem(storageKey.PERSONAL_TOKEN, role)
+        window.location.href = mainRoute.TRANSACTION
         // window.location.href = route.SECONDARY_LOGIN
       }
     } catch (err: any) {
@@ -116,10 +118,6 @@ const Login: FC<LoginProps> = () => {
         failNotification({ title: 'Oops! Something went wrong.' })
       }
     }
-  }
-
-  const handleRegisterLink = () => {
-    navigate(route.SIGNUP)
   }
 
   const formik = useFormik({
@@ -133,6 +131,11 @@ const Login: FC<LoginProps> = () => {
 
   return (
     <div className="h-screen flex flex-col lg:flex-row lg:bg-white">
+      <ModalRegistration
+        size="xs"
+        handleEventBookkeeper={() => handleEvent('bookkeeper')}
+        handleEventClient={() => handleEvent('client')}
+      />
       <div
         className="flex-grow m-6"
         style={{
@@ -221,7 +224,11 @@ const Login: FC<LoginProps> = () => {
               className="absolute right-2 top-2 text-slate-600 cursor-pointer p-1 hover:bg-blue-900 hover:text-white rounded-full"
               onClick={() => setShowPassword(!showPassword)}
             >
-              {showPassword ? <HiEyeOff size={20} /> : <HiEye size={20} />}
+              {showPassword ? (
+                <HiEyeOff size={20} className="text-blue-gray-600" />
+              ) : (
+                <HiEye size={20} className="text-blue-gray-600" />
+              )}
             </div>
           </div>
 
@@ -232,7 +239,7 @@ const Login: FC<LoginProps> = () => {
                 <p className="text-slate-600 font-light text-sm">Remember me</p>
               </Label>
             </div>
-            <span className="text-slate-600 text-sm underline cursor-pointer">
+            <span className="text-gray-800 text-sm underline cursor-pointer">
               Forget your password ?
             </span>
           </div>
@@ -245,10 +252,10 @@ const Login: FC<LoginProps> = () => {
           </Button>
 
           <div className="flex gap-1 justify-center">
-            <span className="text-slate-600 text-sm">Dont have account?</span>
+            <span className="text-gray-600 text-sm">Dont have account?</span>
             <span
-              className="text-slate-600 text-sm underline cursor-pointer"
-              onClick={handleRegisterLink}
+              className="text-gray-800 text-sm underline cursor-pointer"
+              onClick={openModal}
             >
               Register
             </span>

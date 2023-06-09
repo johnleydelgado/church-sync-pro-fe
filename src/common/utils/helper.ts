@@ -16,4 +16,10 @@ const formatDate = (dateString: string) => {
   return format(date, 'M/d/yyyy') // Example: '4/10/2023'
 }
 
-export { formatUsd, formatDate }
+const capitalAtFirstLetter = (str: string | undefined) => {
+  const name = str || ''
+  const fString = name.charAt(0).toUpperCase() + name.slice(1)
+  return fString
+}
+
+export { formatUsd, formatDate, capitalAtFirstLetter }
