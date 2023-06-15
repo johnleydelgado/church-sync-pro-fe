@@ -12,6 +12,7 @@ import { RootState } from '@/redux/store'
 import { bookkeeperList } from '@/common/api/user'
 import { isEmpty } from 'lodash'
 import BookkeeperTableList from './components/Table'
+import Loading from '@/common/components/loading/Loading'
 interface BookkeeperProps {}
 
 const Bookkeeper: FC<BookkeeperProps> = ({}) => {
@@ -21,7 +22,7 @@ const Bookkeeper: FC<BookkeeperProps> = ({}) => {
   }
   const user = useSelector((state: RootState) => state.common.user)
 
-  const { data, refetch } = useQuery(
+  const { data, refetch, isLoading } = useQuery(
     ['bookkeeperList'],
     async () => {
       const res = await bookkeeperList({ clientId: user?.id })
@@ -40,14 +41,19 @@ const Bookkeeper: FC<BookkeeperProps> = ({}) => {
           </div>
           <div className="flex gap-4 justify-end">
             <button
-              className="text-green-500 flex items-center gap-1 hover:underline"
+              className={`${
+                data?.length > 3 ? 'text-green-300' : 'text-green-500'
+              } flex items-center gap-1 hover:underline`}
               onClick={openModal}
+              disabled={data?.length > 3 ? true : false}
             >
               <p>Add bookkeeper +</p>
             </button>
           </div>
 
-          {isEmpty(data) ? (
+          {isLoading ? (
+            <Loading />
+          ) : isEmpty(data) ? (
             <div className="flex flex-col pt-48 items-center h-full">
               <Lottie animationData={empty} loop={true} className="h-96" />
               <div className="flex flex-col gap-4 text-center">

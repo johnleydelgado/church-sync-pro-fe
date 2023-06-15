@@ -139,7 +139,7 @@ const InviteLink: FC<SignUpProps> = () => {
         dispatch(
           setUserData({ id, role, firstName, lastName, churchName, email }),
         )
-        dispatch(setReTriggerIsUserTokens(!reTriggerIsUserTokens))
+        // dispatch(setReTriggerIsUserTokens(!reTriggerIsUserTokens))
         setSignUpSuccess(true)
         localStorage.setItem(storageKey.PERSONAL_TOKEN, role)
       }

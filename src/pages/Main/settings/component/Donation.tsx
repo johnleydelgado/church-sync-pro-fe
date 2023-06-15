@@ -24,12 +24,14 @@ const Input = (props: any) => (
     inputClassName="outline-none border-none shadow-none focus:ring-transparent"
   />
 )
+const delay = (ms: any) => new Promise((res) => setTimeout(res, ms))
 
 const Donation: FC<DonationProps> = ({ fundData, userData }) => {
   const { user } = useSelector((state: RootState) => state.common)
   const [settingsData, setSettingsData] = useState<qboSettings[]>([])
+  const [onGoingSaving, setOnGoingSaving] = useState<boolean>(false)
+
   const dispatch = useDispatch()
-  const [isAutomationEnable, setIsAutomationEnable] = useState<boolean>(false)
   const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
   const reTriggerIsUserTokens = useSelector(
     (item: RootState) => item.common.reTriggerIsUserTokens,
@@ -43,19 +45,16 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
 
   const { data: qboData, isLoading: isQboDataLoading } =
     useQuery<BqoDataSelectProps>(
-      ['getAllQboData'],
+      ['getAllQboData', bookkeeper],
       async () => {
         const email =
           user.role === 'bookkeeper'
             ? bookkeeper?.clientEmail || ''
             : user.email
-
-        if (email)
-          return await QboGetAllQboData({
-            email: user.email,
-          })
+        console.log('email is:', email)
+        if (email) return await QboGetAllQboData({ email })
       },
-      { staleTime: Infinity },
+      { refetchOnWindowFocus: false },
     )
 
   const selectHandler = ({
@@ -123,10 +122,23 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
       })
       return
     }
+    try {
+      setOnGoingSaving(true)
+      const email =
+        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
+      await mutate({
+        email,
+        settingsData,
+        isAutomationEnable: userData?.UserSetting?.isAutomationEnable || false,
+      })
+      await delay(2000)
+      dispatch(setReTriggerIsUserTokens(!reTriggerIsUserTokens))
+      successNotification({ title: 'Settings successfully saved !' })
+      setOnGoingSaving(false)
+    } catch (e) {
+      console.log('test')
+    }
 
-    await mutate({ email: user.email, settingsData, isAutomationEnable: false })
-    dispatch(setReTriggerIsUserTokens(!reTriggerIsUserTokens))
-    successNotification({ title: 'Settings successfully saved !' })
     // dispatch(setReTriggerIsUserTokens(!reTriggerIsUserTokens))
   }
 
@@ -157,16 +169,15 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
   }
 
   useEffect(() => {
-    if (!isEmpty(userData?.data?.UserSetting?.settingsData)) {
-      const settingsData = userData.data.UserSetting.settingsData
+    if (!isEmpty(userData?.UserSetting?.settingsData)) {
+      const settingsData = userData.UserSetting.settingsData
       setSettingsData(settingsData)
-      setIsAutomationEnable(userData?.data.UserSetting.isAutomationEnable)
     }
   }, [userData])
-  console.log('settingsData', settingsData)
+  console.log('a', qboData)
   return (
     <div>
-      {isSavingSettings ? (
+      {isSavingSettings || isQboDataLoading || onGoingSaving ? (
         <Loading />
       ) : (
         <>

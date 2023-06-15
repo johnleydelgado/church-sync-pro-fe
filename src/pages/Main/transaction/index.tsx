@@ -24,7 +24,9 @@ export interface AttributesProps {
 
 export interface BatchesProps {
   batches: AttributesProps[]
-  synchedBatches: [{ id: string; batchId: string; createdAt: Date }]
+  synchedBatches: [
+    { id: string; batchId: string; createdAt: Date; donationId: string },
+  ]
 }
 
 interface DashboardProps {}
@@ -33,6 +35,7 @@ const Dashboard: FC<DashboardProps> = () => {
   const [value, setValue] = useState([new Date(), new Date()])
   const { user } = useSelector((state: RootState) => state.common)
   const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
+  const [dateRange, setDateRange] = useState({ startDate: '', endDate: '' })
 
   const [isBatch, setIsBatch] = useState<boolean>(true)
 
@@ -41,14 +44,15 @@ const Dashboard: FC<DashboardProps> = () => {
   ])
 
   const { data, isLoading, refetch, isRefetching } = useQuery<BatchesProps>(
-    ['getBatches'],
+    ['getBatches', dateRange, bookkeeper],
     async () => {
       const email =
         user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-      if (email) return await pcGetBatches(email)
+      if (email) return await pcGetBatches(email, dateRange)
       return []
     },
     {
+      refetchOnWindowFocus: false,
       staleTime: Infinity,
     },
   )
@@ -59,7 +63,7 @@ const Dashboard: FC<DashboardProps> = () => {
     refetch: refetchStripePayoutData,
     isRefetching: isRefetchingStripePayoutData,
   } = useQuery<Stripe.Charge[]>(
-    ['getStripePayouts'],
+    ['getStripePayouts', bookkeeper],
     async () => {
       const email =
         user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
@@ -68,15 +72,23 @@ const Dashboard: FC<DashboardProps> = () => {
     },
     {
       staleTime: Infinity,
+      refetchOnWindowFocus: false,
     },
   )
 
-  const { data: fundData } = useQuery<FundProps[]>(['getFunds'], async () => {
-    const email =
-      user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-    if (email) return await pcGetFunds({ email })
-    return []
-  })
+  const { data: fundData } = useQuery<FundProps[]>(
+    ['getFunds', bookkeeper],
+    async () => {
+      const email =
+        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
+      if (email) return await pcGetFunds({ email })
+      return []
+    },
+    {
+      staleTime: Infinity,
+      refetchOnWindowFocus: false,
+    },
+  )
 
   const handleDateChange = (newValue: string | Date) => {
     if (
@@ -107,8 +119,10 @@ const Dashboard: FC<DashboardProps> = () => {
     }
 
     try {
+      const email =
+        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
       setBatchSynching((prev) => [...prev, { batchId, trigger: true }])
-      const result = await manualSync({ email: user.email, dataBatch, batchId })
+      const result = await manualSync({ email, dataBatch, batchId })
       if (result.success) {
         successNotification({ title: `Batch: ${batchName} successfully sync` })
         refetch()
@@ -118,20 +132,20 @@ const Dashboard: FC<DashboardProps> = () => {
     } catch (e) {
       failNotification({ title: 'Error' })
     } finally {
-      setBatchSynching((prevBatchSyncing) => {
-        const batchIndex = prevBatchSyncing.findIndex(
-          (batch) => batch.batchId === batchId,
-        )
-        if (batchIndex !== -1) {
-          const updatedBatchSyncing = [...prevBatchSyncing]
-          updatedBatchSyncing[batchIndex] = {
-            batchId: batchId,
-            trigger: false,
-          }
-          return updatedBatchSyncing
-        }
-        return prevBatchSyncing
-      })
+      // setBatchSynching((prevBatchSyncing) => {
+      //   const batchIndex = prevBatchSyncing.findIndex(
+      //     (batch) => batch.batchId === batchId,
+      //   )
+      //   if (batchIndex !== -1) {
+      //     const updatedBatchSyncing = [...prevBatchSyncing]
+      //     updatedBatchSyncing[batchIndex] = {
+      //       batchId: batchId,
+      //       trigger: false,
+      //     }
+      //     return updatedBatchSyncing
+      //   }
+      //   return prevBatchSyncing
+      // })
     }
   }
 
@@ -219,7 +233,10 @@ const Dashboard: FC<DashboardProps> = () => {
 
               {/* <SelectDateRange onChange={handleDateChange} value={value} /> */}
               <div>
-                <SelectDateRange />
+                <SelectDateRange
+                  setDateRangeVal={setDateRange}
+                  dateRangeVal={dateRange}
+                />
               </div>
             </div>
             <div className="flex gap-4">

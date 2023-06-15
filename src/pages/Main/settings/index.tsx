@@ -2,13 +2,14 @@ import { pcGetFunds } from '@/common/api/planning-center'
 import Loading from '@/common/components/loading/Loading'
 import MainLayout from '@/common/components/main-layout/MainLayout'
 import React, { FC, useEffect, useState } from 'react'
-import { useQuery } from 'react-query'
+import { useMutation, useQuery } from 'react-query'
 import { useSelector } from 'react-redux'
 
 import { RootState } from '../../../redux/store'
 import { QboGetAllQboData } from '@/common/api/qbo'
 import { components } from 'react-select'
 import {
+  enableAutoSyncSetting,
   getTokenList,
   getUserRelated,
   isUserHaveTokens,
@@ -19,6 +20,8 @@ import Registration from './component/Registration'
 
 import Account, { AccountTokenDataProps } from './component/Account'
 import Donation from './component/Donation'
+import { successNotification } from '@/common/utils/toast'
+import { isEmpty } from 'lodash'
 
 const Input = (props: any) => (
   <components.Input
@@ -68,10 +71,18 @@ const Settings: FC<SettingsProps> = () => {
     (item: RootState) => item.common.reTriggerIsUserTokens,
   )
 
+  const { mutate, isLoading: isSavingSettings } = useMutation<
+    unknown,
+    unknown,
+    { email: string; isAutomationEnable: boolean }
+  >(enableAutoSyncSetting)
+
   const { data: tokenList } = useQuery<AccountTokenDataProps[]>(
-    ['getTokenList'],
+    ['getTokenList', bookkeeper],
     async () => {
-      if (user.email) return await getTokenList(user.email)
+      const email =
+        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
+      if (email) return await getTokenList(email)
     },
     {
       staleTime: Infinity,
@@ -80,7 +91,7 @@ const Settings: FC<SettingsProps> = () => {
   )
 
   const { data: fundData, isLoading } = useQuery<FundProps[]>(
-    ['getFunds'], // Same query key as in the first page
+    ['getFunds', bookkeeper], // Same query key as in the first page
 
     async () => {
       const email =
@@ -92,33 +103,37 @@ const Settings: FC<SettingsProps> = () => {
 
   // to get settings data
   const { data: userData } = useQuery(
-    ['getUserRelated'],
+    ['getUserRelatedSettings', reTriggerIsUserTokens, bookkeeper],
     async () => {
-      const email =
+      const emailF =
         user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-      if (email) return await getUserRelated(email)
+      if (emailF) {
+        const res = await getUserRelated(emailF)
+        return res.data
+      }
     },
     { staleTime: Infinity },
   )
 
   const { data: qboData, isLoading: isQboDataLoading } =
     useQuery<BqoDataSelectProps>(
-      ['getAllQboData'],
+      ['getAllQboData', bookkeeper],
       async () => {
         const email =
           user.role === 'bookkeeper'
             ? bookkeeper?.clientEmail || ''
             : user.email
+        console.log('aa', email)
         if (email)
           return await QboGetAllQboData({
             email: email,
           })
       },
-      { staleTime: Infinity },
+      { staleTime: Infinity, refetchOnWindowFocus: false },
     )
 
   const { data: isUserTokens } = useQuery(
-    ['isUserTokens', tokenList],
+    ['isUserTokens', tokenList, bookkeeper],
     async () => {
       const email =
         user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
@@ -146,6 +161,20 @@ const Settings: FC<SettingsProps> = () => {
     }
   }, [user])
 
+  const enableDisableAutomation = async () => {
+    const email =
+      user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
+    await mutate({ email, isAutomationEnable: !isAutomationEnable })
+    setIsAutomationEnable(!isAutomationEnable)
+    successNotification({ title: 'Settings successfully saved !' })
+  }
+
+  useEffect(() => {
+    if (!isEmpty(userData?.UserSetting?.settingsData)) {
+      setIsAutomationEnable(userData?.UserSetting.isAutomationEnable)
+    }
+  }, [userData])
+
   return (
     <MainLayout>
       {isLoading || isQboDataLoading ? (
@@ -163,8 +192,9 @@ const Settings: FC<SettingsProps> = () => {
                 type="checkbox"
                 value=""
                 checked={isAutomationEnable}
-                onChange={() => setIsAutomationEnable(!isAutomationEnable)}
+                onChange={() => enableDisableAutomation()}
                 className="w-5 h-5 text-slate-600 bg-gray-100 border-gray-300 rounded"
+                disabled={isEmpty(userData?.UserSetting) ? true : false}
               />
               <label
                 htmlFor="default-checkbox"

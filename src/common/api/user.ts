@@ -127,6 +127,24 @@ const createSettings = async ({
   }
 }
 
+const enableAutoSyncSetting = async ({
+  email,
+  isAutomationEnable,
+}: {
+  email: string
+  isAutomationEnable: boolean
+}) => {
+  // await axios.get
+  const url = userRoutes.createSettings
+  const dataJson = JSON.stringify({ email, isAutomationEnable })
+  try {
+    const response = await apiCall.post(url, dataJson)
+    return response.data
+  } catch (e: any) {
+    return []
+  }
+}
+
 const getUserRelated = async (email: string) => {
   // await axios.get
   const url = userRoutes.getUserRelated
@@ -288,4 +306,5 @@ export {
   checkValidInvitation,
   bookkeeperList,
   updateInvitationStatus,
+  enableAutoSyncSetting,
 }

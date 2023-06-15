@@ -82,19 +82,18 @@ const MainPage: FC<indexProps> = () => {
   //     refetchOnWindowFocus: false,
   //   },
   // )
+
   const { data: userData, isLoading } = useQuery(
-    ['getUserRelatedDashboard', user, bookkeeper],
+    ['getUserRelatedDashboard', user, bookkeeper, reTriggerIsUserTokens],
     async () => {
       const emailF =
         user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
       if (emailF) {
-        console.log('refetch here ?')
         const res = await getUserRelated(emailF)
         return res.data
       }
     },
     {
-      staleTime: Infinity,
       refetchOnWindowFocus: false,
       enabled: !!user && !!bookkeeper, // Only run query if `user` and `bookkeeper` are truthy
     },
@@ -123,7 +122,6 @@ const MainPage: FC<indexProps> = () => {
 
   useEffect(() => {
     if (!isEmpty(userData?.UserSetting)) {
-      console.log('user', userData)
       storage.setLocalToken(userData?.id, storageKey.SETTINGS)
       dispatch(setIsShowTransaction(true))
     } else {
@@ -172,9 +170,7 @@ const MainPage: FC<indexProps> = () => {
         />
         <Route
           path={route.INVITE_LINK}
-          element={
-            <PrivateRoute Component={InviteLink} guards={[unAuthGuard]} />
-          }
+          element={<PrivateRoute Component={InviteLink} guards={[]} />}
         />
         <Route
           path={route.SECONDARY_LOGIN}

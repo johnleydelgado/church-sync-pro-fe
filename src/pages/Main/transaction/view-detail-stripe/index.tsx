@@ -51,7 +51,8 @@ const ViewDetails: FC<indexProps> = ({}) => {
     id: number | null
     batchId: string | null
     createdAt: string | null
-  }>({ id: null, batchId: null, createdAt: null })
+    donationId: string | null
+  }>({ id: null, batchId: null, createdAt: null, donationId: null })
 
   const { data: batchesData, isLoading: isLoadingBatchData } = useQuery(
     ['getBatches'], // Same query key as in the first page
@@ -148,11 +149,16 @@ const ViewDetails: FC<indexProps> = ({}) => {
       )
       return
     }
-    setSyncBatches({ id: null, batchId: null, createdAt: null })
+    setSyncBatches({
+      id: null,
+      batchId: null,
+      createdAt: null,
+      donationId: null,
+    })
   }, [isLoadingBatchData])
 
   // console.log('stripePayoutData', stripePayoutData)
-
+  console.log('synchedBatches', synchedBatches)
   return (
     <MainLayout>
       <div className="flex flex-col h-full gap-4 font-sans">

@@ -19,4 +19,6 @@ deploy:
 	--ingress all \
 	--allow-unauthenticated \
 	--set-env-vars `cat ${ENV} | xargs | tr ' ' ','` \
-	--project ${GOOGLE_CLOUD_PROJECT}
+	--project ${GOOGLE_CLOUD_PROJECT} \
+	--no-traffic
+	gcloud run services update-traffic csp-fe --to-latest --project ${GOOGLE_CLOUD_PROJECT} --platform managed --region us-central1

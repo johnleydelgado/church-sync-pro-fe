@@ -31,11 +31,15 @@ const pcGetFunds = async ({ email }: { email: string | null | undefined }) => {
   }
 }
 
-const pcGetBatches = async (email: string | null | undefined) => {
+const pcGetBatches = async (
+  email: string | null | undefined,
+  dateRange?: any,
+) => {
   // await axios.get
   const url = pcRoutes.getBatches
+  const dataJson = JSON.stringify({ email, dateRange })
   try {
-    const response = await apiCall.get(url + `?email=${email}`)
+    const response = await apiCall.post(url, dataJson)
     console.log('a', response.data)
     const data = response.data.data
     return data

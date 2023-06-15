@@ -8,12 +8,20 @@ import { useDispatch } from 'react-redux'
 
 // import { setDateStartEnd } from '~/redux/common'
 
-interface SelectDateRangeProps {}
+interface SelectDateRangeProps {
+  setDateRangeVal: any
+  dateRangeVal: any
+}
 
-const SelectDateRange: FC<SelectDateRangeProps> = ({}) => {
-  const [dateRange, setDateRange] = useState([null, null])
+const SelectDateRange: FC<SelectDateRangeProps> = ({
+  setDateRangeVal,
+  dateRangeVal,
+}) => {
+  const [dateRange, setDateRange] = useState([
+    dateRangeVal.startDate ? new Date(dateRangeVal.startDate) : null,
+    dateRangeVal.endDate ? new Date(dateRangeVal.endDate) : null,
+  ])
   const [startDate, endDate] = dateRange
-  const dispatch = useDispatch()
 
   const years = range(1990, getYear(new Date()) + 1, 1)
   const months = [
@@ -59,6 +67,7 @@ const SelectDateRange: FC<SelectDateRangeProps> = ({}) => {
     if (startDate && endDate) {
       const formatStartDate = format(startDate || new Date(), 'yyyy-MM-dd')
       const formatEndDate = format(endDate || new Date(), 'yyyy-MM-dd')
+      setDateRangeVal({ startDate: formatStartDate, endDate: formatEndDate })
       // dispatch(
       //   setDateStartEnd({ startDate: formatStartDate, endDate: formatEndDate }),
       // )

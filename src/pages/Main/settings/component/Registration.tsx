@@ -131,6 +131,8 @@ const Registration: FC<RegistrationProps> = ({
   }
 
   const handleSubmit = async () => {
+    const email =
+      user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
     if (isAnyKeyMissing() || isEmpty(registrationSettingsData)) {
       failNotification({
         title: 'Please fill up all select',
@@ -140,7 +142,7 @@ const Registration: FC<RegistrationProps> = ({
     }
 
     await mutate({
-      email: user.email,
+      email,
       settingRegistrationData: registrationSettingsData,
       isAutomationEnable,
     })
@@ -204,8 +206,8 @@ const Registration: FC<RegistrationProps> = ({
   }, [selectedRegistrationName])
 
   useEffect(() => {
-    if (!isEmpty(userData?.data?.UserSetting)) {
-      const settingsData = userData.data.UserSetting.settingRegistrationData
+    if (!isEmpty(userData?.UserSetting)) {
+      const settingsData = userData.UserSetting.settingRegistrationData
       setRegistrationSettingsData(settingsData || [])
       // setIsAutomationEnable(userData?.data.UserSetting.isAutomationEnable)
     }

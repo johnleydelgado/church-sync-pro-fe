@@ -12,6 +12,11 @@ import { formatUsd } from '@/common/utils/helper'
 import { Table } from 'flowbite-react'
 import { IoIosArrowBack } from 'react-icons/io'
 import { BiSync } from 'react-icons/bi'
+import Loading from '@/common/components/loading/Loading'
+import { failNotification, successNotification } from '@/common/utils/toast'
+import { manualSync } from '@/common/api/user'
+import { mainRoute } from '@/common/constant/route'
+import { deleteQboDeposit } from '@/common/api/qbo'
 interface indexProps {}
 
 interface DonationProps {
@@ -53,8 +58,15 @@ interface DonationProps {
   }
 }
 
+interface SyncBatchesProps {
+  batchId: string
+  createdAt: string
+  id: number
+  donationId: string
+}
+
 interface FinalDataProps {
-  batches?: {
+  batches: {
     batch: {
       type: string
       id: string
@@ -70,20 +82,18 @@ interface FinalDataProps {
     }
     donations: DonationProps[]
   }
-  synchedBatches?:
-    | { batchId: string; createdAt: string; id: number }
-    | undefined
+  synchedBatches: SyncBatchesProps[] | undefined
 }
 
 const ViewDetails: FC<indexProps> = ({}) => {
   const { batchId } = useParams()
   const navigation = useNavigate()
   const { user } = useSelector((state: RootState) => state.common)
-  const [finalData, setFinalData] = useState<FinalDataProps>({})
+  const [finalData, setFinalData] = useState<FinalDataProps | null>(null)
   const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
-
+  const [isSynching, setIsSynching] = useState(false)
   // Assuming you have access to user.email in the second page
-  const { data, isLoading } = useQuery(
+  const { data, isLoading, refetch, isRefetching } = useQuery(
     ['getBatches'], // Same query key as in the first page
     async () => {
       const email =
@@ -102,18 +112,69 @@ const ViewDetails: FC<indexProps> = ({}) => {
           (item: AttributesProps) =>
             item.batch.id === String(batchId) && item.donations,
         ),
-        synchedBatches: data.synchedBatches.find(
+        synchedBatches: data.synchedBatches.filter(
           (el: any) => el.batchId === String(batchId),
         ),
       })
   }, [data, batchId])
 
+  const triggerSyncBatch = async ({
+    dataBatch,
+    batchId,
+    batchName,
+  }: {
+    dataBatch: any
+    batchId: string
+    batchName: string
+  }): Promise<void> => {
+    setIsSynching(true)
+    try {
+      const email =
+        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
+      const result = await manualSync({ email, dataBatch, batchId })
+      if (result.success) {
+        setIsSynching(false)
+        successNotification({ title: `Batch: ${batchName} successfully sync` })
+        refetch()
+      } else {
+        setIsSynching(false)
+        failNotification({ title: 'Error' })
+      }
+    } catch (e) {
+      setIsSynching(false)
+      failNotification({ title: 'Error' })
+    }
+  }
+
+  const triggerUnSync = async (): Promise<void> => {
+    setIsSynching(true)
+    try {
+      const email =
+        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
+      console.log('email, syncId, depositId', email, finalData?.synchedBatches)
+      const result = await deleteQboDeposit(email, finalData?.synchedBatches)
+      if (result === 'success') {
+        setIsSynching(false)
+        successNotification({ title: `Unsynched Successfully` })
+        refetch()
+      } else {
+        setIsSynching(false)
+        failNotification({ title: 'Error' })
+      }
+    } catch (e) {
+      setIsSynching(false)
+      failNotification({ title: 'Error' })
+    }
+  }
+  console.log('finalData', finalData)
   return (
     <MainLayout>
-      {isEmpty(finalData) ? null : (
+      {isLoading || isRefetching ? (
+        <Loading />
+      ) : isEmpty(finalData) ? null : (
         <div className="flex flex-col h-full gap-4 font-sans">
           <button
-            onClick={() => navigation(-1)}
+            onClick={() => navigation(mainRoute.TRANSACTION)}
             className="pb-2 flex gap-2 w-32 items-center transform hover:scale-105 duration-75 ease-linear"
           >
             <IoIosArrowBack />
@@ -134,17 +195,51 @@ const ViewDetails: FC<indexProps> = ({}) => {
                 </span>
                 <div>
                   {!isEmpty(finalData.synchedBatches) ? (
-                    <span className="text-slate-500 font-normal text-sm">
-                      {`Synched Planning Center to QuicBooks Online | Last synched at ${format(
-                        parseISO(finalData.synchedBatches.createdAt),
-                        "hh:mm aaaa 'on' EEEE MMMM d, yyyy",
-                      )}`}
-                    </span>
+                    <div className="flex gap-4">
+                      <span className="text-slate-500 font-normal text-sm">
+                        {finalData &&
+                        finalData.synchedBatches &&
+                        finalData.synchedBatches.length > 0 &&
+                        finalData.synchedBatches[0]?.createdAt
+                          ? `Synched Planning Center to QuickBooks Online | Last synched at ${format(
+                              parseISO(finalData.synchedBatches[0].createdAt),
+                              "hh:mm aaaa 'on' EEEE MMMM d, yyyy",
+                            )} | `
+                          : // Provide a fallback string or component when synchedBatches is undefined or empty
+                            'No sync data available'}
+                      </span>
+                      <button
+                        className="text-orange-600 flex items-center gap-1"
+                        onClick={() => triggerUnSync()}
+                      >
+                        <BiSync
+                          className={`${
+                            isSynching ? 'animate-spin' : 'animate-none'
+                          }`}
+                        />
+                        <p className="underline">Remove sync</p>
+                      </button>
+                    </div>
                   ) : (
                     <div className="flex gap-4">
                       <p>Not Sync | </p>
-                      <button className="text-green-600 flex items-center gap-1">
-                        <BiSync />
+                      <button
+                        className="text-green-600 flex items-center gap-1"
+                        onClick={() =>
+                          triggerSyncBatch({
+                            dataBatch: finalData.batches?.batch,
+                            batchId: finalData.batches?.batch.id || '',
+                            batchName:
+                              finalData.batches?.batch.attributes.description ||
+                              '',
+                          })
+                        }
+                      >
+                        <BiSync
+                          className={`${
+                            isSynching ? 'animate-spin' : 'animate-none'
+                          }`}
+                        />
                         <p className="underline">Sync</p>
                       </button>
                     </div>

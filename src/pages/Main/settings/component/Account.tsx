@@ -59,11 +59,7 @@ const Account: FC<AccountProps> = ({}) => {
     qboLoading: false,
   })
 
-  const {
-    data: tokenList,
-    refetch,
-    isRefetching,
-  } = useQuery<AccountTokenDataProps[]>(
+  const { data: tokenList, refetch } = useQuery<AccountTokenDataProps[]>(
     ['getTokenList'],
     async () => {
       const emailLatest =

@@ -34,6 +34,39 @@ const BatchTable: FC<BatchTableProps> = ({
 
   const finalData = currentPageData
 
+  // extract the logic to a separate function
+  const getSyncIconClassName = (batchSyncing: any, batchId: string) => {
+    // Return early if batchSyncing is not an array or has less than 2 elements
+    if (!Array.isArray(batchSyncing) || batchSyncing.length <= 1) {
+      return 'text-slate-400 cursor-pointer'
+    }
+
+    // Find the batch object in the array
+    const batchObj = batchSyncing.find(
+      (bc: { batchId: string }) => bc.batchId === batchId,
+    )
+
+    // Set class name depending on the `trigger` property of the batch object
+    const animateClass = batchObj?.trigger ? 'animate-spin' : 'animate-none'
+
+    return `text-slate-400 cursor-pointer ${animateClass}`
+  }
+
+  const isButtonDisabled = (batchSyncing: any, batchId: string) => {
+    // Return false if batchSyncing is not an array or has less than 2 elements
+    if (!Array.isArray(batchSyncing) || batchSyncing.length <= 1) {
+      return false
+    }
+
+    // Find the batch object in the array
+    const batchObj = batchSyncing.find(
+      (bc: { batchId: string }) => bc.batchId === batchId,
+    )
+
+    // Return the value of `trigger` property of the batch object
+    return batchObj?.trigger ? true : false
+  }
+
   return !isEmpty(finalData) ? (
     <div className="relative overflow-x-auto pt-8">
       <table className="w-full text-sm text-left text-gray-500">
@@ -115,18 +148,16 @@ const BatchTable: FC<BatchTableProps> = ({
                               batchName: item.batch.attributes.description,
                             })
                           }
+                          disabled={isButtonDisabled(
+                            batchSyncing,
+                            item.batch.id,
+                          )}
                         >
                           <AiOutlineSync
-                            className={`text-slate-400 cursor-pointer ${
-                              batchSyncing[0].batchId
-                                ? batchSyncing.find(
-                                    (bc: { batchId: string }) =>
-                                      bc.batchId === item.batch.id,
-                                  )?.trigger
-                                  ? 'animate-spin'
-                                  : 'animate-none'
-                                : null
-                            }`}
+                            className={getSyncIconClassName(
+                              batchSyncing,
+                              item.batch.id,
+                            )}
                             size={28}
                           />
                         </button>

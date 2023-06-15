@@ -44,4 +44,20 @@ const QboGetAllQboData = async ({ email }: { email: string }) => {
   }
 }
 
-export { QboGetAllQboData }
+const deleteQboDeposit = async (
+  email: string | null | undefined,
+  synchData: any,
+) => {
+  // await axios.get
+  const url = qboRoutes.deleteQboDeposit
+  const dataJson = JSON.stringify({ email, synchData })
+  try {
+    const response = await apiCall.post(url, dataJson)
+    const data = response.data.data
+    return data
+  } catch (e: any) {
+    return []
+  }
+}
+
+export { QboGetAllQboData, deleteQboDeposit }
