@@ -56,6 +56,14 @@ interface DonationProps {
       visibility: string
     }
   }
+  person: {
+    data: {
+      attributes: {
+        first_name: string
+        last_name: string
+      }
+    }
+  }
 }
 
 interface SyncBatchesProps {
@@ -92,16 +100,20 @@ const ViewDetails: FC<indexProps> = ({}) => {
   const [finalData, setFinalData] = useState<FinalDataProps | null>(null)
   const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
   const [isSynching, setIsSynching] = useState(false)
+  const [dateRange, setDateRange] = useState({ startDate: '', endDate: '' })
+
   // Assuming you have access to user.email in the second page
   const { data, isLoading, refetch, isRefetching } = useQuery(
-    ['getBatches'], // Same query key as in the first page
+    ['getBatches', dateRange, bookkeeper],
     async () => {
       const email =
         user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-      if (email) return await pcGetBatches(email)
+      if (email) return await pcGetBatches(email, dateRange)
+      return []
     },
     {
-      staleTime: Infinity, // The data will be considered fresh indefinitely
+      refetchOnWindowFocus: false,
+      staleTime: Infinity,
     },
   )
 
@@ -166,7 +178,7 @@ const ViewDetails: FC<indexProps> = ({}) => {
       failNotification({ title: 'Error' })
     }
   }
-  console.log('finalData', finalData)
+
   return (
     <MainLayout>
       {isLoading || isRefetching ? (
@@ -319,7 +331,14 @@ const ViewDetails: FC<indexProps> = ({}) => {
                           String(item.donation.attributes.amount_cents),
                         )}
                       </Table.Cell>
-                      <Table.Cell>Anonymous</Table.Cell>
+                      <Table.Cell>
+                        {item.person?.data.attributes.first_name &&
+                        item.person?.data.attributes.last_name
+                          ? item.person.data.attributes.first_name +
+                            ' ' +
+                            item.person.data.attributes.last_name
+                          : 'Anonymous'}
+                      </Table.Cell>
                       <Table.Cell>
                         <p
                           className={`p-2 inline rounded-md text-white`}

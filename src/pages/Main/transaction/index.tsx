@@ -6,7 +6,7 @@ import { useQuery } from 'react-query'
 import { useSelector } from 'react-redux'
 import { RootState } from '../../../redux/store'
 import { isEmpty } from 'lodash'
-import { manualSync } from '@/common/api/user'
+import { getUserRelated, manualSync } from '@/common/api/user'
 import { failNotification, successNotification } from '@/common/utils/toast'
 import BatchTable from './component/BatchTable'
 import { getStripePayouts, syncStripePayout } from '@/common/api/stripe'
@@ -55,6 +55,16 @@ const Dashboard: FC<DashboardProps> = () => {
       refetchOnWindowFocus: false,
       staleTime: Infinity,
     },
+  )
+
+  const { data: userData } = useQuery(
+    ['getUserRelated'],
+    async () => {
+      const email =
+        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
+      if (email) return await getUserRelated(email)
+    },
+    { staleTime: Infinity, refetchOnWindowFocus: false },
   )
 
   const {
@@ -265,12 +275,21 @@ const Dashboard: FC<DashboardProps> = () => {
                 batchSyncing={batchSyncing}
                 triggerSync={triggerSyncBatch}
               />
-            ) : (
+            ) : !isEmpty(
+                userData?.data?.UserSetting.settingRegistrationData,
+              ) ? (
               <StripePayoutTable
                 data={stripePayoutData}
                 triggerSync={triggerSyncStripe}
                 batchSyncing={batchSyncing}
               />
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-4xl font-thin">
+                  Kindly configure your registration mapping within the
+                  settings.
+                </p>
+              </div>
             )}
           </div>
         </div>

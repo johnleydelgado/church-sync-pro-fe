@@ -102,16 +102,37 @@ const Registration: FC<RegistrationProps> = ({
       (item) => item.registration === registrationName,
     )
 
+    console.log(
+      'registrationSettingsData',
+      registrationSettingsData,
+      registrationName,
+    )
+
     switch (category) {
       case 'account':
+        console.log(
+          qboData?.accounts?.find(
+            (option) => option.label === settingsItem?.account?.label,
+          ),
+        )
         return qboData?.accounts?.find(
           (option) => option.label === settingsItem?.account?.label,
         )
       case 'class':
+        console.log(
+          qboData?.classes?.find(
+            (option) => option.label === settingsItem?.class?.label,
+          ),
+        )
         return qboData?.classes?.find(
           (option) => option.label === settingsItem?.class?.label,
         )
       case 'customer':
+        console.log(
+          qboData?.customers?.find(
+            (option) => option.label === settingsItem?.customer?.label,
+          ),
+        )
         return qboData?.customers?.find(
           (option) => option.label === settingsItem?.customer?.label,
         )
@@ -152,17 +173,18 @@ const Registration: FC<RegistrationProps> = ({
   const selectHandler = ({
     val,
     category,
+    registration,
   }: {
     val: any
     category: 'account' | 'class' | 'customer'
+    registration: string
   }) => {
     const { value, label } = val
 
     const tempData: qboRegistrationSettings[] = [...registrationSettingsData]
 
     const index = registrationSettingsData.findIndex(
-      (item: qboRegistrationSettings) =>
-        item.registration === selectedRegistrationName,
+      (item: qboRegistrationSettings) => item.registration === registration,
     )
 
     const currentItem = tempData[index]
@@ -251,7 +273,11 @@ const Registration: FC<RegistrationProps> = ({
                       options={qboData?.accounts}
                       components={{ Input }}
                       onChange={(val) =>
-                        selectHandler({ val, category: 'account' })
+                        selectHandler({
+                          val,
+                          category: 'account',
+                          registration: a.registration || '',
+                        })
                       }
                       value={findDefaultValue(
                         a.registration as string,
@@ -265,7 +291,11 @@ const Registration: FC<RegistrationProps> = ({
                       options={qboData?.classes}
                       components={{ Input }}
                       onChange={(val) =>
-                        selectHandler({ val, category: 'class' })
+                        selectHandler({
+                          val,
+                          category: 'class',
+                          registration: a.registration || '',
+                        })
                       }
                       value={findDefaultValue(
                         a.registration as string,
@@ -279,7 +309,11 @@ const Registration: FC<RegistrationProps> = ({
                       options={qboData?.customers}
                       components={{ Input }}
                       onChange={(val) =>
-                        selectHandler({ val, category: 'customer' })
+                        selectHandler({
+                          val,
+                          category: 'customer',
+                          registration: a.registration || '',
+                        })
                       }
                       value={findDefaultValue(
                         a.registration as string,

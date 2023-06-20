@@ -17,6 +17,7 @@ import { getStripePayouts } from '@/common/api/stripe'
 import { FundProps } from '../../settings'
 import Loading from '@/common/components/loading/Loading'
 import { getUserRelated } from '@/common/api/user'
+import { isEmpty } from 'lodash'
 interface indexProps {}
 
 interface FinalDataProps {
@@ -36,7 +37,7 @@ const ViewDetails: FC<indexProps> = ({}) => {
   const navigation = useNavigate()
   const { user } = useSelector((state: RootState) => state.common)
   const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
-
+  const [stripePayoutData, setStripePayoutData] = useState<FinalDataProps[]>()
   // Assuming you have access to user.email in the second page
   const { data: fundData, isLoading } = useQuery<FundProps[]>(
     ['getFunds'],
@@ -44,6 +45,10 @@ const ViewDetails: FC<indexProps> = ({}) => {
       const email =
         user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
       if (email) return await pcGetFunds({ email })
+    },
+    {
+      staleTime: Infinity, // The data will be considered fresh indefinitely
+      refetchOnWindowFocus: false,
     },
   )
 
@@ -63,6 +68,7 @@ const ViewDetails: FC<indexProps> = ({}) => {
     },
     {
       staleTime: Infinity, // The data will be considered fresh indefinitely
+      refetchOnWindowFocus: false,
     },
   )
 
@@ -73,17 +79,95 @@ const ViewDetails: FC<indexProps> = ({}) => {
         user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
       if (email) return await getUserRelated(email)
     },
-    { staleTime: Infinity },
+    { staleTime: Infinity, refetchOnWindowFocus: false },
   )
 
-  const {
-    data: stripePayoutData,
-    isLoading: isLoadingStripePayoutData,
-    refetch: refetchStripePayoutData,
-    isRefetching: isRefetchingStripePayoutData,
-  } = useQuery<FinalDataProps[]>(
-    ['getStripePayouts', payoutDate, isLoading],
-    async () => {
+  // const {
+  //   data: stripePayoutData,
+  //   isLoading: isLoadingStripePayoutData,
+  //   refetch: refetchStripePayoutData,
+  //   isRefetching: isRefetchingStripePayoutData,
+  // } = useQuery<FinalDataProps[]>(
+  //   ['getStripePayouts'],
+  //   async () => {
+  //     const email =
+  //       user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
+  //     const stripePayoutRes = await getStripePayouts(email)
+  //     const date = String(fromUnixTime(Number(payoutDate)))
+  //     console.log('stripePayoutRes', stripePayoutRes)
+  //     console.log('fundData', fundData)
+
+  //     const filterFundName = fundData?.length
+  //       ? fundData.map((item) => item.attributes.name)
+  //       : []
+  //     const newStripeObj = stripePayoutRes.find(
+  //       (item: any) => item.payoutDate === format(new Date(date), formatString),
+  //     )
+
+  //     return await Promise.all(
+  //       newStripeObj.data.map((item: any) => {
+  //         const index = filterFundName?.findIndex((word) =>
+  //           item.description.includes(word),
+  //         )
+  //         if (index !== -1) {
+  //           const str = filterFundName[index]
+  //           return {
+  //             fund: str,
+  //             grossAmount: newStripeObj.grossAmount,
+  //             net: newStripeObj.net,
+  //             nonGivingIncome: newStripeObj.nonGivingIncome,
+  //             totalFees: newStripeObj.totalFees,
+  //             payoutDate: newStripeObj.payoutDate,
+  //             item,
+  //           }
+  //         } else {
+  //           const parts = item.description.split(' - ')
+  //           const registrationFund =
+  //             userData.data.UserSetting.settingRegistrationData.find(
+  //               (item: any) => item.registration === parts[2] || parts[1],
+  //             )
+  //           return {
+  //             fund: `${
+  //               registrationFund.class.label + ' ' + (parts[2] || parts[1])
+  //             }`,
+  //             grossAmount: newStripeObj.grossAmount,
+  //             net: newStripeObj.net,
+  //             nonGivingIncome: newStripeObj.nonGivingIncome,
+  //             totalFees: newStripeObj.totalFees,
+  //             payoutDate: newStripeObj.payoutDate,
+  //             item,
+  //           }
+  //         }
+  //       }),
+  //     )
+  //   },
+  //   {
+  //     staleTime: Infinity, // The data will be considered fresh indefinitely
+  //     refetchOnWindowFocus: false,
+  //   },
+  // )
+
+  useEffect(() => {
+    const arr = batchesData?.synchedBatches
+    const date = String(fromUnixTime(Number(payoutDate)))
+    if (arr?.length) {
+      setSyncBatches(
+        arr.find((item: { id: string; batchId: string; createdAt: string }) =>
+          item.batchId.includes(format(new Date(date), formatString)),
+        ),
+      )
+      return
+    }
+    setSyncBatches({
+      id: null,
+      batchId: null,
+      createdAt: null,
+      donationId: null,
+    })
+  }, [isLoadingBatchData])
+
+  useEffect(() => {
+    const fetchData = async () => {
       const email =
         user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
       const stripePayoutRes = await getStripePayouts(email)
@@ -96,11 +180,12 @@ const ViewDetails: FC<indexProps> = ({}) => {
         (item: any) => item.payoutDate === format(new Date(date), formatString),
       )
 
-      return await Promise.all(
+      const data = await Promise.all(
         newStripeObj.data.map((item: any) => {
           const index = filterFundName?.findIndex((word) =>
             item.description.includes(word),
           )
+
           if (index !== -1) {
             const str = filterFundName[index]
             return {
@@ -132,37 +217,23 @@ const ViewDetails: FC<indexProps> = ({}) => {
           }
         }),
       )
-    },
-    {
-      staleTime: Infinity, // The data will be considered fresh indefinitely
-    },
-  )
 
-  useEffect(() => {
-    const arr = batchesData?.synchedBatches
-    const date = String(fromUnixTime(Number(payoutDate)))
-    if (arr?.length) {
-      setSyncBatches(
-        arr.find((item: { id: string; batchId: string; createdAt: string }) =>
-          item.batchId.includes(format(new Date(date), formatString)),
-        ),
-      )
-      return
+      setStripePayoutData(data)
     }
-    setSyncBatches({
-      id: null,
-      batchId: null,
-      createdAt: null,
-      donationId: null,
-    })
-  }, [isLoadingBatchData])
+    if (
+      !isEmpty(userData?.data?.UserSetting.settingRegistrationData) &&
+      !isEmpty(fundData)
+    ) {
+      fetchData()
+    }
+  }, [fundData, userData])
 
   // console.log('stripePayoutData', stripePayoutData)
-  console.log('synchedBatches', synchedBatches)
+  console.log('stripePayoutData', stripePayoutData)
   return (
     <MainLayout>
       <div className="flex flex-col h-full gap-4 font-sans">
-        {isLoadingStripePayoutData || isLoadingBatchData ? (
+        {isLoadingBatchData ? (
           <Loading />
         ) : (
           <>
