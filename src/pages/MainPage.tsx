@@ -48,6 +48,7 @@ import Bookkeeper from './Main/bookkeeper/Bookkeeper'
 import useLogoutHandler from '@/common/hooks/useLogoutHandler'
 import InviteLink from './Main/invite-link/InviteLink'
 import useApiConnectivityCheck from '@/common/hooks/useApiConnectivityCheck'
+import { useGetTokenList } from '@/common/hooks/useGetTokenList'
 
 interface indexProps {}
 
@@ -69,20 +70,6 @@ const MainPage: FC<indexProps> = () => {
     (item: RootState) => item.common.reTriggerIsUserTokens,
   )
 
-  // const { data: isUserTokens, isLoading } = useQuery(
-  //   ['isUserTokens', email, reTriggerIsUserTokens],
-  //   async () => {
-  //     const emailF =
-  //       user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-  //     if (emailF) return await isUserHaveTokens(emailF)
-  //     return false
-  //   },
-  //   {
-  //     staleTime: Infinity,
-  //     refetchOnWindowFocus: false,
-  //   },
-  // )
-
   const { data: userData, isLoading } = useQuery(
     ['getUserRelatedDashboard', user, bookkeeper, reTriggerIsUserTokens],
     async () => {
@@ -99,6 +86,23 @@ const MainPage: FC<indexProps> = () => {
     },
   )
 
+  const { tokenList } = useGetTokenList()
+
+  const { data: isUserTokens } = useQuery(
+    ['isUserTokens', tokenList, bookkeeper],
+    async () => {
+      const email =
+        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
+
+      if (email) return await isUserHaveTokens(email)
+      return false
+    },
+    {
+      staleTime: Infinity,
+      refetchOnWindowFocus: false,
+    },
+  )
+
   const sessionCheck = async () => {
     if (await Session.doesSessionExist()) {
       console.log('a')
@@ -109,33 +113,15 @@ const MainPage: FC<indexProps> = () => {
     }
   }
 
-  // useEffect(() => {
-  //   if (isUserTokens) {
-  //     storage.setLocalToken(isUserTokens, storageKey.TOKENS)
-  //     dispatch(setIsShowSettings(true))
-  //   } else {
-  //     storage.removeToken(storageKey.TOKENS)
-  //     dispatch(setIsShowSettings(false))
-  //   }
-  //   sessionCheck()
-  // }, [isUserTokens])
-
   useEffect(() => {
-    if (!isEmpty(userData?.UserSetting)) {
+    if (!isEmpty(userData?.UserSetting) && isUserTokens) {
       storage.setLocalToken(userData?.id, storageKey.SETTINGS)
       dispatch(setIsShowTransaction(true))
     } else {
       storage.removeToken(storageKey.SETTINGS)
       dispatch(setIsShowTransaction(false))
     }
-    // dispatch(
-    //   setUserData({
-    //     ...user,
-    //     firstName: userData?.firstName,
-    //     lastName: userData?.lastName,
-    //   }),
-    // )
-  }, [userData])
+  }, [userData, isUserTokens])
 
   useEffect(() => {
     // if (!isConnected && personalToken) {
@@ -146,10 +132,6 @@ const MainPage: FC<indexProps> = () => {
       sessionCheck()
     }
   }, [personalToken])
-
-  // useEffect(() => {
-  //   refetch()
-  // }, [reTriggerIsUserTokens])
 
   if (isLoading) return <Loading />
 

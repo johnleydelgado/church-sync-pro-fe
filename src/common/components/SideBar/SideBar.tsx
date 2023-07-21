@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { FC, useEffect, useState } from 'react'
 import { CgArrowLeft, CgChevronDoubleDown } from 'react-icons/cg'
-import { HiOutlineLogout } from 'react-icons/hi'
+import { HiOutlineLogout, HiOutlineUserCircle } from 'react-icons/hi'
 import { useMediaQuery } from 'react-responsive'
 import { useLocation } from 'react-router'
 import Session from 'supertokens-web-js/recipe/session'
@@ -19,7 +19,12 @@ import { useSelector } from 'react-redux'
 import { RootState } from '@/redux/store'
 import Dropdown, { components } from 'react-select'
 import { Button } from '@material-tailwind/react'
-import { BiChevronDown, BiChevronUp } from 'react-icons/bi'
+import {
+  BiChevronDown,
+  BiChevronUp,
+  BiHelpCircle,
+  BiUser,
+} from 'react-icons/bi'
 import { useQuery } from 'react-query'
 import {
   bookkeeperList,
@@ -29,6 +34,10 @@ import {
 import { isEmpty } from 'lodash'
 import { failNotification } from '@/common/utils/toast'
 import useLogoutHandler from '@/common/hooks/useLogoutHandler'
+import {
+  capitalAtFirstLetter,
+  getFirstCharCapital,
+} from '@/common/utils/helper'
 
 interface SideBarProps {
   isTrigger: boolean
@@ -84,8 +93,8 @@ const ItemSideBar = ({
     {isHide ? null : isTrigger ? (
       <a
         className={`flex gap-x-8 items-center p-2 transition transform hover:text-primary
-   duration-100 hover:bg-green-400 rounded-md ${
-     pathName?.includes(link || '') ? 'bg-green-400' : ''
+   duration-100 hover:bg-[#FFC107] rounded-md ${
+     pathName?.includes(link || '') ? 'bg-[#FFC107]' : ''
    }`}
         href="/"
       >
@@ -94,8 +103,8 @@ const ItemSideBar = ({
     ) : (
       <a
         className={`flex gap-x-8 items-center px-4 py-2 transition transform hover:text-primary
-   duration-100 hover:bg-green-400 ${
-     pathName?.includes(link || '') ? 'bg-green-400' : ''
+   duration-100 hover:bg-[#FFC107] ${
+     pathName?.includes(link || '') ? 'bg-[#FFC107]' : ''
    } rounded-md`}
         href={link}
       >
@@ -115,7 +124,9 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
   const [showDropdownOrg, setShowDropdownOrg] = useState<boolean>(false)
 
   const userData = useSelector((item: RootState) => item.common.user)
-  const { email, id, role } = useSelector((item: RootState) => item.common.user)
+  const { id, role, firstName, lastName } = useSelector(
+    (item: RootState) => item.common.user,
+  )
   const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
 
   const reTriggerIsUserTokens = useSelector(
@@ -181,16 +192,46 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
         isTrigger ? 'w-24' : 'sm:w-64'
       }`}
     >
-      <div className="h-full bg-primary shadow-md sm:flex flex-col gap-4">
+      <div className="h-full bg-primary shadow-md sm:flex flex-col gap-2">
         <div
-          className={`hidden absolute -right-4 top-10 bg-green-400 rounded-lg -z-10 h-8 w-8 items-center justify-center cursor-pointer transform transition hover:scale-125 sm:flex ${
+          className={`hidden absolute -right-4 top-10 bg-[#FFC107] rounded-lg -z-10 h-8 w-8 items-center justify-center cursor-pointer transform transition hover:scale-125 sm:flex ${
             !isTrigger ? '' : 'rotate-180'
           }`}
           onClick={() => setIsTrigger(!isTrigger)}
         >
           <CgArrowLeft className="text-white" size={30} />
         </div>
-        <div className="flex pt-8 px-8 w-full">
+
+        {!isTrigger ? (
+          <div className="flex gap-2 items-center pt-8 px-8 w-full">
+            <HiOutlineUserCircle size={32} color="white" />
+            <p className="text-white p-2">
+              {capitalAtFirstLetter(firstName) +
+                ' ' +
+                capitalAtFirstLetter(lastName)}
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2 items-center pt-8 w-full">
+            <HiOutlineUserCircle size={32} color="white" />
+            <p className="text-white p-2">
+              {getFirstCharCapital(firstName) +
+                ' ' +
+                getFirstCharCapital(lastName)}
+            </p>
+          </div>
+        )}
+
+        {!isTrigger ? (
+          <div className="flex gap-2 items-center px-8 pl-14">
+            <div className="rounded-lg bg-green-400 p-2 w-2 h-2" />
+            <p className="text-white text-xs">
+              {role === 'client' ? 'Client`s account' : 'Bookkeeper account'}
+            </p>
+          </div>
+        ) : null}
+
+        <div className="flex px-8 w-full py-4 items-center">
           <p className="text-white p-2">
             {!isTrigger ? 'Church Sync Pro' : 'CSP'}
           </p>
@@ -250,24 +291,39 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
           ))}
         </div>
         {isTrigger ? (
-          <button
-            className="mt-auto transition transform duration-100 hover:bg-green-300 hover:text-primary text-white"
-            onClick={handleLogout}
-          >
-            <div className="flex gap-x-8  p-8 items-center">
-              <HiOutlineLogout size={30} />
-            </div>
-          </button>
+          <div className="flex flex-col">
+            <button className="mt-auto transition transform duration-100 hover:bg-[#FFC107] hover:text-primary text-white">
+              <div className="flex gap-x-8  p-8 items-center">
+                <BiHelpCircle size={30} className="group-hover:text-white" />
+              </div>
+            </button>
+            <button
+              className="mt-auto transition transform duration-100 hover:bg-[#FFC107] hover:text-primary text-white"
+              onClick={handleLogout}
+            >
+              <div className="flex gap-x-8  p-8 items-center">
+                <HiOutlineLogout size={30} className="group-hover:text-white" />
+              </div>
+            </button>
+          </div>
         ) : (
-          <button
-            className="mt-auto transition transform duration-100 hover:bg-green-300 hover:text-primary text-white"
-            onClick={handleLogout}
-          >
-            <div className="flex gap-x-8  p-8 items-center">
-              <HiOutlineLogout size={30} />
-              <p className="font-thin">Sign Out</p>
-            </div>
-          </button>
+          <div className="flex flex-col justify-end h-full ">
+            <button className="group transition transform duration-100 hover:bg-[#FFC107] hover:text-primary text-white">
+              <div className="flex gap-x-8  p-8 items-center">
+                <BiHelpCircle size={30} className="group-hover:text-white" />
+                <p className="font-normal group-hover:text-white">Ask Us</p>
+              </div>
+            </button>
+            <button
+              className="group transition transform duration-100 hover:bg-[#FFC107] hover:text-primary text-white"
+              onClick={handleLogout}
+            >
+              <div className="flex gap-x-8  p-8 items-center">
+                <HiOutlineLogout size={30} className="group-hover:text-white" />
+                <p className="font-normal group-hover:text-white">Log-out</p>
+              </div>
+            </button>
+          </div>
         )}
       </div>
     </aside>

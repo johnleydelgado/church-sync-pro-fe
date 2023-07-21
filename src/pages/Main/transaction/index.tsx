@@ -16,6 +16,7 @@ import { FundProps } from '../settings'
 import ReactDatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
 import SelectDateRange from '@/common/components/Select/SelectDateRange'
+import { BiSync } from 'react-icons/bi'
 
 export interface AttributesProps {
   batch: { id: string; attributes: any }
@@ -175,7 +176,7 @@ const Dashboard: FC<DashboardProps> = () => {
         ? fundData.map((item) => item.attributes.name)
         : []
       await Promise.all(
-        stripeData.map(async (a: { description: string }) => {
+        stripeData.map(async (a: { description: string }, indexArr: number) => {
           const description = a.description
           const regex = /#(\d+)/ // match the #
           const match = description?.match(regex)
@@ -185,15 +186,26 @@ const Dashboard: FC<DashboardProps> = () => {
             const index = filterFundName?.findIndex((word) =>
               description.includes(word),
             )
-            const str = filterFundName[index]
+
+            const email =
+              user.role === 'bookkeeper'
+                ? bookkeeper?.clientEmail || ''
+                : user.email
+
+            const fundName = filterFundName[index]
+
             if (index !== -1) {
-              if (str) {
+              if (fundName) {
                 const response = await syncStripePayout(
-                  user.email,
+                  email,
                   String(donationId),
-                  String(str),
+                  String(fundName),
                   payoutDate,
                 )
+
+                // if (indexArr === stripeData.length - 1) {
+                //   console.log('This is the last iteration')
+                // }
 
                 if (response === 'success') {
                   successNotification({
@@ -238,9 +250,43 @@ const Dashboard: FC<DashboardProps> = () => {
       ) : (
         <div className="flex h-full gap-4">
           <div className="rounded-lg p-8 bg-white w-screen">
-            <div className="justify-between flex w-full">
-              <span className="font-medium text-2xl">Transaction History</span>
+            {/* Header */}
+            <div className="pb-2">
+              <div className="flex flex-col border-b-2 pb-2">
+                <div className="flex items-center gap-2">
+                  <BiSync size={28} className="text-blue-400" />
+                  <span className="font-bold text-lg text-[#27A1DB]">
+                    Transaction History
+                  </span>
+                </div>
 
+                <div className="flex gap-4">
+                  <button
+                    className={`${
+                      isBatch ? 'text-gray-400 font-extrabold' : 'text-gray-400'
+                    } flex items-center gap-1`}
+                    onClick={() => setIsBatch(true)}
+                  >
+                    <p>Batch</p>
+                  </button>
+                  <p className="text-gray-400"> | </p>
+                  <button
+                    className={`${
+                      !isBatch
+                        ? 'text-gray-400 font-extrabold'
+                        : 'text-gray-400'
+                    } flex items-center gap-1`}
+                    onClick={() => setIsBatch(false)}
+                  >
+                    <p>Stripe Payout</p>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/*  */}
+
+            <div className="flex w-full">
               {/* <SelectDateRange onChange={handleDateChange} value={value} /> */}
               <div>
                 <SelectDateRange
@@ -249,25 +295,7 @@ const Dashboard: FC<DashboardProps> = () => {
                 />
               </div>
             </div>
-            <div className="flex gap-4">
-              <button
-                className={`${
-                  isBatch ? 'underline text-green-500' : 'text-gray-400'
-                } flex items-center gap-1`}
-                onClick={() => setIsBatch(true)}
-              >
-                <p>Batch</p>
-              </button>
-              <p> | </p>
-              <button
-                className={`${
-                  !isBatch ? 'underline text-green-500' : 'text-gray-400'
-                } flex items-center gap-1`}
-                onClick={() => setIsBatch(false)}
-              >
-                <p>Stripe Payout</p>
-              </button>
-            </div>
+
             {/* Table */}
             {isBatch ? (
               <BatchTable

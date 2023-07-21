@@ -27,7 +27,7 @@ const GoogleCallBack: FC<googleCallbackProps> = ({}) => {
             const userData = await getUserRelated(email)
             dispatch(setUserData({ email, id: userData.data.id || 0 }))
             // localStorage.setItem(storageKey.PERSONAL_TOKEN, email)
-            window.location.assign(route.SIGNUP_GOOGLE)
+            window.location.assign(route.SIGNUP)
           } else {
             const userData = await getUserRelated(email)
             const { id, role, firstName, lastName, churchName } = userData.data

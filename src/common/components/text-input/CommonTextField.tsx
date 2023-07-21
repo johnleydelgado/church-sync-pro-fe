@@ -31,7 +31,7 @@ const CommonTextField: FC<CommonTextFieldProps> = ({
 
   return (
     <div className="w-full relative">
-      <p className="text-gray-500 font-thin py-2">{title}</p>
+      <p className="text-gray-500 font-normal py-2">{title}</p>
       <TextInput
         id={name}
         type={isPassword && !showPassword ? 'password' : type}

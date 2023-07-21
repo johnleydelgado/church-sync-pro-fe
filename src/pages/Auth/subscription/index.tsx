@@ -1,11 +1,11 @@
-import React, { FC } from "react";
-import { FcCheckmark } from "react-icons/fc";
-import { Link } from "react-router-dom";
+import React, { FC } from 'react'
+import { FcCheckmark } from 'react-icons/fc'
+import { Link } from 'react-router-dom'
 interface indexProps {}
 
 const index: FC<indexProps> = () => {
   return (
-    <section className="bg-white h-screen font-montserrat font-thin flex flex-col">
+    <section className="bg-white h-screen font-lato font-thin flex flex-col">
       <nav className="bg-white px-2 py-2.5 sm:px-4">
         <div className="mx-auto flex flex-wrap items-center justify-between">
           <a className="flex">
@@ -158,7 +158,7 @@ const index: FC<indexProps> = () => {
         </Navbar.Collapse>
       </Navbar> */}
     </section>
-  );
-};
+  )
+}
 
-export default index;
+export default index

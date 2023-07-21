@@ -42,8 +42,8 @@ const Pagination: FC<PaginationProps> = ({
           <li key={page} className="p-1">
             <Button
               color="gray"
-              gradientMonochrome={`${page === currentPage ? 'success' : ''}`}
-              className="h-5 w-10 rounded-full"
+              gradientMonochrome={`${page === currentPage ? 'info' : ''}`}
+              className="h-8 w-8 rounded-full"
               onClick={() => onPageChange(page)}
             >
               {page}

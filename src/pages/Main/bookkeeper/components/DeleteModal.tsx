@@ -10,14 +10,11 @@ import { Dialog, Transition } from '@headlessui/react'
 import { Button } from '@material-tailwind/react'
 
 import React, { FC, Fragment, useState } from 'react'
-import { FiUserPlus } from 'react-icons/fi'
-import { HiOutlineMail } from 'react-icons/hi'
 import { useDispatch } from 'react-redux'
 import { useSelector } from 'react-redux'
 
-interface ModalRegistrationProps {
+interface ModalDeleteProps {
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'xxl'
-  refetch?: any
 }
 
 function isValidEmail(email: string): boolean {
@@ -25,7 +22,7 @@ function isValidEmail(email: string): boolean {
   return emailRegex.test(email)
 }
 
-const ModalInvitation: FC<ModalRegistrationProps> = ({ size, refetch }) => {
+const DeleteModal: FC<ModalDeleteProps> = ({ size }) => {
   const dispatch = useDispatch()
   const [email, setEmail] = useState<string>('')
   const [isSending, setIsSending] = useState<boolean>(false)
@@ -39,7 +36,7 @@ const ModalInvitation: FC<ModalRegistrationProps> = ({ size, refetch }) => {
     dispatch(CLOSE_MODAL(MODALS_NAME.invitation))
   }
 
-  const isOpen = openModals.includes(MODALS_NAME.invitation)
+  const isOpen = openModals.includes(MODALS_NAME.deleteBookeeper)
 
   const sendHandler = async () => {
     setIsSending(true)
@@ -55,7 +52,7 @@ const ModalInvitation: FC<ModalRegistrationProps> = ({ size, refetch }) => {
         email,
         user.id || 0,
       )
-      refetch()
+      //   refetch()
       successNotification({ title: 'Invite successfully sent !' })
     } catch (e) {
       console.log('e', e)
@@ -91,34 +88,26 @@ const ModalInvitation: FC<ModalRegistrationProps> = ({ size, refetch }) => {
               leaveTo="opacity-0 scale-95"
             >
               <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
-                <div className="flex justify-between px-4 items-center">
-                  <Dialog.Title
-                    as="h3"
-                    className="text-xl font-semibold leading-6 text-btmColor"
-                  >
-                    Send an invite
-                  </Dialog.Title>
-                  <FiUserPlus className="text-btmColor" size={30} />
-                </div>
+                <Dialog.Title
+                  as="h3"
+                  className="text-xl font-semibold leading-6 text-gray-900"
+                >
+                  Send an invite
+                </Dialog.Title>
 
                 <div className="flex flex-col gap-2">
                   <CommonTextField
                     name="email"
                     onChange={(e: any) => setEmail(e.target.value)}
-                    placeholder="type your e-mail here"
-                    title=""
+                    placeholder="@gmail.com"
+                    title="Email"
                     type="text"
                     value={email}
-                    icon={HiOutlineMail}
                   />
                   {isSending ? (
                     <Loading />
                   ) : (
-                    <Button
-                      className="text-btmColor underline underline-offset-8 text-xl tracking-wider"
-                      onClick={sendHandler}
-                      variant="text"
-                    >
+                    <Button className="bg-teal-700" onClick={sendHandler}>
                       Send
                     </Button>
                   )}
@@ -132,4 +121,4 @@ const ModalInvitation: FC<ModalRegistrationProps> = ({ size, refetch }) => {
   )
 }
 
-export default ModalInvitation
+export default DeleteModal

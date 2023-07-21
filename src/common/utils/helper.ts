@@ -22,4 +22,7 @@ const capitalAtFirstLetter = (str: string | undefined) => {
   return fString
 }
 
-export { formatUsd, formatDate, capitalAtFirstLetter }
+const getFirstCharCapital = (s: string | undefined) => {
+  return s ? s.charAt(0).toLocaleUpperCase() : null
+}
+export { formatUsd, formatDate, capitalAtFirstLetter, getFirstCharCapital }

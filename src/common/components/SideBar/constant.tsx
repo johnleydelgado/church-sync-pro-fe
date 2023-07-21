@@ -2,7 +2,7 @@ import { mainRoute } from '@/common/constant/route'
 import { HiBookmark, HiHome } from 'react-icons/hi'
 
 import { MdManageAccounts } from 'react-icons/md'
-import { BiTransfer } from 'react-icons/bi'
+import { BiSync, BiTransfer } from 'react-icons/bi'
 import { AiOutlineCloudSync } from 'react-icons/ai'
 import { FiSettings } from 'react-icons/fi'
 import {
@@ -21,7 +21,7 @@ const pages: PageProps[] = [
   {
     name: 'Transaction',
     link: '/transaction',
-    icon: <BiTransfer size={30} />,
+    icon: <BiSync size={30} />,
   },
   {
     name: 'Bookkeepers',

@@ -184,65 +184,71 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
           {fundData?.map((item: any, index: number) => (
             <div
               key={index}
-              className={`grid grid-cols-2 gap-2 py-4 ${
+              className={`flex flex-col gap-2 py-4 ${
                 index === fundData.length - 1 ? '' : 'border-b-[1px]'
               } `}
             >
               <div className="col-span-1 flex flex-col pr-6">
-                <p className="font-semibold text-slate-700">
+                <p className="font-semibold text-[#27A1DB]">
                   {item.attributes.name}
                 </p>
-                <p className="font-medium text-slate-500 text-sm">
+                <p className="font-normal text-gray-400 text-sm">
                   {item.attributes.description}
                 </p>
               </div>
               {isEmpty(qboData) && isEmpty(item.attributes.name) ? null : (
-                <div className="flex flex-col col-span-1 gap-4">
+                <div className="flex items-center gap-4">
                   {/* Accounts */}
-                  <p>Accounts</p>
-                  <Dropdown
-                    options={qboData?.accounts}
-                    components={{ Input }}
-                    onChange={(val) =>
-                      selectHandler({
-                        val,
-                        fundName: item.attributes.name,
-                        category: 'account',
-                      })
-                    }
-                    value={findDefaultValue(item.attributes.name, 'account')}
-                    className="w-72"
-                  />
+                  <div className="flex flex-col gap-2">
+                    <p>Accounts</p>
+                    <Dropdown
+                      options={qboData?.accounts}
+                      components={{ Input }}
+                      onChange={(val) =>
+                        selectHandler({
+                          val,
+                          fundName: item.attributes.name,
+                          category: 'account',
+                        })
+                      }
+                      value={findDefaultValue(item.attributes.name, 'account')}
+                      className="w-72"
+                    />
+                  </div>
                   {/* Classes */}
-                  <p>Classes</p>
-                  <Dropdown
-                    options={qboData?.classes}
-                    components={{ Input }}
-                    onChange={(val) =>
-                      selectHandler({
-                        val,
-                        fundName: item.attributes.name,
-                        category: 'class',
-                      })
-                    }
-                    value={findDefaultValue(item.attributes.name, 'class')}
-                    className="w-72"
-                  />
+                  <div className="flex flex-col gap-2">
+                    <p>Classes</p>
+                    <Dropdown
+                      options={qboData?.classes}
+                      components={{ Input }}
+                      onChange={(val) =>
+                        selectHandler({
+                          val,
+                          fundName: item.attributes.name,
+                          category: 'class',
+                        })
+                      }
+                      value={findDefaultValue(item.attributes.name, 'class')}
+                      className="w-72"
+                    />
+                  </div>
                   {/* Projects */}
-                  <p>Projects</p>
-                  <Dropdown
-                    options={qboData?.customers}
-                    components={{ Input }}
-                    onChange={(val) =>
-                      selectHandler({
-                        val,
-                        fundName: item.attributes.name,
-                        category: 'customer',
-                      })
-                    }
-                    value={findDefaultValue(item.attributes.name, 'customer')}
-                    className="w-72"
-                  />
+                  <div className="flex flex-col gap-2">
+                    <p>Projects</p>
+                    <Dropdown
+                      options={qboData?.customers}
+                      components={{ Input }}
+                      onChange={(val) =>
+                        selectHandler({
+                          val,
+                          fundName: item.attributes.name,
+                          category: 'customer',
+                        })
+                      }
+                      value={findDefaultValue(item.attributes.name, 'customer')}
+                      className="w-72"
+                    />
+                  </div>
                 </div>
               )}
             </div>

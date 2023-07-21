@@ -13,6 +13,9 @@ import { bookkeeperList } from '@/common/api/user'
 import { isEmpty } from 'lodash'
 import BookkeeperTableList from './components/Table'
 import Loading from '@/common/components/loading/Loading'
+import { HiOutlineUsers } from 'react-icons/hi'
+import { BsPersonAdd } from 'react-icons/bs'
+
 interface BookkeeperProps {}
 
 const Bookkeeper: FC<BookkeeperProps> = ({}) => {
@@ -36,19 +39,28 @@ const Bookkeeper: FC<BookkeeperProps> = ({}) => {
       <ModalInvitation refetch={refetch} />
       <div className="flex h-full gap-4">
         <div className="rounded-lg p-8 bg-white w-screen">
-          <div className="justify-between flex w-full">
-            <span className="font-medium text-2xl">Bookkeeper List</span>
-          </div>
-          <div className="flex gap-4 justify-end">
-            <button
-              className={`${
-                data?.length > 3 ? 'text-green-300' : 'text-green-500'
-              } flex items-center gap-1 hover:underline`}
-              onClick={openModal}
-              disabled={data?.length > 3 ? true : false}
-            >
-              <p>Add bookkeeper +</p>
-            </button>
+          {/* Header */}
+          <div className="pb-2">
+            <div className="flex flex-col border-b-2 pb-2">
+              <div className="flex items-center gap-2">
+                <HiOutlineUsers size={28} className="text-blue-400" />
+                <span className="font-bold text-lg text-[#27A1DB]">
+                  Bookkeepers
+                </span>
+              </div>
+              <div className="flex gap-4 pl-8">
+                <button
+                  className={`${
+                    data?.length > 3 ? 'text-gray-200' : 'text-[#979797]'
+                  } flex items-center gap-1 hover:underline`}
+                  onClick={openModal}
+                  disabled={data?.length > 3 ? true : false}
+                >
+                  <p>Add bookkeeper</p>
+                  <BsPersonAdd className="text-gray-700" />
+                </button>
+              </div>
+            </div>
           </div>
 
           {isLoading ? (

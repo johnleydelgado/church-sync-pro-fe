@@ -257,70 +257,75 @@ const Registration: FC<RegistrationProps> = ({
           {isEmpty(qboData)
             ? null
             : registrationSettingsData.map((a) => (
-                <div
-                  className="grid grid-cols-2 gap-2 py-4"
-                  key={a.registration}
-                >
+                <div className="flex flex-col gap-2 py-4" key={a.registration}>
                   <div className="col-span-1 flex flex-col pr-6">
-                    <p className="font-semibold text-slate-700">
+                    <p className="font-semibold text-[#27A1DB]">
                       {a.registration}
                     </p>
                   </div>
-                  <div className="flex flex-col col-span-1 gap-4">
+                  <div className="flex items-center gap-4">
                     {/* Accounts */}
-                    <p>Accounts</p>
-                    <Dropdown
-                      options={qboData?.accounts}
-                      components={{ Input }}
-                      onChange={(val) =>
-                        selectHandler({
-                          val,
-                          category: 'account',
-                          registration: a.registration || '',
-                        })
-                      }
-                      value={findDefaultValue(
-                        a.registration as string,
-                        'account',
-                      )}
-                      className="w-72"
-                    />
+                    <div className="flex flex-col gap-2">
+                      <p>Accounts</p>
+                      <Dropdown
+                        options={qboData?.accounts}
+                        components={{ Input }}
+                        onChange={(val) =>
+                          selectHandler({
+                            val,
+                            category: 'account',
+                            registration: a.registration || '',
+                          })
+                        }
+                        value={findDefaultValue(
+                          a.registration as string,
+                          'account',
+                        )}
+                        className="w-72"
+                      />
+                    </div>
+
                     {/* Classes */}
-                    <p>Classes</p>
-                    <Dropdown
-                      options={qboData?.classes}
-                      components={{ Input }}
-                      onChange={(val) =>
-                        selectHandler({
-                          val,
-                          category: 'class',
-                          registration: a.registration || '',
-                        })
-                      }
-                      value={findDefaultValue(
-                        a.registration as string,
-                        'class',
-                      )}
-                      className="w-72"
-                    />
+                    <div className="flex flex-col gap-2">
+                      <p>Classes</p>
+                      <Dropdown
+                        options={qboData?.classes}
+                        components={{ Input }}
+                        onChange={(val) =>
+                          selectHandler({
+                            val,
+                            category: 'class',
+                            registration: a.registration || '',
+                          })
+                        }
+                        value={findDefaultValue(
+                          a.registration as string,
+                          'class',
+                        )}
+                        className="w-72"
+                      />
+                    </div>
+
                     {/* Projects */}
-                    <p>Projects</p>
-                    <Dropdown
-                      options={qboData?.customers}
-                      components={{ Input }}
-                      onChange={(val) =>
-                        selectHandler({
-                          val,
-                          category: 'customer',
-                          registration: a.registration || '',
-                        })
-                      }
-                      value={findDefaultValue(
-                        a.registration as string,
-                        'customer',
-                      )}
-                      className="w-72"
-                    />
+                    <div className="flex flex-col gap-2">
+                      <p>Projects</p>
+                      <Dropdown
+                        options={qboData?.customers}
+                        components={{ Input }}
+                        onChange={(val) =>
+                          selectHandler({
+                            val,
+                            category: 'customer',
+                            registration: a.registration || '',
+                          })
+                        }
+                        value={findDefaultValue(
+                          a.registration as string,
+                          'customer',
+                        )}
+                        className="w-72"
+                      />
+                    </div>
                   </div>
                 </div>
               ))}

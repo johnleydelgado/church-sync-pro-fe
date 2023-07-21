@@ -231,7 +231,7 @@ const SecondaryLogin: FC<indexProps> = () => {
             <Loading />
           ) : (
             <div className="flex flex-col justify-center p-4 gap-6">
-              <p className="font-montserrat font-medium text-center text-lg">
+              <p className="font-lato font-medium text-center text-lg">
                 QBO and Planning Center
               </p>
               <LoginButton
@@ -260,7 +260,7 @@ const SecondaryLogin: FC<indexProps> = () => {
                rounded-lg bg-red-500 text-white justify-center"
                 onClick={onLogout}
               >
-                <span className="font-montserrat font-medium">Logout</span>
+                <span className="font-lato font-medium">Logout</span>
               </button>
             </div>
           )}

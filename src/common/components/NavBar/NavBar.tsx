@@ -22,9 +22,9 @@ const NavBar: FC<NavBarProps> = () => {
     (state: RootState) => state.common.user,
   )
   return (
-    <nav className="bg-white relative left-0 top-0 right-0 px-2 py-2.5 sm:px-8 flex-shrink h-24">
+    <nav className="bg-white relative left-0 top-0 right-0 px-2 py-2.5 sm:px-8 flex-shrink h-10">
       <div className="mx-auto flex flex-wrap">
-        <div className="flex justify-end w-full">
+        {/* <div className="flex justify-end w-full">
           <div className="bg-bg-slate-400 flex shadow-md p-4 rounded-2xl items-center justify-center gap-2">
             <div className="rounded-full p-2 bg-gray-400 text-white">
               <MdPerson3 />
@@ -32,13 +32,8 @@ const NavBar: FC<NavBarProps> = () => {
             <p className="font-normal text-black">
               {capitalAtFirstLetter(firstName)} {capitalAtFirstLetter(lastName)}
             </p>
-            {/* <Input
-              className="w-full"
-              placeholder="Search...."
-              variant="outlined"
-            /> */}
           </div>
-        </div>
+        </div> */}
       </div>
       {/* <div className="mx-auto flex flex-wrap justify-end"> */}
       {/* <div className="cursor-pointer hover:bg-slate-200 rounded-md p-4 group">

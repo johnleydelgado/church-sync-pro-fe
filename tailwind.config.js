@@ -9,15 +9,16 @@ module.exports = withMT({
   theme: {
     extend: {
       fontFamily: {
-        montserrat: ['Montserrat', 'sans-serif'],
+        lato: ['Lato', 'sans-serif'],
       },
       colors: {
         bgColor: 'rgba(227,242,253,255)',
-        primary: '#373B61',
+        primary: '#27A1DB',
         secondary: '#A7D5E5',
         cream: '#FCEFE9',
         grayBlue: '#EDEFFE',
         otherGray: '#fefefe',
+        btmColor: '#25A1DA'
       },
       transitionProperty: {
         width: 'width',

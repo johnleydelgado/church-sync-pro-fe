@@ -185,86 +185,105 @@ const ViewDetails: FC<indexProps> = ({}) => {
         <Loading />
       ) : isEmpty(finalData) ? null : (
         <div className="flex flex-col h-full gap-4 font-sans">
-          <button
+          {/* <button
             onClick={() => navigation(mainRoute.TRANSACTION)}
             className="pb-2 flex gap-2 w-32 items-center transform hover:scale-105 duration-75 ease-linear"
           >
             <IoIosArrowBack />
             <p>Back</p>
-          </button>
+          </button> */}
           <div className="rounded-lg bg-white h-5/6">
+            <div className="flex items-center gap-2">
+              <BiSync size={28} className="text-blue-400" />
+              <span className="font-bold text-lg text-[#27A1DB]">
+                Transaction
+              </span>
+            </div>
+
             <div className="p-8 flex flex-col gap-16">
               {/* Header */}
-              <div className="flex flex-col gap-2">
-                <span className="font-normal text-2xl">
-                  Batch : ({finalData.batches?.batch.attributes.description}) |{' '}
-                  {format(
-                    parseISO(
-                      finalData.batches?.batch.attributes.committed_at || '',
-                    ),
-                    'M/d/yyyy',
-                  )}
-                </span>
-                <div>
-                  {!isEmpty(finalData.synchedBatches) ? (
-                    <div className="flex gap-4">
-                      <span className="text-slate-500 font-normal text-sm">
-                        {finalData &&
-                        finalData.synchedBatches &&
-                        finalData.synchedBatches.length > 0 &&
-                        finalData.synchedBatches[0]?.createdAt
-                          ? `Synched Planning Center to QuickBooks Online | Last synched at ${format(
-                              parseISO(finalData.synchedBatches[0].createdAt),
-                              "hh:mm aaaa 'on' EEEE MMMM d, yyyy",
-                            )} | `
-                          : // Provide a fallback string or component when synchedBatches is undefined or empty
-                            'No sync data available'}
-                      </span>
-                      <button
-                        className="text-orange-600 flex items-center gap-1"
-                        onClick={() => triggerUnSync()}
-                      >
-                        <BiSync
-                          className={`${
-                            isSynching ? 'animate-spin' : 'animate-none'
-                          }`}
-                        />
-                        <p className="underline">Remove sync</p>
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex gap-4">
-                      <p>Not Sync | </p>
-                      <button
-                        className="text-green-600 flex items-center gap-1"
-                        onClick={() =>
-                          triggerSyncBatch({
-                            dataBatch: finalData.batches?.batch,
-                            batchId: finalData.batches?.batch.id || '',
-                            batchName:
-                              finalData.batches?.batch.attributes.description ||
-                              '',
-                          })
-                        }
-                      >
-                        <BiSync
-                          className={`${
-                            isSynching ? 'animate-spin' : 'animate-none'
-                          }`}
-                        />
-                        <p className="underline">Sync</p>
-                      </button>
-                    </div>
-                  )}
+              <div className="bg-[#FAB40099] flex items-center -mx-14">
+                <button
+                  onClick={() => navigation(mainRoute.TRANSACTION)}
+                  className="flex gap-2  items-center transform hover:scale-105 duration-75 ease-linear pr-2"
+                >
+                  <IoIosArrowBack size={32} className="text-white" />
+                </button>
+                <div className="flex flex-col gap-2 pl-4 py-2">
+                  <span className="font-normal text-xl text-[#1b1b1bcc]">
+                    Batch : ({finalData.batches?.batch.attributes.description})
+                    |{' '}
+                    {format(
+                      parseISO(
+                        finalData.batches?.batch.attributes.committed_at || '',
+                      ),
+                      'M/d/yyyy',
+                    )}
+                  </span>
+                  <div>
+                    {!isEmpty(finalData.synchedBatches) ? (
+                      <div className="flex gap-4">
+                        <span className="text-slate-500 font-normal text-sm text-[#1b1b1bcc]">
+                          {finalData &&
+                          finalData.synchedBatches &&
+                          finalData.synchedBatches.length > 0 &&
+                          finalData.synchedBatches[0]?.createdAt
+                            ? `Synched Planning Center to QuickBooks Online | Last synched at ${format(
+                                parseISO(finalData.synchedBatches[0].createdAt),
+                                "hh:mm aaaa 'on' EEEE MMMM d, yyyy",
+                              )} | `
+                            : // Provide a fallback string or component when synchedBatches is undefined or empty
+                              'No sync data available'}
+                        </span>
+                        <button
+                          className="text-orange-500 flex items-center gap-1"
+                          onClick={() => triggerUnSync()}
+                        >
+                          <BiSync
+                            className={`${
+                              isSynching ? 'animate-spin' : 'animate-none'
+                            }`}
+                          />
+                          <p className="underline">Remove sync</p>
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-4">
+                        <p className="text-[#1b1b1bcc]">Not Sync | </p>
+                        <button
+                          className="text-[#27A1DB] flex items-center gap-1"
+                          onClick={() =>
+                            triggerSyncBatch({
+                              dataBatch: finalData.batches?.batch,
+                              batchId: finalData.batches?.batch.id || '',
+                              batchName:
+                                finalData.batches?.batch.attributes
+                                  .description || '',
+                            })
+                          }
+                        >
+                          <BiSync
+                            className={`${
+                              isSynching ? 'animate-spin' : 'animate-none'
+                            }`}
+                          />
+                          <p className="underline">Sync</p>
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
+
               {/* Content Header */}
               <div className="">
-                <span className="font-normal text-2xl">Batch Summary</span>
-                <div className="border-[1px] flex justify-between p-8 mt-2 rounded-lg">
+                <span className="font-normal text-2xl text-[#FAB400]">
+                  Batch Summary
+                </span>
+                <div className="border-y-[1px] flex justify-between p-8 mt-2 border-[#FAB400] bg-[#D9D9D933]">
                   <div className="flex flex-col gap-2">
-                    <p>Total Amount</p>
-                    <p className="font-light text-slate-500">
+                    <p className="font-semibold text-gray-500">Total Amount</p>
+                    <p className="font-light text-gray-500">
                       {formatUsd(
                         String(finalData.batches?.batch.attributes.total_cents),
                       )}
@@ -272,15 +291,19 @@ const ViewDetails: FC<indexProps> = ({}) => {
                   </div>
 
                   <div className="flex flex-col gap-2">
-                    <p>No. Of Donations</p>
-                    <p className="font-light text-slate-500 text-center">
+                    <p className="font-semibold text-gray-500">
+                      No. Of Donations
+                    </p>
+                    <p className="font-light text-gray-500 text-center">
                       {finalData.batches?.donations?.length}
                     </p>
                   </div>
 
                   <div className="flex flex-col gap-2">
-                    <p>Batch Created Date</p>
-                    <p className="font-light text-slate-500">
+                    <p className="font-semibold text-gray-500">
+                      Batch Created Date
+                    </p>
+                    <p className="font-light text-gray-500">
                       {format(
                         parseISO(
                           finalData.batches?.batch.attributes.created_at || '',
@@ -291,8 +314,10 @@ const ViewDetails: FC<indexProps> = ({}) => {
                   </div>
 
                   <div className="flex flex-col gap-2">
-                    <p>Batch Committed Date</p>
-                    <p className="font-light text-slate-500">
+                    <p className="font-semibold text-gray-500">
+                      Batch Committed Date
+                    </p>
+                    <p className="font-light text-gray-500">
                       {format(
                         parseISO(
                           finalData.batches?.batch.attributes.committed_at ||
@@ -307,20 +332,34 @@ const ViewDetails: FC<indexProps> = ({}) => {
 
               {/* BODY */}
               <Table>
-                <Table.Head>
-                  <Table.HeadCell>Date</Table.HeadCell>
-                  <Table.HeadCell>Amount</Table.HeadCell>
-                  <Table.HeadCell>Donor</Table.HeadCell>
-                  <Table.HeadCell>Fund</Table.HeadCell>
-                  <Table.HeadCell>Payment Method</Table.HeadCell>
+                <Table.Head className="border-b-2 border-[#FAB400]">
+                  <Table.HeadCell className="text-[#FAB400]">
+                    Date
+                  </Table.HeadCell>
+                  <Table.HeadCell className="text-[#FAB400]">
+                    Amount
+                  </Table.HeadCell>
+                  <Table.HeadCell className="text-[#FAB400]">
+                    Donor
+                  </Table.HeadCell>
+                  <Table.HeadCell className="text-[#FAB400]">
+                    Fund
+                  </Table.HeadCell>
+                  <Table.HeadCell className="text-[#FAB400]">
+                    Payment Method
+                  </Table.HeadCell>
                 </Table.Head>
                 <Table.Body className="divide-y">
-                  {finalData.batches?.donations.map((item) => (
+                  {finalData.batches?.donations.map((item, index: number) => (
                     <Table.Row
-                      className="bg-white dark:border-gray-700 dark:bg-gray-800"
+                      className={`${
+                        index % 2 === 0
+                          ? 'bg-gray-50 dark:bg-gray-800'
+                          : 'bg-white dark:bg-gray-900'
+                      } border-b border-[#FAB400] dark:border-gray-700 [&>*]:px-6 [&>*]:py-4`}
                       key={item.donation.id}
                     >
-                      <Table.Cell className="whitespace-nowrap font-medium text-gray-900 dark:text-white">
+                      <Table.Cell className="whitespace-nowrap font-medium dark:text-white">
                         {format(
                           parseISO(item.donation.attributes.received_at || ''),
                           'M/d/yyyy',

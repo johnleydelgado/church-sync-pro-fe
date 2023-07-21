@@ -70,7 +70,7 @@ const BatchTable: FC<BatchTableProps> = ({
   return !isEmpty(finalData) ? (
     <div className="relative overflow-x-auto pt-8">
       <table className="w-full text-sm text-left text-gray-500">
-        <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700">
+        <thead className="text-xs text-[#FAB400] uppercase bg-white dark:bg-gray-700 border-y-2 border-[#FAB400]">
           <tr className="[&>*]:px-6 [&>*]:py-3">
             <th scope="col" className="">
               Batch Date
@@ -97,9 +97,13 @@ const BatchTable: FC<BatchTableProps> = ({
         </thead>
         <tbody className="[&>*]:h-20 text-left">
           {!isEmpty(finalData)
-            ? finalData.map((item: any) => (
+            ? finalData.map((item: any, index: number) => (
                 <tr
-                  className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 [&>*]:px-6 [&>*]:py-4"
+                  className={`${
+                    index % 2 === 0
+                      ? 'bg-gray-50 dark:bg-gray-800'
+                      : 'bg-white dark:bg-gray-900'
+                  } border-b border-[#FAB400] dark:border-gray-700 [&>*]:px-6 [&>*]:py-4`}
                   key={item.batch.id}
                 >
                   <td className="">
@@ -162,14 +166,14 @@ const BatchTable: FC<BatchTableProps> = ({
                           />
                         </button>
                       ) : (
-                        <HiCheckCircle className="text-green-500" size={32} />
+                        <HiCheckCircle className="text-[#FAB400]" size={32} />
                       )}
                     </div>
                   </td>
                   <td className="">
                     <div className="h-10 lg:text-center xl:text-right">
                       <Link
-                        className="p-2 underline text-green-600"
+                        className="p-2 underline text-[#FAB400] font-semibold"
                         to={`/transaction/view-page/${item.batch.id}`}
                       >
                         View Details

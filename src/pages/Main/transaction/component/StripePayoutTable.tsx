@@ -1,4 +1,4 @@
-import React, { FC } from 'react'
+import React, { FC, useState } from 'react'
 import { BatchesProps } from '..'
 import { formatDate, formatUsd } from '@/common/utils/helper'
 import { isEmpty } from 'lodash'
@@ -30,30 +30,28 @@ const StripePayoutTable: FC<BatchTableProps> = ({
 }) => {
   const { user } = useSelector((state: RootState) => state.common)
   const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
+  const [dateRange, setDateRange] = useState({ startDate: '', endDate: '' })
 
-  const { data: dataBatches } = useQuery<{
-    batches: [{ donations: [] }]
-    synchedBatches: [{ batchId: string }]
-  }>(
-    ['getBatches'], // Same query key as in the first page
+  const { data: dataBatches } = useQuery<BatchesProps>(
+    ['getBatches', dateRange, bookkeeper],
     async () => {
       const email =
         user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-      if (email) return await pcGetBatches(email)
+      if (email) return await pcGetBatches(email, dateRange)
+      return []
     },
     {
-      staleTime: Infinity, // The data will be considered fresh indefinitely
+      refetchOnWindowFocus: false,
+      staleTime: Infinity,
     },
   )
 
   const isSync = (date: string): boolean => {
     const arr = dataBatches?.synchedBatches
-
     if (arr?.length) {
       const arrDates = arr.reduce((dates: string[], item) => {
         const regex = /(\d{1,2}\/\d{1,2}\/\d{4})/ // Match a date in MM/DD/YYYY format
         const match = item.batchId.match(regex)
-
         if (match && match[1]) {
           const date = match[1]
           dates.push(date)
@@ -69,7 +67,7 @@ const StripePayoutTable: FC<BatchTableProps> = ({
   return !isEmpty(data) ? (
     <div className="relative overflow-x-auto pt-8">
       <table className="w-full text-sm text-left text-gray-500">
-        <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700">
+        <thead className="text-xs text-[#FAB400] uppercase bg-white dark:bg-gray-700 border-y-2 border-[#FAB400]">
           <tr className="[&>*]:px-6 [&>*]:py-3">
             <th scope="col" className="">
               Stripe payout amount
@@ -96,9 +94,13 @@ const StripePayoutTable: FC<BatchTableProps> = ({
         </thead>
         <tbody className="[&>*]:h-20 text-left">
           {!isEmpty(data)
-            ? data?.map((item: any) => (
+            ? data?.map((item: any, index: number) => (
                 <tr
-                  className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 [&>*]:px-6 [&>*]:py-4"
+                  className={`${
+                    index % 2 === 0
+                      ? 'bg-gray-50 dark:bg-gray-800'
+                      : 'bg-white dark:bg-gray-900'
+                  } border-b border-[#FAB400] dark:border-gray-700 [&>*]:px-6 [&>*]:py-4`}
                   key={item.payoutDate}
                 >
                   <td className="">
@@ -138,7 +140,7 @@ const StripePayoutTable: FC<BatchTableProps> = ({
                   <td className="">
                     <div className="flex h-10 justify-end">
                       {isSync(item.payoutDate) ? (
-                        <HiCheckCircle className="text-green-500" size={32} />
+                        <HiCheckCircle className="text-[#FAB400]" size={32} />
                       ) : (
                         <button
                           className="mr-2"
@@ -167,7 +169,7 @@ const StripePayoutTable: FC<BatchTableProps> = ({
                   <td className="">
                     <div className="h-10 lg:text-center xl:text-right">
                       <Link
-                        className="p-2 underline text-green-600"
+                        className="p-2 underline text-[#FAB400] font-semibold"
                         to={`/transaction/view-page-stripe/${getUnixTime(
                           new Date(item.payoutDate),
                         )}`}

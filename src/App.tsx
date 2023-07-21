@@ -16,7 +16,7 @@ import MainUnAuthPage from './pages/MainPage'
 import { persistor, store } from './redux/store'
 import 'react-toastify/dist/ReactToastify.css'
 import { useEffect, useMemo } from 'react'
-const { REACT_APP_HOST_BE } = process.env
+const { REACT_APP_HOST_BE, REACT_APP_GOOGLE_CALLBACK_URL } = process.env
 
 function App() {
   const queryClient = new QueryClient()
@@ -60,6 +60,8 @@ function App() {
       // setIsLoading(false);
     }
   }, [secretValue])
+
+  console.log(REACT_APP_GOOGLE_CALLBACK_URL, REACT_APP_HOST_BE)
 
   return (
     <Provider store={store}>

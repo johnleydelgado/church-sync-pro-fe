@@ -1,5 +1,7 @@
 import { formatDate } from '@/common/utils/helper'
 import React, { FC } from 'react'
+import { AiOutlineDelete } from 'react-icons/ai'
+import { FiDelete } from 'react-icons/fi'
 
 interface Data {
   id: number
@@ -16,7 +18,7 @@ const BookkeeperTableList: FC<TableProps> = ({ data }) => {
   return (
     <div className="relative overflow-x-auto pt-8">
       <table className="w-full text-sm text-left text-gray-500">
-        <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700">
+        <thead className="text-xs text-[#FAB400] uppercase bg-white dark:bg-gray-700 border-y-2 border-[#FAB400]">
           <tr className="[&>*]:px-6 [&>*]:py-3">
             <th scope="col" className="">
               Email
@@ -24,15 +26,22 @@ const BookkeeperTableList: FC<TableProps> = ({ data }) => {
             <th scope="col" className="">
               Confirmation Status
             </th>
-            <th scope="col" className="flex justify-end">
+            <th scope="col" className="">
               Date of Invitation
+            </th>
+            <th scope="col" className="flex justify-end">
+              Action
             </th>
           </tr>
         </thead>
         <tbody className="[&>*]:h-20 text-left">
           {data?.map((item, index) => (
             <tr
-              className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 [&>*]:px-6 [&>*]:py-4"
+              className={`${
+                index % 2 === 0
+                  ? 'bg-gray-50 dark:bg-gray-800'
+                  : 'bg-white dark:bg-gray-900'
+              } border-b border-[#FAB400] dark:border-gray-700 [&>*]:px-6 [&>*]:py-4`}
               key={item.id}
             >
               <td className="">
@@ -48,8 +57,16 @@ const BookkeeperTableList: FC<TableProps> = ({ data }) => {
                 </div>
               </td>
               <td className="">
-                <div className="h-10 flex justify-end">
-                  {formatDate(item.createdAt)}
+                <div className="h-10 flex">{formatDate(item.createdAt)}</div>
+              </td>
+              <td className="">
+                <div className="flex justify-end">
+                  <button className="group hover:bg-[#FAB400] rounded-2xl p-2">
+                    <AiOutlineDelete
+                      size={20}
+                      className={`text-red-600 group-hover:text-white`}
+                    />
+                  </button>
                 </div>
               </td>
             </tr>

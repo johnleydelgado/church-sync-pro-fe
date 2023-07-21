@@ -22,6 +22,8 @@ import Account, { AccountTokenDataProps } from './component/Account'
 import Donation from './component/Donation'
 import { successNotification } from '@/common/utils/toast'
 import { isEmpty } from 'lodash'
+import { MdSettings } from 'react-icons/md'
+import { FiDivide } from 'react-icons/fi'
 
 const Input = (props: any) => (
   <components.Input
@@ -180,8 +182,8 @@ const Settings: FC<SettingsProps> = () => {
       {isLoading || isQboDataLoading ? (
         <Loading />
       ) : (
-        <div className="bg-[#fbfafd] -m-6 p-6 h-full">
-          <p className="text-4xl pb-8 text-slate-700">Settings</p>
+        <div className="bg-white -m-6 p-6 h-full">
+          {/* <p className="text-4xl pb-8 text-slate-700">Settings</p>
           <div className="flex flex-col gap-2">
             <p className="text-xl text-slate-600 font-thin">
               Automatic Transaction
@@ -203,29 +205,64 @@ const Settings: FC<SettingsProps> = () => {
                 enable automatic transaction ?
               </label>
             </div>
+          </div> */}
+
+          {/* Header */}
+          <div className="pb-2">
+            <div className="flex flex-col border-b-2 pb-2">
+              <div className="flex items-center gap-2">
+                <MdSettings size={28} className="text-blue-400" />
+                <span className="font-bold text-lg text-[#27A1DB]">
+                  Settings
+                </span>
+              </div>
+
+              <div className="flex items-center mb-4 p-2">
+                <input
+                  id="default-checkbox"
+                  type="checkbox"
+                  value=""
+                  checked={isAutomationEnable}
+                  onChange={() => enableDisableAutomation()}
+                  className="w-4 h-4 text-slate-600 bg-gray-100 border-gray-300 rounded"
+                  disabled={isEmpty(userData?.UserSetting) ? true : false}
+                />
+                <label
+                  htmlFor="default-checkbox"
+                  className="ml-2 font-thin text-gray-900 text-xl"
+                >
+                  enable automatic transaction ?
+                </label>
+              </div>
+            </div>
           </div>
+
           <Tab.Group>
-            <div className="flex justify-center">
-              <Tab.List className="flex space-x-1 rounded-xl bg-white px-4 py-2 w-96 shadow-lg">
-                {Object.keys(categories).map((category) => (
-                  <Tab
-                    key={category}
-                    disabled={
-                      (category === 'Donation' ||
-                        category === 'Registration') &&
-                      !isUserTokens
-                    }
-                    className={({ selected }) =>
-                      classNames(
-                        'w-full rounded-lg py-2.5 text-sm font-medium leading-5 text-gray-600',
-                        selected
-                          ? 'bg-green-500 shadow text-white'
-                          : 'hover:bg-white/[0.12] hover:text-black',
-                      )
-                    }
-                  >
-                    {category}
-                  </Tab>
+            <div className="flex">
+              <Tab.List className="flex space-x-1 rounded-xl bg-transparent px-4 py-2 w-96">
+                {Object.keys(categories).map((category, index: number) => (
+                  <div className="flex items-center" key={category}>
+                    <Tab
+                      disabled={
+                        (category === 'Donation' ||
+                          category === 'Registration') &&
+                        !isUserTokens
+                      }
+                      className={({ selected }) =>
+                        classNames(
+                          'flex items-center w-full rounded-lg p-2.5 text-sm font-medium leading-5 text-gray-400',
+                          selected
+                            ? 'bg-[#FAB400] shadow text-white'
+                            : 'hover:bg-white/[0.12] hover:text-black',
+                        )
+                      }
+                    >
+                      {category}
+                    </Tab>
+                    {index === Object.keys(categories).length - 1 ? null : (
+                      <p className="text-gray-400 pl-2"> | </p>
+                    )}
+                  </div>
                 ))}
               </Tab.List>
             </div>
