@@ -1,7 +1,11 @@
+import { MODALS_NAME } from '@/common/constant/modal'
 import { formatDate } from '@/common/utils/helper'
+import { OPEN_MODAL } from '@/redux/common'
+import { setDeleteBookkeeper } from '@/redux/nonPersistState'
 import React, { FC } from 'react'
 import { AiOutlineDelete } from 'react-icons/ai'
 import { FiDelete } from 'react-icons/fi'
+import { useDispatch } from 'react-redux'
 
 interface Data {
   id: number
@@ -15,6 +19,12 @@ interface TableProps {
 }
 
 const BookkeeperTableList: FC<TableProps> = ({ data }) => {
+  const dispatch = useDispatch()
+  const openDeleteModal = (id: string, email: string) => {
+    dispatch(OPEN_MODAL(MODALS_NAME.deleteBookeeper))
+    dispatch(setDeleteBookkeeper({ id, email }))
+  }
+
   return (
     <div className="relative overflow-x-auto pt-8">
       <table className="w-full text-sm text-left text-gray-500">
@@ -61,7 +71,10 @@ const BookkeeperTableList: FC<TableProps> = ({ data }) => {
               </td>
               <td className="">
                 <div className="flex justify-end">
-                  <button className="group hover:bg-[#FAB400] rounded-2xl p-2">
+                  <button
+                    className="group hover:bg-[#FAB400] rounded-2xl p-2"
+                    onClick={() => openDeleteModal(String(item.id), item.email)}
+                  >
                     <AiOutlineDelete
                       size={20}
                       className={`text-red-600 group-hover:text-white`}

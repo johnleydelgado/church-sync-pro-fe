@@ -12,7 +12,7 @@ const usePagination = ({ filteredData, itemPerPage = 10 }: PaginationProps) => {
   const endIndex = startIndex + itemPerPage
   const currentPageData =
     !isEmpty(filteredData) && filteredData?.batches.slice(startIndex, endIndex)
-  const totalItems = filteredData?.batches.length || 0
+  const totalItems = filteredData?.batches?.length || 0
 
   return {
     currentPageData,

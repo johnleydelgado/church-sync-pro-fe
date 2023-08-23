@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { FC, useEffect, useState } from 'react'
+import React, { FC, ReactNode, useEffect, useState } from 'react'
 import { CgArrowLeft, CgChevronDoubleDown } from 'react-icons/cg'
 import { HiOutlineLogout, HiOutlineUserCircle } from 'react-icons/hi'
 import { useMediaQuery } from 'react-responsive'
 import { useLocation } from 'react-router'
 import Session from 'supertokens-web-js/recipe/session'
-
-import pages from './constant'
+import { FaChevronDown, FaChevronUp } from 'react-icons/fa'
+import pages, { DropdownLink } from './constant'
 import { storage, storageKey } from '@/common/utils/storage'
 import { useDispatch } from 'react-redux'
 import {
@@ -23,6 +23,7 @@ import {
   BiChevronDown,
   BiChevronUp,
   BiHelpCircle,
+  BiSortDown,
   BiUser,
 } from 'react-icons/bi'
 import { useQuery } from 'react-query'
@@ -38,6 +39,8 @@ import {
   capitalAtFirstLetter,
   getFirstCharCapital,
 } from '@/common/utils/helper'
+import { Link } from 'react-router-dom'
+import { mainRoute } from '@/common/constant/route'
 
 interface SideBarProps {
   isTrigger: boolean
@@ -51,6 +54,8 @@ interface ItemSideBarProps {
   link?: string
   pathName?: string
   isHide?: boolean
+  withDropdown?: boolean
+  dropdownLinks?: DropdownLink[]
 }
 
 interface Token {
@@ -81,6 +86,67 @@ const Input = (props: any) => (
   />
 )
 
+function Accordion({
+  title,
+  icon,
+  dropdownLinks,
+}: {
+  title: string
+  icon: ReactNode
+  dropdownLinks?: { name: string; link: string }[]
+}) {
+  const route = useLocation()
+  const [expanded, setExpanded] = useState(
+    route.pathname.includes(title.toLocaleLowerCase()),
+  ) // auto expand if the route contains a hardware or software string
+
+  const toggleExpanded = () => setExpanded((current) => !current)
+
+  return (
+    <div className="flex flex-wrap pl-4">
+      <div
+        className="flex flex-1 cursor-pointer items-center"
+        onClick={toggleExpanded}
+      >
+        {icon}
+        <p className="pl-8 text-slate-500">{title}</p>
+        <div className="flex flex-1 justify-end">
+          {expanded ? (
+            <FaChevronUp size={12} color="white" className="ml-2" />
+          ) : (
+            <FaChevronDown size={12} color="white" className="ml-2" />
+          )}
+        </div>
+      </div>
+      <div
+        className={`items-left flex w-full flex-col overflow-hidden pl-6 transition-[max-height] duration-300 ease-out ${
+          expanded ? '' : 'max-h-0'
+        }`}
+      >
+        {!dropdownLinks || isEmpty(dropdownLinks)
+          ? null
+          : dropdownLinks.map((item) => (
+              <div
+                key={item.name}
+                className={`mt-4 gap-4 flex cursor-pointer rounded-md text-left text-slate-400 p-2 items-center ${
+                  route.pathname === item.link ? 'bg-[#FFC107]' : ''
+                }`}
+              >
+                {item.name === 'Mapping' ? (
+                  <BiSortDown size={22} className="ml-2" />
+                ) : null}
+                <Link
+                  to={`${item.link}`} //ex. hardware/all
+                >
+                  {item.name}
+                </Link>
+              </div>
+            ))}
+      </div>
+    </div>
+  )
+}
+
 const ItemSideBar = ({
   icon,
   name,
@@ -88,24 +154,28 @@ const ItemSideBar = ({
   link,
   pathName,
   isHide,
+  withDropdown,
+  dropdownLinks,
 }: ItemSideBarProps) => (
   <>
-    {isHide ? null : isTrigger ? (
+    {withDropdown ? (
+      <Accordion title={name} icon={icon} dropdownLinks={dropdownLinks} />
+    ) : isHide ? null : isTrigger ? (
       <a
         className={`flex gap-x-8 items-center p-2 transition transform hover:text-primary
-   duration-100 hover:bg-[#FFC107] rounded-md ${
-     pathName?.includes(link || '') ? 'bg-[#FFC107]' : ''
-   }`}
-        href="/"
+       duration-100 hover:bg-[#FFC107] rounded-md ${
+         pathName?.includes(link || '') ? 'bg-[#FFC107]' : ''
+       }`}
+        href={link}
       >
         {icon}
       </a>
     ) : (
       <a
         className={`flex gap-x-8 items-center px-4 py-2 transition transform hover:text-primary
-   duration-100 hover:bg-[#FFC107] ${
-     pathName?.includes(link || '') ? 'bg-[#FFC107]' : ''
-   } rounded-md`}
+       duration-100 hover:bg-[#FFC107] ${
+         pathName?.includes(link || '') ? 'bg-[#FFC107]' : ''
+       } rounded-md`}
         href={link}
       >
         {icon}
@@ -202,8 +272,18 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
           <CgArrowLeft className="text-white" size={30} />
         </div>
 
+        <div
+          className={`flex ${
+            !isTrigger ? 'px-8' : 'px-5'
+          } w-full pt-2 items-center`}
+        >
+          <p className="text-white p-2 text-xl">
+            {!isTrigger ? 'Church Sync Pro' : 'CSP'}
+          </p>
+        </div>
+
         {!isTrigger ? (
-          <div className="flex gap-2 items-center pt-8 px-8 w-full">
+          <div className="flex gap-2 items-center px-8 w-full">
             <HiOutlineUserCircle size={32} color="white" />
             <p className="text-white p-2">
               {capitalAtFirstLetter(firstName) +
@@ -223,7 +303,7 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
         )}
 
         {!isTrigger ? (
-          <div className="flex gap-2 items-center px-8 pl-14">
+          <div className="flex gap-2 items-center px-8 pb-8 pl-14">
             <div className="rounded-lg bg-green-400 p-2 w-2 h-2" />
             <p className="text-white text-xs">
               {role === 'client' ? 'Client`s account' : 'Bookkeeper account'}
@@ -231,11 +311,6 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
           </div>
         ) : null}
 
-        <div className="flex px-8 w-full py-4 items-center">
-          <p className="text-white p-2">
-            {!isTrigger ? 'Church Sync Pro' : 'CSP'}
-          </p>
-        </div>
         {!isEmpty(data) ? (
           <div className="flex flex-col items-center w-full gap-4 pb-8">
             <Button
@@ -292,11 +367,16 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
         </div>
         {isTrigger ? (
           <div className="flex flex-col">
-            <button className="mt-auto transition transform duration-100 hover:bg-[#FFC107] hover:text-primary text-white">
+            <Link
+              to={mainRoute.ASK_US}
+              className={`mt-auto transition transform duration-100 hover:bg-[#FFC107] hover:text-primary text-white bg-[${
+                location.pathname === '/ask-us' ? '#FFC107' : ''
+              }]`}
+            >
               <div className="flex gap-x-8  p-8 items-center">
                 <BiHelpCircle size={30} className="group-hover:text-white" />
               </div>
-            </button>
+            </Link>
             <button
               className="mt-auto transition transform duration-100 hover:bg-[#FFC107] hover:text-primary text-white"
               onClick={handleLogout}
@@ -308,12 +388,17 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
           </div>
         ) : (
           <div className="flex flex-col justify-end h-full ">
-            <button className="group transition transform duration-100 hover:bg-[#FFC107] hover:text-primary text-white">
+            <Link
+              to={mainRoute.ASK_US}
+              className={`group transition transform duration-100 hover:bg-[#FFC107] hover:text-primary text-white bg-[${
+                location.pathname === '/ask-us' ? '#FFC107' : ''
+              }]`}
+            >
               <div className="flex gap-x-8  p-8 items-center">
                 <BiHelpCircle size={30} className="group-hover:text-white" />
                 <p className="font-normal group-hover:text-white">Ask Us</p>
               </div>
-            </button>
+            </Link>
             <button
               className="group transition transform duration-100 hover:bg-[#FFC107] hover:text-primary text-white"
               onClick={handleLogout}

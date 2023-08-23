@@ -250,7 +250,7 @@ const SignUp: FC<SignUpProps> = () => {
     //     </form>
     //   </div>
     // </div>
-    <div className="h-screen flex font-lato">
+    <div className="h-full flex font-lato">
       <div
         className="flex-grow"
         style={{
@@ -261,7 +261,7 @@ const SignUp: FC<SignUpProps> = () => {
       >
         <div
           style={{ backgroundColor: 'rgba(251, 251, 251, 0.5)' }}
-          className="w-[520px] absolute top-1/2 transform -translate-y-1/2 right-28 shadow-2xl rounded-3xl"
+          className="w-[520px] h-5/6 overflow-auto absolute top-1/2 transform -translate-y-1/2 right-28 shadow-2xl rounded-3xl"
         >
           <div className="flex flex-col gap-2 p-12 items-center">
             {/* <div

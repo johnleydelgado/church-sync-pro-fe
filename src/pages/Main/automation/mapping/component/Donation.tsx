@@ -2,7 +2,6 @@ import { isEmpty } from 'lodash'
 import React, { FC, useEffect, useState } from 'react'
 import { useMutation, useQuery } from 'react-query'
 import Dropdown, { components } from 'react-select'
-import { BqoDataSelectProps } from '..'
 import { QboGetAllQboData } from '@/common/api/qbo'
 import { RootState } from '@/redux/store'
 import { useSelector } from 'react-redux'
@@ -12,6 +11,7 @@ import { failNotification, successNotification } from '@/common/utils/toast'
 import { useDispatch } from 'react-redux'
 import Loading from '@/common/components/loading/Loading'
 import { setReTriggerIsUserTokens } from '@/redux/common'
+import { BqoDataSelectProps } from '../Mapping'
 
 interface DonationProps {
   fundData: any
@@ -129,7 +129,6 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
       await mutate({
         email,
         settingsData,
-        isAutomationEnable: userData?.UserSetting?.isAutomationEnable || false,
       })
       await delay(2000)
       dispatch(setReTriggerIsUserTokens(!reTriggerIsUserTokens))
@@ -153,15 +152,18 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
     switch (category) {
       case 'account':
         return qboData?.accounts?.find(
-          (option) => option.label === settingsItem?.account?.label,
+          (option: { label: string | undefined }) =>
+            option.label === settingsItem?.account?.label,
         )
       case 'class':
         return qboData?.classes?.find(
-          (option) => option.label === settingsItem?.class?.label,
+          (option: { label: string | undefined }) =>
+            option.label === settingsItem?.class?.label,
         )
       case 'customer':
         return qboData?.customers?.find(
-          (option) => option.label === settingsItem?.customer?.label,
+          (option: { label: string | undefined }) =>
+            option.label === settingsItem?.customer?.label,
         )
       default:
         return undefined

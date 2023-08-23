@@ -11,11 +11,11 @@ import {
 import { BiChurch } from 'react-icons/bi'
 import { emailPasswordSignUp } from 'supertokens-web-js/recipe/thirdpartyemailpassword'
 
-import bgImage from '../../../common/assets/bg_2.png'
 import { shouldLoadRoute } from '@/common/utils/supertoken'
 import { failNotification } from '@/common/utils/toast'
-import { AiOutlineUser } from 'react-icons/ai'
-import { mainRoute, route } from '@/common/constant/route'
+import { AiOutlineBarChart, AiOutlineUser } from 'react-icons/ai'
+import Session from 'supertokens-web-js/recipe/session'
+
 import { useSelector } from 'react-redux'
 import { RootState } from '@/redux/store'
 import {
@@ -24,8 +24,12 @@ import {
   signUpInitialValues,
 } from '@/common/constant/formik'
 import { useDispatch } from 'react-redux'
-import { setReTriggerIsUserTokens, setUserData } from '@/redux/common'
-import { storageKey } from '@/common/utils/storage'
+import {
+  resetUserData,
+  setReTriggerIsUserTokens,
+  setUserData,
+} from '@/redux/common'
+import { storage, storageKey } from '@/common/utils/storage'
 import {
   checkValidInvitation,
   getUserRelated,
@@ -37,6 +41,10 @@ import Loading from '@/common/components/loading/Loading'
 import Lottie from 'lottie-react'
 import accepted from '@/common/assets/accepted-invation-sucessfully.json'
 import { Link } from 'react-router-dom'
+import bgImage from '@/common/assets/bookkeeper-invitation-bg.png'
+import logo from '@/common/assets/logo.png'
+import bgImageDone from '@/common/assets/bookkeeper-done-bg.png'
+import useLogoutHandler from '@/common/hooks/useLogoutHandler'
 
 interface SignUpProps {}
 
@@ -168,8 +176,19 @@ const InviteLink: FC<SignUpProps> = () => {
   //     checkSession()
   //   }, [checkSession])
 
+  const logoutHandler = async () => {
+    await Session.signOut()
+    dispatch(resetUserData())
+    storage.removeToken(storageKey.PC_ACCESS_TOKEN)
+    storage.removeToken(storageKey.QBQ_ACCESS_TOKEN)
+    storage.removeToken(storageKey.PERSONAL_TOKEN)
+    storage.removeToken(storageKey.TOKENS)
+    storage.removeToken(storageKey.SETTINGS)
+  }
+
   useEffect(() => {
     if (isInvitationValid && isInvitationValid.success) {
+      // logoutHandler()
       setIsValid(true)
     }
   }, [isInvitationValid])
@@ -200,111 +219,123 @@ const InviteLink: FC<SignUpProps> = () => {
       ) : !isValid ? (
         <p>Error page</p>
       ) : userData ? (
-        <div className="flex pt-40 justify-center items-center text-center h-full">
-          <div className="flex flex-col gap-4 text-center">
-            <p className="text-4xl">
-              Thank you for accepting
-              <br />
-              the invitation to join Church Sync Pro.
-            </p>
-            <Link className="text-xl font-thin underline text-gray-700" to="/">
-              Click this link to continue.
-            </Link>
+        <div className="h-screen flex flex-col lg:flex-row lg:bg-white">
+          <div
+            className="flex-grow"
+            style={{
+              backgroundImage: `url(${bgImageDone})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }}
+          />
+
+          <div className="p-8 w-full md:p-24 lg:w-2/6 font-lato">
+            {/* FORMS */}
+            <div className="w-[520px] absolute top-1/2 transform -translate-y-1/2 right-28 rounded-3xl">
+              <div className="flex flex-col gap-2 p-12 items-center">
+                <img src={logo} alt="" width={383} height={187} />
+                <p className="font-thin text-4xl">Register. Sync.</p>
+                <p className="font-thin text-4xl text-center">Manage.</p>
+                <p className="font-medium text-lg text-center w-64">
+                  Hooray! You are now part of the Church Sync Pro community.
+                </p>
+                <Link
+                  to="/"
+                  className="bg-[#FAB400] rounded-full shadow-sm h-12 my-4 flex justify-center items-center hover:bg-slate-600 [&>*]:text-white mt-12 p-4"
+                >
+                  <p>Click to continue</p>
+                </Link>
+              </div>
+            </div>
           </div>
-          <Lottie animationData={accepted} loop={true} />
         </div>
       ) : (
-        <div className="h-screen flex flex-col lg:flex-row-reverse lg:bg-white">
+        <div className="h-screen flex flex-col lg:flex-row lg:bg-white">
           <div
             className="flex-grow m-6"
             style={{
               backgroundImage: `url(${bgImage})`,
               backgroundSize: 'cover',
               backgroundPosition: 'center',
-              borderTopLeftRadius: 32,
-              borderBottomRightRadius: 32,
             }}
           />
-          <div className="p-8 bg-white w-full md:p-24 lg:w-2/6">
-            {/*  */}
-            <div className="flex flex-col gap-y-4">
-              <span className="text-4xl font-serif text-gray-700">
-                Create an account
-              </span>
-              <span className="text-md font-serif text-slate-500 text-gray-700">
-                Let`s get started with your day for Church Sync Pro
-              </span>
-            </div>
-
-            {/* Divider */}
-
-            <div className="flex flex-col  gap-y-4 pt-4">
-              <div className="w-full h-[1px] bg-gray-500" />
-            </div>
-
+          <div className="p-8 w-full md:p-24 lg:w-2/6 font-lato">
             {/* FORMS */}
+            <div className="w-[520px] bg-[#FBFBFB] absolute top-1/2 transform -translate-y-1/2 right-28 shadow-2xl rounded-3xl">
+              <div className="flex flex-col gap-2 p-12 items-center">
+                <img src={logo} alt="" width={250} />
+                <div
+                  className="flex justify-center group items-center p-2"
+                  // onClick={googleSignInClicked}
+                >
+                  <AiOutlineBarChart size={22} />
+                  <p className="pl-4">Create a Bookkepers Account</p>
+                </div>
+                <div className="border-[0.5px] w-3/4" />
 
-            <form
-              className="flex flex-col gap-1 pt-6"
-              onSubmit={formik.handleSubmit}
-            >
-              <CommonTextField
-                error={formik.errors.firstName}
-                icon={AiOutlineUser}
-                name="firstName"
-                onChange={formik.handleChange}
-                placeholder="John"
-                title="First Name"
-                type="text"
-                value={formik.values.firstName}
-              />
+                <form
+                  className="flex flex-col gap-1  w-80"
+                  onSubmit={formik.handleSubmit}
+                >
+                  <CommonTextField
+                    error={formik.errors.firstName}
+                    icon={AiOutlineUser}
+                    name="firstName"
+                    onChange={formik.handleChange}
+                    placeholder="John"
+                    title="First Name"
+                    type="text"
+                    value={formik.values.firstName}
+                  />
 
-              <CommonTextField
-                error={formik.errors.lastName}
-                icon={AiOutlineUser}
-                name="lastName"
-                onChange={formik.handleChange}
-                placeholder="Doe"
-                title="Last Name"
-                type="text"
-                value={formik.values.lastName}
-              />
+                  <CommonTextField
+                    error={formik.errors.lastName}
+                    icon={AiOutlineUser}
+                    name="lastName"
+                    onChange={formik.handleChange}
+                    placeholder="Doe"
+                    title="Last Name"
+                    type="text"
+                    value={formik.values.lastName}
+                  />
 
-              <CommonTextField
-                error={formik.errors.email}
-                icon={HiOutlineMail}
-                name="email"
-                onChange={formik.handleChange}
-                placeholder="johndoe@gmail.com"
-                title="Email"
-                type="text"
-                value={formik.values.email}
-                isDisable
-              />
+                  <CommonTextField
+                    error={formik.errors.email}
+                    icon={HiOutlineMail}
+                    name="email"
+                    onChange={formik.handleChange}
+                    placeholder="johndoe@gmail.com"
+                    title="Email"
+                    type="text"
+                    value={formik.values.email}
+                    isDisable
+                  />
 
-              <CommonTextField
-                error={formik.errors.password}
-                icon={HiOutlineLockClosed}
-                name="password"
-                onChange={formik.handleChange}
-                placeholder="*********"
-                title="Password"
-                type="text"
-                value={formik.values.password}
-                isPassword
-              />
+                  <CommonTextField
+                    error={formik.errors.password}
+                    icon={HiOutlineLockClosed}
+                    name="password"
+                    onChange={formik.handleChange}
+                    placeholder="*********"
+                    title="Password"
+                    type="text"
+                    value={formik.values.password}
+                    isPassword
+                  />
 
-              <Button
-                className="bg-primary rounded-md shadow-sm h-12 my-4 hover:bg-slate-600 [&>*]:text-white"
-                type="submit"
-              >
-                {isLoading ? (
-                  <Spinner className="mr-8" />
-                ) : (
-                  <p>Create account</p>
-                )}
-              </Button>
-            </form>
+                  <Button
+                    className="bg-[#FAB400] rounded-md shadow-sm h-12 my-4 hover:bg-slate-600 [&>*]:text-white"
+                    type="submit"
+                  >
+                    {isLoading ? (
+                      <Spinner className="mr-8" />
+                    ) : (
+                      <p>Create account</p>
+                    )}
+                  </Button>
+                </form>
+              </div>
+            </div>
           </div>
         </div>
       )}

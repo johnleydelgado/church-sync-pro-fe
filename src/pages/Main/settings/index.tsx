@@ -16,21 +16,16 @@ import {
 } from '@/common/api/user'
 
 import { Tab } from '@headlessui/react'
-import Registration from './component/Registration'
 
 import Account, { AccountTokenDataProps } from './component/Account'
-import Donation from './component/Donation'
 import { successNotification } from '@/common/utils/toast'
 import { isEmpty } from 'lodash'
 import { MdSettings } from 'react-icons/md'
 import { FiDivide } from 'react-icons/fi'
-
-const Input = (props: any) => (
-  <components.Input
-    {...props}
-    inputClassName="outline-none border-none shadow-none focus:ring-transparent"
-  />
-)
+import Profile from './component/Profile'
+import Billing from './component/Billing'
+import Bookkeeper from './component/Bookkeeper'
+import { useSearchParams } from 'react-router-dom'
 
 interface AttributesProps {
   color: string
@@ -45,6 +40,7 @@ interface AttributesProps {
 }
 
 export interface FundProps {
+  id?: string
   attributes: AttributesProps
   links: { self: string }
   type: string
@@ -68,16 +64,10 @@ function classNames(...classes: string[]) {
 const Settings: FC<SettingsProps> = () => {
   const { user } = useSelector((state: RootState) => state.common)
   const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
-
+  const [searchParams, setSearchParams] = useSearchParams()
   const reTriggerIsUserTokens = useSelector(
     (item: RootState) => item.common.reTriggerIsUserTokens,
   )
-
-  const { mutate, isLoading: isSavingSettings } = useMutation<
-    unknown,
-    unknown,
-    { email: string; isAutomationEnable: boolean }
-  >(enableAutoSyncSetting)
 
   const { data: tokenList } = useQuery<AccountTokenDataProps[]>(
     ['getTokenList', bookkeeper],
@@ -90,17 +80,6 @@ const Settings: FC<SettingsProps> = () => {
       staleTime: Infinity,
       cacheTime: Infinity,
     },
-  )
-
-  const { data: fundData, isLoading } = useQuery<FundProps[]>(
-    ['getFunds', bookkeeper], // Same query key as in the first page
-
-    async () => {
-      const email =
-        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-      if (email) return await pcGetFunds({ email })
-    },
-    { staleTime: Infinity },
   )
 
   // to get settings data
@@ -151,25 +130,11 @@ const Settings: FC<SettingsProps> = () => {
 
   const [isAutomationEnable, setIsAutomationEnable] = useState<boolean>(false)
 
-  const [categories, setCategories] = useState({
-    Donation: [],
-    Registration: [],
-  })
-
-  useEffect(() => {
-    if (user.role === 'client') {
-      const newCat = { ...categories, Account: [] }
-      setCategories(newCat)
-    }
-  }, [user])
-
-  const enableDisableAutomation = async () => {
-    const email =
-      user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-    await mutate({ email, isAutomationEnable: !isAutomationEnable })
-    setIsAutomationEnable(!isAutomationEnable)
-    successNotification({ title: 'Settings successfully saved !' })
-  }
+  const [categories, setCategories] = useState(
+    user.role === 'client'
+      ? ['Account Data', 'Billing Info', 'Connect Accounts', 'Bookkeepers Tab']
+      : ['Account Data'],
+  )
 
   useEffect(() => {
     if (!isEmpty(userData?.UserSetting?.settingsData)) {
@@ -179,128 +144,76 @@ const Settings: FC<SettingsProps> = () => {
 
   return (
     <MainLayout>
-      {isLoading || isQboDataLoading ? (
-        <Loading />
-      ) : (
-        <div className="bg-white -m-6 p-6 h-full">
-          {/* <p className="text-4xl pb-8 text-slate-700">Settings</p>
-          <div className="flex flex-col gap-2">
-            <p className="text-xl text-slate-600 font-thin">
-              Automatic Transaction
-            </p>
-            <div className="flex items-center mb-4">
-              <input
-                id="default-checkbox"
-                type="checkbox"
-                value=""
-                checked={isAutomationEnable}
-                onChange={() => enableDisableAutomation()}
-                className="w-5 h-5 text-slate-600 bg-gray-100 border-gray-300 rounded"
-                disabled={isEmpty(userData?.UserSetting) ? true : false}
-              />
-              <label
-                htmlFor="default-checkbox"
-                className="ml-2 font-thin text-gray-900 text-xl"
-              >
-                enable automatic transaction ?
-              </label>
-            </div>
-          </div> */}
-
-          {/* Header */}
-          <div className="pb-2">
-            <div className="flex flex-col border-b-2 pb-2">
-              <div className="flex items-center gap-2">
-                <MdSettings size={28} className="text-blue-400" />
-                <span className="font-bold text-lg text-[#27A1DB]">
-                  Settings
-                </span>
-              </div>
-
-              <div className="flex items-center mb-4 p-2">
-                <input
-                  id="default-checkbox"
-                  type="checkbox"
-                  value=""
-                  checked={isAutomationEnable}
-                  onChange={() => enableDisableAutomation()}
-                  className="w-4 h-4 text-slate-600 bg-gray-100 border-gray-300 rounded"
-                  disabled={isEmpty(userData?.UserSetting) ? true : false}
-                />
-                <label
-                  htmlFor="default-checkbox"
-                  className="ml-2 font-thin text-gray-900 text-xl"
-                >
-                  enable automatic transaction ?
-                </label>
-              </div>
+      <div className="bg-white -m-6 p-6 h-full">
+        {/* Header */}
+        <div className="pb-2">
+          <div className="flex flex-col border-b-2 pb-2">
+            <div className="flex items-center gap-2">
+              <MdSettings size={28} className="text-blue-400" />
+              <span className="font-bold text-lg text-[#27A1DB]">Settings</span>
             </div>
           </div>
+        </div>
 
-          <Tab.Group>
-            <div className="flex">
-              <Tab.List className="flex space-x-1 rounded-xl bg-transparent px-4 py-2 w-96">
-                {Object.keys(categories).map((category, index: number) => (
-                  <div className="flex items-center" key={category}>
-                    <Tab
-                      disabled={
-                        (category === 'Donation' ||
-                          category === 'Registration') &&
-                        !isUserTokens
-                      }
-                      className={({ selected }) =>
-                        classNames(
-                          'flex items-center w-full rounded-lg p-2.5 text-sm font-medium leading-5 text-gray-400',
-                          selected
-                            ? 'bg-[#FAB400] shadow text-white'
-                            : 'hover:bg-white/[0.12] hover:text-black',
-                        )
-                      }
-                    >
-                      {category}
-                    </Tab>
-                    {index === Object.keys(categories).length - 1 ? null : (
-                      <p className="text-gray-400 pl-2"> | </p>
-                    )}
-                  </div>
-                ))}
-              </Tab.List>
-            </div>
+        <Tab.Group defaultIndex={searchParams.get('tab') === '3' ? 2 : 0}>
+          <div className="flex">
+            <Tab.List className="flex space-x-1 rounded-xl bg-transparent px-4 py-2 w-96">
+              {categories.map((category, index: number) => (
+                <div className="flex items-center" key={category}>
+                  <Tab
+                    // disabled={
+                    //   (category === 'Donation' ||
+                    //     category === 'Registration') &&
+                    //   !isUserTokens
+                    // }
+                    className={({ selected }) =>
+                      classNames(
+                        'flex items-center w-36 justify-center rounded-lg p-2 text-sm font-medium leading-5 text-gray-400',
+                        selected
+                          ? 'bg-[#FAB400] shadow text-white'
+                          : 'hover:bg-white/[0.12] hover:text-black',
+                      )
+                    }
+                  >
+                    <p className="text-center">{category}</p>
+                  </Tab>
+                  {index === Object.keys(categories).length - 1 ? null : (
+                    <p className="text-gray-400 p-2"> | </p>
+                  )}
+                </div>
+              ))}
+            </Tab.List>
+          </div>
 
-            <Tab.Panels className="mt-2">
-              <Tab.Panel
-                key={1}
-                className={classNames(
-                  'rounded-xl bg-white p-4 px-8',
-                  'ring-white ring-opacity-60 ring-offset-2 ring-offset-blue-400 focus:outline-none focus:ring-2',
-                )}
-              >
-                <Donation fundData={fundData} userData={userData} />
-              </Tab.Panel>
+          <Tab.Panels>
+            <Tab.Panel key={1}>
+              <Profile />
+              {/* <Donation fundData={fundData} userData={userData} /> */}
+            </Tab.Panel>
 
-              <Tab.Panel
-                key={2}
-                className={classNames(
-                  'rounded-xl bg-white p-4 px-8',
-                  'ring-white ring-opacity-60 ring-offset-2 ring-offset-blue-400 focus:outline-none focus:ring-2',
-                )}
-              >
-                <Registration
+            <Tab.Panel key={2}>
+              <Billing />
+              {/* <Registration
                   qboData={qboData}
                   isAutomationEnable={isAutomationEnable}
                   userData={userData}
-                />
-              </Tab.Panel>
+                /> */}
+            </Tab.Panel>
 
-              {user.role === 'client' && (
-                <Tab.Panel key={3}>
-                  <Account />
-                </Tab.Panel>
-              )}
-            </Tab.Panels>
-          </Tab.Group>
-        </div>
-      )}
+            {user.role === 'client' && (
+              <Tab.Panel key={3}>
+                <Account />
+              </Tab.Panel>
+            )}
+
+            {user.role === 'client' && (
+              <Tab.Panel key={4}>
+                <Bookkeeper />
+              </Tab.Panel>
+            )}
+          </Tab.Panels>
+        </Tab.Group>
+      </div>
     </MainLayout>
   )
 }

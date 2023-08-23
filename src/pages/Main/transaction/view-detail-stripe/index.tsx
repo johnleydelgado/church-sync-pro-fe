@@ -146,7 +146,7 @@ const ViewDetails: FC<indexProps> = ({}) => {
               )
 
               const fundReg = filterFundName?.find((word) =>
-                a.fund.includes(word),
+                a.fund.toLowerCase().includes(word.toLowerCase()),
               )
 
               const fundName = filterFundName[index]
@@ -155,6 +155,13 @@ const ViewDetails: FC<indexProps> = ({}) => {
               if (index !== -1) {
                 if (fundName) {
                   response = await syncStripePayout(
+                    email,
+                    String(donationId),
+                    String(fundReg),
+                    formattedDate || '',
+                  )
+                  console.log(
+                    'fundName',
                     email,
                     String(donationId),
                     String(fundReg),
@@ -245,12 +252,15 @@ const ViewDetails: FC<indexProps> = ({}) => {
             const parts = item.description.split(' - ')
             const registrationFund =
               userData.data.UserSetting.settingRegistrationData.find(
-                (item: any) => item.registration === parts[2] || parts[1],
+                (item: any) => item.registration === (parts[2] || parts[1]),
               )
+
             return {
-              fund: `${capitalAtFirstLetter(
-                registrationFund.class.label || '',
-              )} (${capitalAtFirstLetter(parts[2] || parts[1] || '')})`,
+              fund: registrationFund
+                ? `${capitalAtFirstLetter(
+                    registrationFund.class.label || '',
+                  )} (${capitalAtFirstLetter(parts[2] || parts[1] || '')})`
+                : '',
               grossAmount: newStripeObj.grossAmount,
               net: newStripeObj.net,
               nonGivingIncome: newStripeObj.nonGivingIncome,
@@ -272,8 +282,6 @@ const ViewDetails: FC<indexProps> = ({}) => {
       fetchData()
     }
   }, [fundData, userData])
-
-  console.log('stripePayoutData', stripePayoutData)
 
   return (
     <MainLayout>

@@ -40,6 +40,8 @@ const Login: FC<LoginProps> = () => {
   const [showPassword, setShowPassword] = useState<boolean>(false)
   const dispatch = useDispatch()
   const [googleLoading, setGoogleLoading] = useState<boolean>(false)
+  const [loading, setLoading] = useState<boolean>(false)
+
   async function googleSignInClicked() {
     setGoogleLoading(true)
 
@@ -78,6 +80,7 @@ const Login: FC<LoginProps> = () => {
     email: string
     password: string
   }) {
+    setLoading(true)
     try {
       const response = await emailPasswordSignIn({
         formFields: [
@@ -85,7 +88,6 @@ const Login: FC<LoginProps> = () => {
           { id: 'password', value: password },
         ],
       })
-
       if (response.status === 'FIELD_ERROR') {
         // one of the input formFields failed validaiton
         response.formFields.forEach((formField) => {
@@ -98,18 +100,21 @@ const Login: FC<LoginProps> = () => {
             // Maybe it didn't match the password strength
             failNotification({ title: formField.error })
           }
+          setLoading(false)
         })
       } else if (response.status === 'WRONG_CREDENTIALS_ERROR') {
         // one of the input formFields failed validaiton
         failNotification({ title: 'Please check email or password !' })
+        setLoading(false)
       } else {
         const userData = await getUserRelated(email)
+        console.log('userData', userData)
         const { id, role, firstName, lastName, churchName } = userData.data
         dispatch(
           setUserData({ id, role, firstName, lastName, churchName, email }),
         )
         // dispatch(setBookkeeper({clientEmail:}))
-
+        setLoading(false)
         localStorage.setItem(storageKey.PERSONAL_TOKEN, role)
         window.location.href = mainRoute.TRANSACTION
         // window.location.href = route.SECONDARY_LOGIN
@@ -121,6 +126,7 @@ const Login: FC<LoginProps> = () => {
       } else {
         failNotification({ title: 'Oops! Something went wrong.' })
       }
+      setLoading(false)
     }
   }
 
@@ -348,15 +354,19 @@ const Login: FC<LoginProps> = () => {
                     </p>
                   </Label>
                 </div>
-                <span className="text-gray-800 text-sm cursor-pointer italic">
+                <Link
+                  to={route.FORGOT_PASSWORD}
+                  className="text-gray-800 text-sm cursor-pointer italic"
+                >
                   Forget your password ?
-                </span>
+                </Link>
               </div>
 
               <Button
                 className="bg-btmColor rounded-md shadow-sm h-12 my-4 hover:bg-slate-600 [&>*]:text-white"
                 type="submit"
               >
+                {loading ? <Spinner className="mr-8" /> : null}
                 LOGIN
               </Button>
 

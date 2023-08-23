@@ -3,6 +3,7 @@
 import axios from 'axios'
 import { faker } from '@faker-js/faker'
 import { userRoutes } from '../constant/routes-api'
+import { error } from 'console'
 const { REACT_APP_API_PATH } = process.env
 
 export interface UserProps {
@@ -41,13 +42,11 @@ export interface qboRegistrationSettings {
 export interface SettingQBOProps {
   email: string
   settingsData?: qboSettings[]
-  isAutomationEnable: boolean
 }
 
 export interface SettingRegistrationQBOProps {
   email: string
   settingRegistrationData?: qboRegistrationSettings[]
-  isAutomationEnable: boolean
 }
 
 interface Token {
@@ -130,13 +129,19 @@ const createSettings = async ({
 const enableAutoSyncSetting = async ({
   email,
   isAutomationEnable,
+  isAutomationRegistration,
 }: {
   email: string
-  isAutomationEnable: boolean
+  isAutomationEnable?: boolean
+  isAutomationRegistration?: boolean
 }) => {
   // await axios.get
-  const url = userRoutes.createSettings
-  const dataJson = JSON.stringify({ email, isAutomationEnable })
+  const url = userRoutes.enableAutoSyncSetting
+  const dataJson = JSON.stringify({
+    email,
+    isAutomationEnable,
+    isAutomationRegistration,
+  })
   try {
     const response = await apiCall.post(url, dataJson)
     return response.data
@@ -156,12 +161,24 @@ const getUserRelated = async (email: string) => {
   }
 }
 
+const deleteBookeeper = async (id: string) => {
+  const url = '/deleteBookeeper'
+  const data = JSON.stringify({ id })
+  try {
+    const response = await apiCall.post(url, data)
+    return response.data.data
+  } catch (e: any) {
+    throw new Error(e.message)
+  }
+}
+
 const manualSync = async ({
   ...rest
 }: {
   email: string
   dataBatch: any
   batchId: string
+  realBatchId: string
 }) => {
   // await axios.get
   const url = userRoutes.manualSync
@@ -235,6 +252,17 @@ const sendEmailInvitation = async (
   }
 }
 
+const sendPasswordReset = async (email: string) => {
+  const url = userRoutes.sendPasswordReset
+  const data = JSON.stringify({ email })
+
+  const response = await apiCall.post(url, data)
+  if (!response.data.success) {
+    throw new Error(response.data.data)
+  }
+  return response.data
+}
+
 const checkValidInvitation = async (
   email: string | null,
   invitationToken: string | null,
@@ -303,8 +331,10 @@ export {
   updateUserToken,
   deleteUserToken,
   sendEmailInvitation,
+  sendPasswordReset,
   checkValidInvitation,
   bookkeeperList,
   updateInvitationStatus,
   enableAutoSyncSetting,
+  deleteBookeeper,
 }

@@ -1,4 +1,4 @@
-import { pcGetBatches } from '@/common/api/planning-center'
+import { pcGetBatches, pcGetFunds } from '@/common/api/planning-center'
 import MainLayout from '@/common/components/main-layout/MainLayout'
 import { RootState } from '@/redux/store'
 import React, { FC, useEffect, useState } from 'react'
@@ -17,53 +17,43 @@ import { failNotification, successNotification } from '@/common/utils/toast'
 import { manualSync } from '@/common/api/user'
 import { mainRoute } from '@/common/constant/route'
 import { deleteQboDeposit } from '@/common/api/qbo'
+import { FundProps } from '../../settings'
 interface indexProps {}
 
+interface dataDonationProps {
+  id: string
+  attributes: {
+    amount_cents: number
+    amount_currency: string
+    completed_at: string
+    created_at: string
+    fee_cents: number
+    fee_currency: string
+    payment_brand: null
+    payment_check_dated_at: string | null
+    payment_check_number: string | null
+    payment_last4: string | null
+    payment_method: string
+    payment_method_sub: string | null
+    payment_status: string
+    received_at: string
+    refundable: boolean
+    refunded: boolean
+    updated_at: string
+  }
+  relationships: {
+    person: any
+    designations: { data: { type: string; id: string }[] }
+  }
+  fund: FundProps[]
+}
+
 interface DonationProps {
-  donation: {
-    id: string
-    attributes: {
-      amount_cents: number
-      amount_currency: string
-      completed_at: string
-      created_at: string
-      fee_cents: number
-      fee_currency: string
-      payment_brand: null
-      payment_check_dated_at: string | null
-      payment_check_number: string | null
-      payment_last4: string | null
-      payment_method: string
-      payment_method_sub: string | null
-      payment_status: string
-      received_at: string
-      refundable: boolean
-      refunded: boolean
-      updated_at: string
-    }
-  }
-  fund: {
-    id: string
-    attributes: {
-      color: string
-      created_at: string
-      default: boolean
-      deletable: boolean
-      description: string | null
-      ledger_code: string | null
-      name: string
-      updated_at: string
-      visibility: string
-    }
-  }
-  person: {
-    data: {
-      attributes: {
-        first_name: string
-        last_name: string
-      }
-    }
-  }
+  data: dataDonationProps[]
+  included: {
+    id: any
+    relationships: { fund: { data: { type: string; id: string } } }
+  }[]
 }
 
 interface SyncBatchesProps {
@@ -75,6 +65,7 @@ interface SyncBatchesProps {
 
 interface FinalDataProps {
   batches: {
+    [x: string]: any
     batch: {
       type: string
       id: string
@@ -88,7 +79,7 @@ interface FinalDataProps {
         updated_at: string
       }
     }
-    donations: DonationProps[]
+    donations: DonationProps
   }
   synchedBatches: SyncBatchesProps[] | undefined
 }
@@ -98,6 +89,8 @@ const ViewDetails: FC<indexProps> = ({}) => {
   const navigation = useNavigate()
   const { user } = useSelector((state: RootState) => state.common)
   const [finalData, setFinalData] = useState<FinalDataProps | null>(null)
+  const [newData, setNewData] = useState<any>(null)
+
   const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
   const [isSynching, setIsSynching] = useState(false)
   const [dateRange, setDateRange] = useState({ startDate: '', endDate: '' })
@@ -117,18 +110,75 @@ const ViewDetails: FC<indexProps> = ({}) => {
     },
   )
 
+  const { data: fundData } = useQuery<FundProps[]>(
+    ['getFunds', bookkeeper],
+    async () => {
+      const email =
+        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
+      if (email) return await pcGetFunds({ email })
+      return []
+    },
+    {
+      staleTime: Infinity,
+      refetchOnWindowFocus: false,
+    },
+  )
+
   useEffect(() => {
-    if (!isEmpty(data))
+    if (!isEmpty(data)) {
+      const email =
+        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
+
       setFinalData({
         batches: data.batches.find(
           (item: AttributesProps) =>
             item.batch.id === String(batchId) && item.donations,
         ),
         synchedBatches: data.synchedBatches.filter(
-          (el: any) => el.batchId === String(batchId),
+          (el: any) => el.batchId === `${batchId} - ${email}`,
         ),
       })
+    }
   }, [data, batchId])
+
+  useEffect(() => {
+    if (!isEmpty(fundData) && !isEmpty(finalData)) {
+      const temp = { ...finalData }
+      const newFundData = temp.batches.donations.included.map((a) => {
+        const fData = fundData?.find(
+          (x) => x.id === a.relationships.fund.data.id,
+        )
+        return {
+          fundData: fData ? [{ ...fData, designationId: a.id }] : [],
+        }
+      })
+
+      const newDataArr = temp.batches.donations.data.map((a) => {
+        const fundObj = newFundData.find(
+          (x) =>
+            x.fundData[0]?.designationId ===
+            a.relationships.designations.data[0]?.id,
+        )
+        return {
+          ...a,
+          fund: fundObj ? fundObj.fundData : [],
+        }
+      })
+
+      setNewData({
+        ...finalData,
+        batches: {
+          ...finalData.batches,
+          donations: {
+            ...finalData.batches.donations,
+            data: newDataArr,
+          },
+        },
+      })
+    }
+  }, [finalData, fundData])
+
+  console.log('aa', finalData)
 
   const triggerSyncBatch = async ({
     dataBatch,
@@ -143,7 +193,12 @@ const ViewDetails: FC<indexProps> = ({}) => {
     try {
       const email =
         user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-      const result = await manualSync({ email, dataBatch, batchId })
+      const result = await manualSync({
+        email,
+        dataBatch,
+        realBatchId: `${batchId} - ${email}`,
+        batchId: batchId,
+      })
       if (result.success) {
         setIsSynching(false)
         successNotification({ title: `Batch: ${batchName} successfully sync` })
@@ -163,7 +218,6 @@ const ViewDetails: FC<indexProps> = ({}) => {
     try {
       const email =
         user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-      console.log('email, syncId, depositId', email, finalData?.synchedBatches)
       const result = await deleteQboDeposit(email, finalData?.synchedBatches)
       if (result === 'success') {
         setIsSynching(false)
@@ -295,7 +349,7 @@ const ViewDetails: FC<indexProps> = ({}) => {
                       No. Of Donations
                     </p>
                     <p className="font-light text-gray-500 text-center">
-                      {finalData.batches?.donations?.length}
+                      {finalData.batches?.donations.data.length}
                     </p>
                   </div>
 
@@ -350,49 +404,52 @@ const ViewDetails: FC<indexProps> = ({}) => {
                   </Table.HeadCell>
                 </Table.Head>
                 <Table.Body className="divide-y">
-                  {finalData.batches?.donations.map((item, index: number) => (
-                    <Table.Row
-                      className={`${
-                        index % 2 === 0
-                          ? 'bg-gray-50 dark:bg-gray-800'
-                          : 'bg-white dark:bg-gray-900'
-                      } border-b border-[#FAB400] dark:border-gray-700 [&>*]:px-6 [&>*]:py-4`}
-                      key={item.donation.id}
-                    >
-                      <Table.Cell className="whitespace-nowrap font-medium dark:text-white">
-                        {format(
-                          parseISO(item.donation.attributes.received_at || ''),
-                          'M/d/yyyy',
-                        )}
-                      </Table.Cell>
-                      <Table.Cell>
-                        {formatUsd(
-                          String(item.donation.attributes.amount_cents),
-                        )}
-                      </Table.Cell>
-                      <Table.Cell>
-                        {item.person?.data.attributes.first_name &&
-                        item.person?.data.attributes.last_name
-                          ? item.person.data.attributes.first_name +
-                            ' ' +
-                            item.person.data.attributes.last_name
-                          : 'Anonymous'}
-                      </Table.Cell>
-                      <Table.Cell>
-                        <p
-                          className={`p-2 inline rounded-md text-white`}
-                          style={{
-                            backgroundColor: item.fund.attributes.color,
-                          }}
-                        >
-                          {item.fund.attributes.name}
-                        </p>
-                      </Table.Cell>
-                      <Table.Cell>
-                        {item.donation.attributes.payment_method}
-                      </Table.Cell>
-                    </Table.Row>
-                  ))}
+                  {newData?.batches.donations.data.map(
+                    (item: dataDonationProps, index: number) => (
+                      <Table.Row
+                        className={`${
+                          index % 2 === 0
+                            ? 'bg-gray-50 dark:bg-gray-800'
+                            : 'bg-white dark:bg-gray-900'
+                        } border-b border-[#FAB400] dark:border-gray-700 [&>*]:px-6 [&>*]:py-4`}
+                        key={item.id}
+                      >
+                        <Table.Cell className="whitespace-nowrap font-medium dark:text-white">
+                          {format(
+                            parseISO(item.attributes.created_at || ''),
+                            'M/d/yyyy',
+                          )}
+                        </Table.Cell>
+                        <Table.Cell>
+                          {formatUsd(String(item.attributes.amount_cents))}
+                        </Table.Cell>
+                        {/* <Table.Cell>
+                          {item.person?.data.attributes.first_name &&
+                          item.person?.data.attributes.last_name
+                            ? item.person.data.attributes.first_name +
+                              ' ' +
+                              item.person.data.attributes.last_name
+                            : 'Anonymous'}
+                        </Table.Cell> */}
+                        <Table.Cell>
+                          {item.relationships.person.data ? 'Anonymous' : 'TBH'}
+                        </Table.Cell>
+                        <Table.Cell>
+                          <p
+                            className={`p-2 inline rounded-md text-white`}
+                            style={{
+                              backgroundColor: item.fund[0]?.attributes.color,
+                            }}
+                          >
+                            {item.fund[0]?.attributes.name}
+                          </p>
+                        </Table.Cell>
+                        <Table.Cell>
+                          {item.attributes.payment_method}
+                        </Table.Cell>
+                      </Table.Row>
+                    ),
+                  )}
                 </Table.Body>
               </Table>
             </div>

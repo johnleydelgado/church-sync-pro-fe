@@ -15,28 +15,39 @@ interface PageProps {
   icon: any
   link: string
   isHide?: boolean
+  withDropdown?: boolean
+  dropdownLinks?: DropdownLink[]
 }
 
+export interface DropdownLink {
+  name: string
+  link: string
+}
+
+export const dropdownArrLinkAutomation: DropdownLink[] = [
+  {
+    name: 'Mapping',
+    link: mainRoute.AUTOMATION_MAPPING,
+  },
+]
+
 const pages: PageProps[] = [
-  {
-    name: 'Transaction',
-    link: '/transaction',
-    icon: <BiSync size={30} />,
-  },
-  {
-    name: 'Bookkeepers',
-    link: mainRoute.BOOKKEEPER,
-    icon: <MdManageAccounts size={30} />,
-  },
   {
     name: 'Home',
     link: '/home',
     icon: <HiHome size={30} />,
   },
   {
+    name: 'Transaction',
+    link: '/transaction',
+    icon: <BiSync size={30} />,
+  },
+  {
     name: 'Automation',
     link: '/automation',
     icon: <AiOutlineCloudSync size={30} />,
+    withDropdown: true,
+    dropdownLinks: dropdownArrLinkAutomation,
   },
   {
     name: 'Settings',

@@ -53,10 +53,11 @@ const pcGetRegistrationEvents = async (email: string | null | undefined) => {
   const url = pcRoutes.getRegistrationEvents
   try {
     const response = await apiCall.get(url + `?email=${email}`)
+    console.log('aaaa', response)
     const data = response.data.data.map((item: any) => {
       return {
-        value: item.attributes.name || '',
-        label: item.attributes.name || '',
+        value: item.value || '',
+        label: item.name || '',
       }
     })
     return data

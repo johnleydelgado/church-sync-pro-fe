@@ -17,6 +17,8 @@ import ReactDatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
 import SelectDateRange from '@/common/components/Select/SelectDateRange'
 import { BiSync } from 'react-icons/bi'
+import { Link } from 'react-router-dom'
+import { mainRoute } from '@/common/constant/route'
 
 export interface AttributesProps {
   batch: { id: string; attributes: any }
@@ -30,6 +32,34 @@ export interface BatchesProps {
   ]
 }
 
+interface batchDataProps {
+  id: string
+  link: any
+  relationships: any
+  type: string
+  attributes: {
+    committed_at: string
+    created_at: string
+    description: string
+    status: string
+    total_cents: number
+    total_currency: string
+    updated_at: string
+  }
+}
+
+interface synchedBatchesProps {
+  batchId: string
+  createdAt: string
+  donationId: string
+  id: number
+}
+
+interface BatchesAndSyncProps {
+  batches: { batch: batchDataProps[]; donations: any }
+  synchedBatches: synchedBatchesProps[]
+}
+
 interface DashboardProps {}
 
 const Dashboard: FC<DashboardProps> = () => {
@@ -41,10 +71,12 @@ const Dashboard: FC<DashboardProps> = () => {
   const [isBatch, setIsBatch] = useState<boolean>(true)
 
   const [batchSyncing, setBatchSynching] = useState([
-    { batchId: '', trigger: false },
+    { batchId: '', trigger: false, realBatchId: '' },
   ])
 
-  const { data, isLoading, refetch, isRefetching } = useQuery<BatchesProps>(
+  const { data, isLoading, refetch, isRefetching } = useQuery<
+    BatchesAndSyncProps | undefined
+  >(
     ['getBatches', dateRange, bookkeeper],
     async () => {
       const email =
@@ -132,8 +164,20 @@ const Dashboard: FC<DashboardProps> = () => {
     try {
       const email =
         user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-      setBatchSynching((prev) => [...prev, { batchId, trigger: true }])
-      const result = await manualSync({ email, dataBatch, batchId })
+      setBatchSynching((prev) => [
+        ...prev,
+        {
+          batchId: batchId,
+          realBatchId: `${batchId} - ${email}`,
+          trigger: true,
+        },
+      ])
+      const result = await manualSync({
+        email,
+        dataBatch,
+        realBatchId: `${batchId} - ${email}`,
+        batchId: batchId,
+      })
       if (result.success) {
         successNotification({ title: `Batch: ${batchName} successfully sync` })
         refetch()
@@ -142,21 +186,6 @@ const Dashboard: FC<DashboardProps> = () => {
       }
     } catch (e) {
       failNotification({ title: 'Error' })
-    } finally {
-      // setBatchSynching((prevBatchSyncing) => {
-      //   const batchIndex = prevBatchSyncing.findIndex(
-      //     (batch) => batch.batchId === batchId,
-      //   )
-      //   if (batchIndex !== -1) {
-      //     const updatedBatchSyncing = [...prevBatchSyncing]
-      //     updatedBatchSyncing[batchIndex] = {
-      //       batchId: batchId,
-      //       trigger: false,
-      //     }
-      //     return updatedBatchSyncing
-      //   }
-      //   return prevBatchSyncing
-      // })
     }
   }
 
@@ -168,9 +197,15 @@ const Dashboard: FC<DashboardProps> = () => {
     payoutDate: string
   }) => {
     try {
+      const email =
+        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
       setBatchSynching((prev) => [
         ...prev,
-        { batchId: payoutDate, trigger: true },
+        {
+          batchId: payoutDate,
+          trigger: true,
+          realBatchId: `${payoutDate} - ${email}`,
+        },
       ])
       const filterFundName = fundData?.length
         ? fundData.map((item) => item.attributes.name)
@@ -223,6 +258,8 @@ const Dashboard: FC<DashboardProps> = () => {
     } catch (e) {
       failNotification({ title: 'Error' })
     } finally {
+      const email =
+        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
       setBatchSynching((prevBatchSyncing) => {
         const batchIndex = prevBatchSyncing.findIndex(
           (batch) => batch.batchId === payoutDate,
@@ -232,6 +269,7 @@ const Dashboard: FC<DashboardProps> = () => {
           updatedBatchSyncing[batchIndex] = {
             batchId: payoutDate,
             trigger: false,
+            realBatchId: `${payoutDate} - ${email}`,
           }
           return updatedBatchSyncing
         }
@@ -297,28 +335,46 @@ const Dashboard: FC<DashboardProps> = () => {
             </div>
 
             {/* Table */}
-            {isBatch ? (
+            {isBatch && userData?.data?.UserSetting ? (
               <BatchTable
                 data={data}
                 batchSyncing={batchSyncing}
                 triggerSync={triggerSyncBatch}
               />
             ) : !isEmpty(
-                userData?.data?.UserSetting.settingRegistrationData,
+                userData?.data?.UserSetting?.settingRegistrationData,
               ) ? (
               <StripePayoutTable
                 data={stripePayoutData}
                 triggerSync={triggerSyncStripe}
                 batchSyncing={batchSyncing}
               />
-            ) : (
-              <div className="flex items-center justify-center h-full">
-                <p className="text-4xl font-thin">
-                  Kindly configure your registration mapping within the
-                  settings.
+            ) : isEmpty(userData?.data?.UserSetting?.settingRegistrationData) &&
+              !isBatch ? (
+              <div className="flex flex-col items-center justify-center h-96">
+                <p className="text-2xl text-center font-thin">
+                  Kindly configure your registration mapping within the mapping.
                 </p>
+                <Link
+                  to={mainRoute.AUTOMATION_MAPPING + '?tab=1'}
+                  className="text-xl pt-4 underline text-blue-400"
+                >
+                  Click Here !
+                </Link>
               </div>
-            )}
+            ) : isEmpty(userData?.data?.UserSetting) && isBatch ? (
+              <div className="flex flex-col items-center justify-center h-96">
+                <p className="text-2xl text-center font-thin">
+                  Kindly configure your donation mapping within the mapping.
+                </p>
+                <Link
+                  to={mainRoute.AUTOMATION_MAPPING + '?tab=0'}
+                  className="text-xl pt-4 underline text-blue-400"
+                >
+                  Click Here !
+                </Link>
+              </div>
+            ) : null}
           </div>
         </div>
       )}

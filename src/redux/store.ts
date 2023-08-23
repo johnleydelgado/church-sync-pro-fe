@@ -4,18 +4,21 @@ import { persistStore, persistReducer } from 'redux-persist'
 import storage from 'redux-persist/lib/storage'
 
 import common from './common'
+import nonPersistState from './nonPersistState'
 
 const persistConfig = {
   key: 'root',
   version: 1,
   storage,
   whitelist: ['common'],
+  blacklist: ['nonPersistState'],
 }
 
 const persistedReducer = persistReducer(
   persistConfig,
   combineReducers({
     common,
+    nonPersistState,
   }),
 )
 

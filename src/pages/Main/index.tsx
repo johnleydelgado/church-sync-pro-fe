@@ -5,6 +5,7 @@ import SettingsPage from './settings'
 import AccountTokensPage from './accounts-token/AccountTokens'
 import DashboardPage from './dashboard/Dashboard'
 import InviteLinkPage from './invite-link/InviteLink'
+import AutomationMappingPage from './automation/mapping/Mapping'
 
 export {
   TransactionPage,
@@ -14,4 +15,5 @@ export {
   AccountTokensPage,
   DashboardPage,
   InviteLinkPage,
+  AutomationMappingPage,
 }

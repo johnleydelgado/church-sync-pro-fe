@@ -14,11 +14,14 @@ export const route = {
 
 export const mainRoute = {
   TRANSACTION: '/transaction',
+  HOME: '/home',
   DASHBOARD: '/dashboard',
   TRANSACTION_VIEWPAGE: '/transaction/view-page/:batchId',
   TRANSACTION_STRIPE_VIEWPAGE: '/transaction/view-page-stripe/:payoutDate',
   SETTINGS: '/settings',
   PCO_QBO_STRIPE: '/pco-qbo-stripe',
   PCO_QBO_STRIPE_SYNC: '/sync-pco-qbo-stripe',
-  BOOKKEEPER: '/bookkeeper-list',
+  ASK_US: '/ask-us',
+  AUTOMATION: '/automation',
+  AUTOMATION_MAPPING: '/automation/mapping',
 }

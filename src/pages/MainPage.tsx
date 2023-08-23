@@ -2,7 +2,9 @@ import React, { FC, useEffect } from 'react'
 import { Route, Routes, useLocation } from 'react-router-dom'
 
 import {
+  ForgotPasswordPage,
   LoginPage,
+  ResetPasswordPage,
   SecondaryLoginPage,
   SignUpGooglePage,
   SignUpPage,
@@ -22,6 +24,7 @@ import {
 import { mainRoute, route } from '@/common/constant/route'
 import {
   AccountTokensPage,
+  AutomationMappingPage,
   DashboardPage,
   SettingsPage,
   TransactionPage,
@@ -47,8 +50,9 @@ import {
 import Bookkeeper from './Main/bookkeeper/Bookkeeper'
 import useLogoutHandler from '@/common/hooks/useLogoutHandler'
 import InviteLink from './Main/invite-link/InviteLink'
-import useApiConnectivityCheck from '@/common/hooks/useApiConnectivityCheck'
 import { useGetTokenList } from '@/common/hooks/useGetTokenList'
+import AskUs from './Main/ask-us/AskUs'
+import Home from './Main/home/Home'
 
 interface indexProps {}
 
@@ -155,6 +159,14 @@ const MainPage: FC<indexProps> = () => {
           element={<PrivateRoute Component={InviteLink} guards={[]} />}
         />
         <Route
+          path={route.FORGOT_PASSWORD}
+          element={<PrivateRoute Component={ForgotPasswordPage} guards={[]} />}
+        />
+        <Route
+          path={route.RESET_PASSWORD}
+          element={<PrivateRoute Component={ResetPasswordPage} guards={[]} />}
+        />
+        <Route
           path={route.SECONDARY_LOGIN}
           element={
             <PrivateRoute
@@ -190,18 +202,15 @@ const MainPage: FC<indexProps> = () => {
         <Route
           path={mainRoute.DASHBOARD}
           element={
-            <PrivateRoute
-              Component={DashboardPage}
-              guards={[authGuard, authProceedToTransaction]}
-            />
+            <PrivateRoute Component={DashboardPage} guards={[authGuard]} />
           }
         />
         <Route
-          path={mainRoute.BOOKKEEPER}
+          path={mainRoute.AUTOMATION_MAPPING}
           element={
             <PrivateRoute
-              Component={Bookkeeper}
-              guards={[authGuard, authGuardHaveSettings]}
+              Component={AutomationMappingPage}
+              guards={[authGuard]}
             />
           }
         />
@@ -214,17 +223,21 @@ const MainPage: FC<indexProps> = () => {
           element={
             <PrivateRoute
               Component={TransactionPage}
-              guards={[authGuard, authGuardHaveSettings]}
+              guards={[authGuard]}
               // guards={[authGuard]}
             />
           }
+        />
+        <Route
+          path={mainRoute.HOME}
+          element={<PrivateRoute Component={Home} guards={[authGuard]} />}
         />
         <Route
           path={mainRoute.TRANSACTION_VIEWPAGE}
           element={
             <PrivateRoute
               Component={TransactionViewDetailsPage}
-              guards={[authGuard, authGuardHaveSettings]}
+              guards={[authGuard]}
             />
           }
         />
@@ -233,7 +246,7 @@ const MainPage: FC<indexProps> = () => {
           element={
             <PrivateRoute
               Component={TransactionStripeViewDetailsPage}
-              guards={[authGuard, authGuardHaveSettings]}
+              guards={[authGuard]}
             />
           }
         />
@@ -242,6 +255,10 @@ const MainPage: FC<indexProps> = () => {
           element={
             <PrivateRoute Component={SettingsPage} guards={[authGuard]} />
           }
+        />
+        <Route
+          path={mainRoute.ASK_US}
+          element={<PrivateRoute Component={AskUs} guards={[authGuard]} />}
         />
         <Route path="*" element={<ErrorPage />} />
       </Routes>

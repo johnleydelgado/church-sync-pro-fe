@@ -162,14 +162,35 @@ const Account: FC<AccountProps> = ({}) => {
   }, [])
 
   return (
-    <div className="w-full  flex flex-col bg-white px-8 py-4 justify-center mt-2">
-      <div className="flex flex-col gap-2 px-4">
-        <p className="text-md font-thin">
-          Before we start, connect your accounts first
+    <div className="w-full  flex flex-col bg-white shadow-lg rounded-lg p-8 justify-center">
+      <div className="flex flex-col gap-2 p-4">
+        <p className="text-4xl font-bold text-[#27A1DB]">
+          Connect your accounts
+        </p>
+        <p className="text-sm font-thin">
+          Before you started, connect your pco, qbo and stripes accounts
         </p>
       </div>
 
       <div className="flex flex-col gap-4 p-4">
+        {/* <LoginButton
+          loginImage={pcLogin}
+          onClick={pcLoginHandler}
+          name="Already connected to Planning Center"
+          isHide={
+            tokenList &&
+            tokenList[0]?.tokens.find((a) => a.token_type === 'pco')
+              ? true
+              : false
+          }
+          isLoading={isBtnLoading.pcoLoading || isLoading || isRefetching}
+          logoutHandler={() =>
+            deleteToken(
+              tokenList &&
+                tokenList[0]?.tokens.find((a) => a.token_type === 'pco')?.id,
+            )
+          }
+        /> */}
         <button
           className="border-2 w-1/2 h-28 p-4 rounded-lg text-start flex gap-4"
           disabled={hasTokenOfTypes(['qbo'])}
@@ -257,7 +278,7 @@ const Account: FC<AccountProps> = ({}) => {
           disabled={hasTokenOfTypes(['stripe'])}
           onClick={stripeLoginHandler}
         >
-          <img src={stripeIcon} className="h-16 w-22 object-cover" />
+          <img src={stripeIcon} className="h-16 w-20" />
           <div className="flex flex-col gap-2">
             <div className="flex gap-2 items-center">
               {hasTokenOfTypes(['stripe']) ? (

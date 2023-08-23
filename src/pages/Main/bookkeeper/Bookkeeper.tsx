@@ -15,6 +15,7 @@ import BookkeeperTableList from './components/Table'
 import Loading from '@/common/components/loading/Loading'
 import { HiOutlineUsers } from 'react-icons/hi'
 import { BsPersonAdd } from 'react-icons/bs'
+import DeleteModal from './components/DeleteModal'
 
 interface BookkeeperProps {}
 
@@ -37,6 +38,8 @@ const Bookkeeper: FC<BookkeeperProps> = ({}) => {
   return (
     <MainLayout>
       <ModalInvitation refetch={refetch} />
+      <DeleteModal refetch={refetch} />
+
       <div className="flex h-full gap-4">
         <div className="rounded-lg p-8 bg-white w-screen">
           {/* Header */}

@@ -5,7 +5,6 @@ import React, { FC, useEffect, useState } from 'react'
 import { useMutation, useQuery } from 'react-query'
 import { useSelector } from 'react-redux'
 import Dropdown, { components } from 'react-select'
-import { BqoDataSelectProps } from '..'
 import { isEmpty } from 'lodash'
 import {
   SettingRegistrationQBOProps,
@@ -15,10 +14,10 @@ import {
 import { pcGetRegistrationEvents } from '@/common/api/planning-center'
 import { failNotification, successNotification } from '@/common/utils/toast'
 import { Button } from 'flowbite-react'
+import { BqoDataSelectProps } from '../Mapping'
 
 interface RegistrationProps {
   qboData: BqoDataSelectProps | undefined
-  isAutomationEnable: boolean
   userData: any
 }
 
@@ -29,13 +28,12 @@ const Input = (props: any) => (
   />
 )
 
-const Registration: FC<RegistrationProps> = ({
-  qboData,
-  isAutomationEnable,
-  userData,
-}) => {
-  const [selectedRegistrationName, setSelectedRegistrationName] =
-    useState<string>('')
+const Registration: FC<RegistrationProps> = ({ qboData, userData }) => {
+  const [selectedRegistrationName, setSelectedRegistrationName] = useState<{
+    value: string
+    label: string
+  } | null>(null)
+
   const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
 
   const [registrationSettingsData, setRegistrationSettingsData] = useState<
@@ -165,7 +163,6 @@ const Registration: FC<RegistrationProps> = ({
     await mutate({
       email,
       settingRegistrationData: registrationSettingsData,
-      isAutomationEnable,
     })
     successNotification({ title: 'Settings successfully saved !' })
   }
@@ -213,17 +210,22 @@ const Registration: FC<RegistrationProps> = ({
 
       const index = registrationSettingsData.findIndex(
         (item: qboRegistrationSettings) =>
-          item.registration === selectedRegistrationName,
+          item.registration === selectedRegistrationName.label,
       )
 
       if (index === -1) {
         // if the registration does not exist in the array, push the object into the array
         const newObject: qboRegistrationSettings = {
-          registration: selectedRegistrationName,
+          registration: selectedRegistrationName.label,
+          customer: {
+            label: selectedRegistrationName.label,
+            value: selectedRegistrationName.value,
+          },
         }
-        tempData.push(newObject)
+        setRegistrationSettingsData([...tempData, newObject])
+      } else {
+        setRegistrationSettingsData(tempData)
       }
-      setRegistrationSettingsData(tempData)
     }
   }, [selectedRegistrationName])
 
@@ -234,7 +236,7 @@ const Registration: FC<RegistrationProps> = ({
       // setIsAutomationEnable(userData?.data.UserSetting.isAutomationEnable)
     }
   }, [userData])
-
+  console.log('final data: ', registrationSettingsData)
   return (
     <div className="">
       {isLoadingRegistration ? (
@@ -245,9 +247,17 @@ const Registration: FC<RegistrationProps> = ({
           <Dropdown
             options={registrationData}
             components={{ Input }}
-            onChange={(val: any) =>
-              setSelectedRegistrationName(String(val.value))
-            }
+            onChange={(val: any) => {
+              // selectHandler({
+              //   val,
+              //   category: 'customer',
+              //   registration: val.value || '',
+              // })
+              setSelectedRegistrationName({
+                value: String(val.value),
+                label: String(val.label),
+              })
+            }}
             // value={findDefaultValue(item.attributes.name, 'account')}
             className="w-72"
           />
@@ -312,6 +322,7 @@ const Registration: FC<RegistrationProps> = ({
                       <Dropdown
                         options={qboData?.customers}
                         components={{ Input }}
+                        isDisabled
                         onChange={(val) =>
                           selectHandler({
                             val,
