@@ -18,6 +18,10 @@ import { manualSync } from '@/common/api/user'
 import { mainRoute } from '@/common/constant/route'
 import { deleteQboDeposit } from '@/common/api/qbo'
 import { FundProps } from '../../settings'
+import {
+  batchDataProps,
+  usePagination,
+} from '@/common/context/PaginationProvider'
 interface indexProps {}
 
 interface dataDonationProps {
@@ -64,23 +68,7 @@ interface SyncBatchesProps {
 }
 
 interface FinalDataProps {
-  batches: {
-    [x: string]: any
-    batch: {
-      type: string
-      id: string
-      attributes: {
-        committed_at: string
-        created_at: string
-        description: string
-        status: string
-        total_cents: number
-        total_currency: string
-        updated_at: string
-      }
-    }
-    donations: DonationProps
-  }
+  batches: { batch: batchDataProps; donations: any } | undefined
   synchedBatches: SyncBatchesProps[] | undefined
 }
 
@@ -93,22 +81,10 @@ const ViewDetails: FC<indexProps> = ({}) => {
 
   const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
   const [isSynching, setIsSynching] = useState(false)
-  const [dateRange, setDateRange] = useState({ startDate: '', endDate: '' })
 
-  // Assuming you have access to user.email in the second page
-  const { data, isLoading, refetch, isRefetching } = useQuery(
-    ['getBatches', dateRange, bookkeeper],
-    async () => {
-      const email =
-        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-      if (email) return await pcGetBatches(email, dateRange)
-      return []
-    },
-    {
-      refetchOnWindowFocus: false,
-      staleTime: Infinity,
-    },
-  )
+  const { data, synchedBatches, refetch, isLoading, isRefetching } =
+    usePagination()
+  console.log('data', data)
 
   const { data: fundData } = useQuery<FundProps[]>(
     ['getFunds', bookkeeper],
@@ -130,11 +106,11 @@ const ViewDetails: FC<indexProps> = ({}) => {
         user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
 
       setFinalData({
-        batches: data.batches.find(
+        batches: data?.find(
           (item: AttributesProps) =>
             item.batch.id === String(batchId) && item.donations,
         ),
-        synchedBatches: data.synchedBatches.filter(
+        synchedBatches: synchedBatches.filter(
           (el: any) => el.batchId === `${batchId} - ${email}`,
         ),
       })
@@ -144,33 +120,40 @@ const ViewDetails: FC<indexProps> = ({}) => {
   useEffect(() => {
     if (!isEmpty(fundData) && !isEmpty(finalData)) {
       const temp = { ...finalData }
-      const newFundData = temp.batches.donations.included.map((a) => {
-        const fData = fundData?.find(
-          (x) => x.id === a.relationships.fund.data.id,
-        )
-        return {
-          fundData: fData ? [{ ...fData, designationId: a.id }] : [],
-        }
-      })
+      const newFundData = temp.batches?.donations.included.map(
+        (a: {
+          relationships: { fund: { data: { id: string | undefined } } }
+          id: any
+        }) => {
+          const fData = fundData?.find(
+            (x) => x.id === a.relationships.fund.data.id,
+          )
+          return {
+            fundData: fData ? [{ ...fData, designationId: a.id }] : [],
+          }
+        },
+      )
 
-      const newDataArr = temp.batches.donations.data.map((a) => {
-        const fundObj = newFundData.find(
-          (x) =>
-            x.fundData[0]?.designationId ===
-            a.relationships.designations.data[0]?.id,
-        )
-        return {
-          ...a,
-          fund: fundObj ? fundObj.fundData : [],
-        }
-      })
+      const newDataArr = temp.batches?.donations.data.map(
+        (a: { relationships: { designations: { data: { id: any }[] } } }) => {
+          const fundObj = newFundData.find(
+            (x: { fundData: { designationId: any }[] }) =>
+              x.fundData[0]?.designationId ===
+              a.relationships.designations.data[0]?.id,
+          )
+          return {
+            ...a,
+            fund: fundObj ? fundObj.fundData : [],
+          }
+        },
+      )
 
       setNewData({
         ...finalData,
         batches: {
           ...finalData.batches,
           donations: {
-            ...finalData.batches.donations,
+            ...finalData.batches?.donations,
             data: newDataArr,
           },
         },

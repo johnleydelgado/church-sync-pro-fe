@@ -11,10 +11,12 @@ import {
   createSettings,
   qboRegistrationSettings,
 } from '@/common/api/user'
-import { pcGetRegistrationEvents } from '@/common/api/planning-center'
+import { pcHandleRegistrationEvents } from '@/common/api/planning-center'
 import { failNotification, successNotification } from '@/common/utils/toast'
-import { Button } from 'flowbite-react'
 import { BqoDataSelectProps } from '../Mapping'
+import { AiOutlineUserAdd } from 'react-icons/ai'
+import { Button } from '@material-tailwind/react'
+import AddUpdateModalRegistration from './AddUpdateModalRegistration'
 
 interface RegistrationProps {
   qboData: BqoDataSelectProps | undefined
@@ -79,13 +81,20 @@ const Registration: FC<RegistrationProps> = ({ qboData, userData }) => {
   //   { staleTime: Infinity },
   // )
 
-  const { data: registrationData, isLoading: isLoadingRegistration } = useQuery(
+  const {
+    data: registrationData,
+    isLoading: isLoadingRegistration,
+    refetch,
+  } = useQuery(
     ['getRegistration'],
     async () => {
-      const email =
-        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-      if (email) {
-        const res = await pcGetRegistrationEvents(email)
+      const id =
+        user.role === 'bookkeeper' ? bookkeeper?.clientId || '' : user.id
+      if (id) {
+        const res = await pcHandleRegistrationEvents({
+          action: 'read',
+          userId: id,
+        })
         return res
       }
     },
@@ -236,31 +245,36 @@ const Registration: FC<RegistrationProps> = ({ qboData, userData }) => {
       // setIsAutomationEnable(userData?.data.UserSetting.isAutomationEnable)
     }
   }, [userData])
-  console.log('final data: ', registrationSettingsData)
+
   return (
     <div className="">
       {isLoadingRegistration ? (
         <Loading />
       ) : (
         <div>
-          <p>Select Registration</p>
-          <Dropdown
-            options={registrationData}
-            components={{ Input }}
-            onChange={(val: any) => {
-              // selectHandler({
-              //   val,
-              //   category: 'customer',
-              //   registration: val.value || '',
-              // })
-              setSelectedRegistrationName({
-                value: String(val.value),
-                label: String(val.label),
-              })
-            }}
-            // value={findDefaultValue(item.attributes.name, 'account')}
-            className="w-72"
-          />
+          <AddUpdateModalRegistration refetch={refetch} />
+          {isEmpty(registrationData) ? null : (
+            <>
+              <p>Select Registration</p>
+              <Dropdown
+                options={registrationData}
+                components={{ Input }}
+                onChange={(val: any) => {
+                  // selectHandler({
+                  //   val,
+                  //   category: 'customer',
+                  //   registration: val.value || '',
+                  // })
+                  setSelectedRegistrationName({
+                    value: String(val.value),
+                    label: String(val.label),
+                  })
+                }}
+                // value={findDefaultValue(item.attributes.name, 'account')}
+                className="w-72"
+              />
+            </>
+          )}
 
           <div className="pt-4" />
 
@@ -322,7 +336,6 @@ const Registration: FC<RegistrationProps> = ({ qboData, userData }) => {
                       <Dropdown
                         options={qboData?.customers}
                         components={{ Input }}
-                        isDisabled
                         onChange={(val) =>
                           selectHandler({
                             val,
@@ -341,11 +354,13 @@ const Registration: FC<RegistrationProps> = ({ qboData, userData }) => {
                 </div>
               ))}
 
-          <div className="flex justify-end">
-            <Button className="bg-green-400" onClick={() => handleSubmit()}>
-              Save
-            </Button>
-          </div>
+          {isEmpty(registrationData) ? null : (
+            <div className="flex justify-end">
+              <Button className="bg-green-400" onClick={() => handleSubmit()}>
+                Save
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>

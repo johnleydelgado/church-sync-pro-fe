@@ -19,6 +19,8 @@ import SelectDateRange from '@/common/components/Select/SelectDateRange'
 import { BiSync } from 'react-icons/bi'
 import { Link } from 'react-router-dom'
 import { mainRoute } from '@/common/constant/route'
+import { useDispatch } from 'react-redux'
+import { setTabTransaction } from '@/redux/nonPersistState'
 
 export interface AttributesProps {
   batch: { id: string; attributes: any }
@@ -58,37 +60,43 @@ interface synchedBatchesProps {
 interface BatchesAndSyncProps {
   batches: { batch: batchDataProps[]; donations: any }
   synchedBatches: synchedBatchesProps[]
+  offSetRes?: { next: number; prev: number }
+  total_count?: number
 }
 
 interface DashboardProps {}
 
 const Dashboard: FC<DashboardProps> = () => {
   const [value, setValue] = useState([new Date(), new Date()])
+  const dispatch = useDispatch()
   const { user } = useSelector((state: RootState) => state.common)
   const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
+
   const [dateRange, setDateRange] = useState({ startDate: '', endDate: '' })
 
-  const [isBatch, setIsBatch] = useState<boolean>(true)
+  const { tabTransaction } = useSelector(
+    (state: RootState) => state.nonPersistState,
+  )
 
   const [batchSyncing, setBatchSynching] = useState([
     { batchId: '', trigger: false, realBatchId: '' },
   ])
 
-  const { data, isLoading, refetch, isRefetching } = useQuery<
-    BatchesAndSyncProps | undefined
-  >(
-    ['getBatches', dateRange, bookkeeper],
-    async () => {
-      const email =
-        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-      if (email) return await pcGetBatches(email, dateRange)
-      return []
-    },
-    {
-      refetchOnWindowFocus: false,
-      staleTime: Infinity,
-    },
-  )
+  // const { data, isLoading, refetch, isRefetching } = useQuery<
+  //   BatchesAndSyncProps | undefined
+  // >(
+  //   ['getBatches', dateRange, bookkeeper],
+  //   async () => {
+  //     const email =
+  //       user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
+  //     if (email) return await pcGetBatches(email, dateRange, offSet?.next)
+  //     return []
+  //   },
+  //   {
+  //     refetchOnWindowFocus: false,
+  //     staleTime: Infinity,
+  //   },
+  // )
 
   const { data: userData } = useQuery(
     ['getUserRelated'],
@@ -110,8 +118,12 @@ const Dashboard: FC<DashboardProps> = () => {
     async () => {
       const email =
         user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-      if (email) return await getStripePayouts(email)
-      return []
+      try {
+        if (email) return await getStripePayouts(email)
+        return []
+      } catch (err) {
+        return []
+      }
     },
     {
       staleTime: Infinity,
@@ -180,7 +192,7 @@ const Dashboard: FC<DashboardProps> = () => {
       })
       if (result.success) {
         successNotification({ title: `Batch: ${batchName} successfully sync` })
-        refetch()
+        // refetch()
       } else {
         failNotification({ title: 'Error' })
       }
@@ -246,7 +258,7 @@ const Dashboard: FC<DashboardProps> = () => {
                   successNotification({
                     title: `Stripe payout successfully sync`,
                   })
-                  refetch()
+                  // refetch()
                 } else {
                   failNotification({ title: 'Error' })
                 }
@@ -280,10 +292,7 @@ const Dashboard: FC<DashboardProps> = () => {
 
   return (
     <MainLayout>
-      {isLoading ||
-      isRefetching ||
-      isLoadingStripePayoutData ||
-      isRefetchingStripePayoutData ? (
+      {isLoadingStripePayoutData || isRefetchingStripePayoutData ? (
         <Loading />
       ) : (
         <div className="flex h-full gap-4">
@@ -301,20 +310,30 @@ const Dashboard: FC<DashboardProps> = () => {
                 <div className="flex gap-4">
                   <button
                     className={`${
-                      isBatch ? 'text-gray-400 font-extrabold' : 'text-gray-400'
+                      tabTransaction.batch
+                        ? 'text-gray-400 font-extrabold'
+                        : 'text-gray-400'
                     } flex items-center gap-1`}
-                    onClick={() => setIsBatch(true)}
+                    onClick={() =>
+                      dispatch(
+                        setTabTransaction({ batch: true, stripe: false }),
+                      )
+                    }
                   >
                     <p>Batch</p>
                   </button>
                   <p className="text-gray-400"> | </p>
                   <button
                     className={`${
-                      !isBatch
+                      !tabTransaction.batch
                         ? 'text-gray-400 font-extrabold'
                         : 'text-gray-400'
                     } flex items-center gap-1`}
-                    onClick={() => setIsBatch(false)}
+                    onClick={() =>
+                      dispatch(
+                        setTabTransaction({ batch: false, stripe: true }),
+                      )
+                    }
                   >
                     <p>Stripe Payout</p>
                   </button>
@@ -326,18 +345,17 @@ const Dashboard: FC<DashboardProps> = () => {
 
             <div className="flex w-full">
               {/* <SelectDateRange onChange={handleDateChange} value={value} /> */}
-              <div>
+              {/* <div>
                 <SelectDateRange
                   setDateRangeVal={setDateRange}
                   dateRangeVal={dateRange}
                 />
-              </div>
+              </div> */}
             </div>
 
             {/* Table */}
-            {isBatch && userData?.data?.UserSetting ? (
+            {tabTransaction.batch && userData?.data?.UserSetting ? (
               <BatchTable
-                data={data}
                 batchSyncing={batchSyncing}
                 triggerSync={triggerSyncBatch}
               />
@@ -345,12 +363,11 @@ const Dashboard: FC<DashboardProps> = () => {
                 userData?.data?.UserSetting?.settingRegistrationData,
               ) ? (
               <StripePayoutTable
-                data={stripePayoutData}
                 triggerSync={triggerSyncStripe}
                 batchSyncing={batchSyncing}
               />
             ) : isEmpty(userData?.data?.UserSetting?.settingRegistrationData) &&
-              !isBatch ? (
+              !tabTransaction.batch ? (
               <div className="flex flex-col items-center justify-center h-96">
                 <p className="text-2xl text-center font-thin">
                   Kindly configure your registration mapping within the mapping.
@@ -362,7 +379,7 @@ const Dashboard: FC<DashboardProps> = () => {
                   Click Here !
                 </Link>
               </div>
-            ) : isEmpty(userData?.data?.UserSetting) && isBatch ? (
+            ) : isEmpty(userData?.data?.UserSetting) && tabTransaction.batch ? (
               <div className="flex flex-col items-center justify-center h-96">
                 <p className="text-2xl text-center font-thin">
                   Kindly configure your donation mapping within the mapping.

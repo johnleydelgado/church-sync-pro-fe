@@ -34,10 +34,11 @@ const pcGetFunds = async ({ email }: { email: string | null | undefined }) => {
 const pcGetBatches = async (
   email: string | null | undefined,
   dateRange?: any,
+  offset?: number,
 ) => {
   // await axios.get
   const url = pcRoutes.getBatches
-  const dataJson = JSON.stringify({ email, dateRange })
+  const dataJson = JSON.stringify({ email, dateRange, offset })
   try {
     const response = await apiCall.post(url, dataJson)
     console.log('a', response.data)
@@ -48,22 +49,36 @@ const pcGetBatches = async (
   }
 }
 
-const pcGetRegistrationEvents = async (email: string | null | undefined) => {
+const pcHandleRegistrationEvents = async ({
+  action,
+  name,
+  userId,
+  registrationId,
+}: {
+  action: 'create' | 'read' | 'update'
+  name?: string
+  userId: number
+  registrationId?: string
+}) => {
   // await axios.get
-  const url = pcRoutes.getRegistrationEvents
+  const url = pcRoutes.handleRegistrationEvents
+  const dataJson = JSON.stringify({ action, name, userId, registrationId })
   try {
-    const response = await apiCall.get(url + `?email=${email}`)
-    console.log('aaaa', response)
-    const data = response.data.data.map((item: any) => {
-      return {
-        value: item.value || '',
-        label: item.name || '',
-      }
-    })
-    return data
+    const response = await apiCall.post(url, dataJson)
+    if (action === 'read') {
+      const data = response.data.data.map((item: any) => {
+        return {
+          value: item.name || '',
+          label: item.name || '',
+        }
+      })
+      return data
+    }
+
+    return true
   } catch (e: any) {
     return []
   }
 }
 
-export { pcGetFunds, pcGetBatches, pcGetRegistrationEvents }
+export { pcGetFunds, pcGetBatches, pcHandleRegistrationEvents }

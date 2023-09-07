@@ -16,6 +16,7 @@ import MainUnAuthPage from './pages/MainPage'
 import { persistor, store } from './redux/store'
 import 'react-toastify/dist/ReactToastify.css'
 import { useEffect, useMemo } from 'react'
+import { PaginationProvider } from './common/context/PaginationProvider'
 const { REACT_APP_HOST_BE, REACT_APP_GOOGLE_CALLBACK_URL } = process.env
 
 function App() {
@@ -69,11 +70,13 @@ function App() {
         <QueryClientProvider client={queryClient}>
           <ThemeProvider>
             <DndProvider backend={HTML5Backend}>
-              <Router>
-                <Routes>
-                  <Route path="/*" element={<MainUnAuthPage />} />
-                </Routes>
-              </Router>
+              <PaginationProvider>
+                <Router>
+                  <Routes>
+                    <Route path="/*" element={<MainUnAuthPage />} />
+                  </Routes>
+                </Router>
+              </PaginationProvider>
               <ToastContainer />
             </DndProvider>
           </ThemeProvider>

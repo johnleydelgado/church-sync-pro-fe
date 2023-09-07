@@ -1,27 +1,23 @@
 /* eslint-disable no-empty-pattern */
+import { setSelectedTransactionDate } from '@/redux/common'
+import { RootState } from '@/redux/store'
 import { format, getMonth, getYear } from 'date-fns'
 import { range } from 'lodash'
 import React, { FC, useEffect, useState } from 'react'
 import ReactDatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
+import { useSelector } from 'react-redux'
 import { useDispatch } from 'react-redux'
 
 // import { setDateStartEnd } from '~/redux/common'
 
-interface SelectDateRangeProps {
-  setDateRangeVal: any
-  dateRangeVal: any
-}
+interface SelectDateRangeProps {}
 
-const SelectDateRange: FC<SelectDateRangeProps> = ({
-  setDateRangeVal,
-  dateRangeVal,
-}) => {
-  const [dateRange, setDateRange] = useState([
-    dateRangeVal.startDate ? new Date(dateRangeVal.startDate) : null,
-    dateRangeVal.endDate ? new Date(dateRangeVal.endDate) : null,
-  ])
-  const [startDate, endDate] = dateRange
+const SelectDateRange: FC<SelectDateRangeProps> = ({}) => {
+  const dispatch = useDispatch()
+  const { selectedTransactionDate } = useSelector(
+    (state: RootState) => state.common,
+  )
 
   const years = range(1990, getYear(new Date()) + 1, 1)
   const months = [
@@ -63,24 +59,34 @@ const SelectDateRange: FC<SelectDateRangeProps> = ({
     />
   )
 
-  useEffect(() => {
-    if (startDate && endDate) {
-      const formatStartDate = format(startDate || new Date(), 'yyyy-MM-dd')
-      const formatEndDate = format(endDate || new Date(), 'yyyy-MM-dd')
-      setDateRangeVal({ startDate: formatStartDate, endDate: formatEndDate })
-      // dispatch(
-      //   setDateStartEnd({ startDate: formatStartDate, endDate: formatEndDate }),
-      // )
-    }
-  }, [startDate, endDate])
+  const onChangeDataHandler = (date: any) => {
+    // const formatStartDate = format(date[0] || new Date(), 'yyyy-MM-dd')
+    // const formatEndDate = format(date[1] || new Date(), 'yyyy-MM-dd')
+    dispatch(
+      setSelectedTransactionDate({
+        startDate: date[0],
+        endDate: date[1],
+      }),
+    )
+  }
+
+  console.log('selectedTransactionDate', selectedTransactionDate)
 
   return (
     <ReactDatePicker
       selectsRange
-      startDate={startDate}
-      endDate={endDate}
+      startDate={
+        selectedTransactionDate?.startDate
+          ? new Date(selectedTransactionDate?.startDate)
+          : null
+      }
+      endDate={
+        selectedTransactionDate?.endDate
+          ? new Date(selectedTransactionDate?.endDate)
+          : null
+      }
       onChange={(update: any) => {
-        setDateRange(update)
+        onChangeDataHandler(update)
       }}
       customInput={<Input />}
       isClearable

@@ -86,7 +86,7 @@ const MainPage: FC<indexProps> = () => {
     },
     {
       refetchOnWindowFocus: false,
-      enabled: !!user && !!bookkeeper, // Only run query if `user` and `bookkeeper` are truthy
+      enabled: !!user, // Only run query if `user` and `bookkeeper` are truthy
     },
   )
 

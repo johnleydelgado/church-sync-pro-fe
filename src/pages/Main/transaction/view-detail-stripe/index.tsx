@@ -24,6 +24,8 @@ import { getUserRelated } from '@/common/api/user'
 import { isEmpty } from 'lodash'
 import { deleteQboDeposit } from '@/common/api/qbo'
 import { failNotification, successNotification } from '@/common/utils/toast'
+import { mainRoute } from '@/common/constant/route'
+import { usePagination } from '@/common/context/PaginationProvider'
 interface indexProps {}
 
 interface FinalDataProps {
@@ -70,23 +72,30 @@ const ViewDetails: FC<indexProps> = ({}) => {
     }[]
   >([{ id: null, batchId: null, createdAt: null, donationId: null }])
 
+  // const {
+  //   data: batchesData,
+  //   isLoading: isLoadingBatchData,
+  //   isRefetching: isRefetchingBatchData,
+  //   refetch,
+  // } = useQuery(
+  //   ['getBatchStripeViewDetails'], // Same query key as in the first page
+  //   async () => {
+  //     const email =
+  //       user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
+  //     if (email) return await pcGetBatches(email, '', 0)
+  //   },
+  //   {
+  //     staleTime: Infinity, // The data will be considered fresh indefinitely
+  //     refetchOnWindowFocus: false,
+  //   },
+  // )
+
   const {
-    data: batchesData,
+    synchedBatches: synchedBatchesF,
     isLoading: isLoadingBatchData,
     isRefetching: isRefetchingBatchData,
     refetch,
-  } = useQuery(
-    ['getBatches'], // Same query key as in the first page
-    async () => {
-      const email =
-        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-      if (email) return await pcGetBatches(email)
-    },
-    {
-      staleTime: Infinity, // The data will be considered fresh indefinitely
-      refetchOnWindowFocus: false,
-    },
-  )
+  } = usePagination()
 
   const { data: userData } = useQuery(
     ['getUserRelated'],
@@ -197,7 +206,7 @@ const ViewDetails: FC<indexProps> = ({}) => {
   }
 
   useEffect(() => {
-    const arr = batchesData?.synchedBatches
+    const arr = synchedBatchesF
     const date = String(fromUnixTime(Number(payoutDate)))
     if (arr?.length) {
       setSyncBatches(
@@ -219,64 +228,87 @@ const ViewDetails: FC<indexProps> = ({}) => {
 
   useEffect(() => {
     const fetchData = async () => {
-      setIsFetching(true)
-      const email =
-        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-      const stripePayoutRes = await getStripePayouts(email)
-      const date = String(fromUnixTime(Number(payoutDate)))
+      try {
+        setIsFetching(true)
+        const email =
+          user?.role === 'bookkeeper'
+            ? bookkeeper?.clientEmail || ''
+            : user?.email
 
-      const filterFundName = fundData?.length
-        ? fundData.map((item) => item.attributes.name)
-        : []
-      const newStripeObj = stripePayoutRes.find(
-        (item: any) => item.payoutDate === format(new Date(date), formatString),
-      )
-      const data = await Promise.all(
-        newStripeObj.data.map((item: any) => {
-          const index = filterFundName?.findIndex((word) =>
-            item.description.includes(word),
-          )
+        if (!email) {
+          setIsFetching(false)
+          return
+        }
 
-          if (index !== -1) {
-            const str = filterFundName[index]
-            return {
-              fund: str,
-              grossAmount: newStripeObj.grossAmount,
-              net: newStripeObj.net,
-              nonGivingIncome: newStripeObj.nonGivingIncome,
-              totalFees: newStripeObj.totalFees,
-              payoutDate: newStripeObj.payoutDate,
-              item,
-            }
-          } else {
-            const parts = item.description.split(' - ')
-            const registrationFund =
-              userData.data.UserSetting.settingRegistrationData.find(
-                (item: any) => item.registration === (parts[2] || parts[1]),
+        const stripePayoutRes = await getStripePayouts(email)
+        const date = String(fromUnixTime(Number(payoutDate)))
+
+        const filterFundName = fundData?.length
+          ? fundData.map(
+              (item: { attributes: { name: any } }) => item.attributes.name,
+            )
+          : []
+
+        const newStripeObj = stripePayoutRes.find(
+          (item: { payoutDate: string }) =>
+            item.payoutDate === format(new Date(date), formatString),
+        )
+
+        let data: any[] = []
+
+        if (newStripeObj?.data && Array.isArray(newStripeObj.data)) {
+          data = await Promise.all(
+            newStripeObj.data.map((item: any) => {
+              const index = filterFundName?.findIndex((word: any) =>
+                item.description.includes(word),
               )
 
-            return {
-              fund: registrationFund
-                ? `${capitalAtFirstLetter(
-                    registrationFund.class.label || '',
-                  )} (${capitalAtFirstLetter(parts[2] || parts[1] || '')})`
-                : '',
-              grossAmount: newStripeObj.grossAmount,
-              net: newStripeObj.net,
-              nonGivingIncome: newStripeObj.nonGivingIncome,
-              totalFees: newStripeObj.totalFees,
-              payoutDate: newStripeObj.payoutDate,
-              item,
-            }
-          }
-        }),
-      )
+              if (index !== -1) {
+                const str = filterFundName[index]
+                return {
+                  fund: str,
+                  grossAmount: newStripeObj.grossAmount,
+                  net: newStripeObj.net,
+                  nonGivingIncome: newStripeObj.nonGivingIncome,
+                  totalFees: newStripeObj.totalFees,
+                  payoutDate: newStripeObj.payoutDate,
+                  item,
+                }
+              } else {
+                const parts = item.description.split(' - ')
+                const registrationFund =
+                  userData.data.UserSetting.settingRegistrationData.find(
+                    (item: any) => item.registration === (parts[2] || parts[1]),
+                  )
 
-      setStripePayoutData(data)
-      setIsFetching(false)
+                return {
+                  fund: registrationFund
+                    ? `${capitalAtFirstLetter(
+                        registrationFund.class.label || '',
+                      )} (${capitalAtFirstLetter(parts[2] || parts[1] || '')})`
+                    : '',
+                  grossAmount: newStripeObj.grossAmount,
+                  net: newStripeObj.net,
+                  nonGivingIncome: newStripeObj.nonGivingIncome,
+                  totalFees: newStripeObj.totalFees,
+                  payoutDate: newStripeObj.payoutDate,
+                  item,
+                }
+              }
+            }),
+          )
+        }
+
+        setStripePayoutData(data)
+      } catch (error) {
+        console.error('An error occurred:', error)
+      } finally {
+        setIsFetching(false)
+      }
     }
+
     if (
-      !isEmpty(userData?.data?.UserSetting.settingRegistrationData) &&
+      !isEmpty(userData?.data?.UserSetting?.settingRegistrationData) &&
       !isEmpty(fundData)
     ) {
       fetchData()
@@ -290,87 +322,104 @@ const ViewDetails: FC<indexProps> = ({}) => {
           <Loading />
         ) : (
           <>
-            <button
-              onClick={() => navigation(-1)}
-              className="pb-2 flex gap-2 w-32 items-center transform hover:scale-105 duration-75 ease-linear"
-            >
-              <IoIosArrowBack />
-              <p>Back</p>
-            </button>
             <div className="rounded-lg bg-white h-5/6">
+              <div className="flex items-center gap-2">
+                <BiSync size={28} className="text-blue-400" />
+                <span className="font-bold text-lg text-[#27A1DB]">
+                  Stripe Transaction
+                </span>
+              </div>
               <div className="p-8 flex flex-col gap-16">
                 {/* Header */}
-                <div className="flex flex-col gap-2">
-                  <span className="font-normal text-2xl">
-                    {`Stripe Payout ${stripePayoutData?.[0]?.payoutDate}`}
-                  </span>
-                  <div>
-                    {synchedBatches[0]?.createdAt ? (
-                      <div className="flex gap-4">
-                        <span className="text-slate-500 font-normal text-sm">
-                          {`Synched Planning Center to QuicBooks Online | Last synched at ${format(
-                            parseISO(synchedBatches[0]?.createdAt || ''),
-                            "hh:mm aaaa 'on' EEEE MMMM d, yyyy",
-                          )} | `}
-                        </span>
-                        <button
-                          className="text-orange-600 flex items-center gap-1"
-                          onClick={() => triggerUnSync()}
-                        >
-                          <BiSync
-                            className={`${
-                              isSynching ? 'animate-spin' : 'animate-none'
-                            }`}
-                          />
-                          <p className="underline">Remove sync</p>
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex gap-4">
-                        <p>Not Sync | </p>
-                        <button
-                          className="text-green-600 flex items-center gap-1"
-                          onClick={triggerSyncStripe}
-                        >
-                          <BiSync
-                            className={`${
-                              isSynching ? 'animate-spin' : 'animate-none'
-                            }`}
-                          />
-                          <p className="underline">Sync</p>
-                        </button>
-                      </div>
-                    )}
+                <div className="bg-[#FAB40099] flex items-center -mx-14">
+                  <button
+                    onClick={() => navigation(mainRoute.TRANSACTION)}
+                    className="flex gap-2  items-center transform hover:scale-105 duration-75 ease-linear pr-2"
+                  >
+                    <IoIosArrowBack size={32} className="text-white" />
+                  </button>
+                  <div className="flex flex-col gap-2 pl-4 py-2">
+                    <span className="font-normal text-xl text-[#1b1b1bcc]">
+                      {`Stripe Payout ${stripePayoutData?.[0]?.payoutDate}`}
+                    </span>
+                    <div>
+                      {synchedBatches[0]?.createdAt ? (
+                        <div className="flex gap-4">
+                          <span className="text-slate-500 font-normal text-sm text-[#1b1b1bcc]">
+                            {`Synched Planning Center to QuicBooks Online | Last synched at ${format(
+                              parseISO(synchedBatches[0]?.createdAt || ''),
+                              "hh:mm aaaa 'on' EEEE MMMM d, yyyy",
+                            )} | `}
+                          </span>
+                          <button
+                            className="text-orange-500 flex items-center gap-1"
+                            onClick={() => triggerUnSync()}
+                          >
+                            <BiSync
+                              className={`${
+                                isSynching ? 'animate-spin' : 'animate-none'
+                              }`}
+                            />
+                            <p className="underline">Remove sync</p>
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex gap-4">
+                          <p className="text-[#1b1b1bcc]">Not Sync | </p>
+                          <button
+                            className="text-[#27A1DB] flex items-center gap-1"
+                            onClick={triggerSyncStripe}
+                          >
+                            <BiSync
+                              className={`${
+                                isSynching ? 'animate-spin' : 'animate-none'
+                              }`}
+                            />
+                            <p className="underline">Sync</p>
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
                 <div className="">
-                  <span className="font-normal text-2xl">Payout Summary</span>
-                  <div className="border-[1px] flex justify-between p-8 mt-2 rounded-lg">
+                  <span className="font-normal text-2xl text-[#FAB400]">
+                    Payout Summary
+                  </span>
+                  <div className="border-y-[1px] flex justify-between p-8 mt-2 border-[#FAB400] bg-[#D9D9D933]">
                     <div className="flex flex-col gap-2">
-                      <p>Total Amount</p>
-                      <p className="font-light text-slate-500">
+                      <p className="font-semibold text-gray-500">
+                        Total Amount
+                      </p>
+                      <p className="font-light text-gray-500">
                         {formatUsd(String(stripePayoutData?.[0]?.grossAmount))}
                       </p>
                     </div>
 
                     <div className="flex flex-col gap-2">
-                      <p>No. Of Donations</p>
-                      <p className="font-light text-slate-500 text-center">
+                      <p className="font-semibold text-gray-500">
+                        No. Of Donations
+                      </p>
+                      <p className="font-light text-gray-500 text-center">
                         {stripePayoutData?.length}
                       </p>
                     </div>
 
                     <div className="flex flex-col gap-2">
-                      <p>Stripe total fees</p>
-                      <p className="font-light text-slate-500">
+                      <p className="font-semibold text-gray-500">
+                        Stripe total fees
+                      </p>
+                      <p className="font-light text-gray-500">
                         {formatUsd(String(stripePayoutData?.[0]?.totalFees))}
                       </p>
                     </div>
 
                     <div className="flex flex-col gap-2">
-                      <p>Non Giving Income</p>
-                      <p className="font-light text-slate-500">
+                      <p className="font-semibold text-gray-500">
+                        Non Giving Income
+                      </p>
+                      <p className="font-light text-gray-500">
                         {formatUsd(
                           String(stripePayoutData?.[0]?.nonGivingIncome),
                         )}
@@ -380,20 +429,32 @@ const ViewDetails: FC<indexProps> = ({}) => {
                 </div>
 
                 <Table>
-                  <Table.Head>
-                    <Table.HeadCell>Fund</Table.HeadCell>
-                    <Table.HeadCell>Amount</Table.HeadCell>
-                    <Table.HeadCell>Stripe Fees</Table.HeadCell>
-                    <Table.HeadCell>Net</Table.HeadCell>
+                  <Table.Head className="border-b-2 border-[#FAB400]">
+                    <Table.HeadCell className="text-[#FAB400]">
+                      Fund
+                    </Table.HeadCell>
+                    <Table.HeadCell className="text-[#FAB400]">
+                      Amount
+                    </Table.HeadCell>
+                    <Table.HeadCell className="text-[#FAB400]">
+                      Stripe Fees
+                    </Table.HeadCell>
+                    <Table.HeadCell className="text-[#FAB400]">
+                      Net
+                    </Table.HeadCell>
                   </Table.Head>
                   <Table.Body className="divide-y">
-                    {stripePayoutData?.map((item) => (
+                    {stripePayoutData?.map((item, index: number) => (
                       <Table.Row
-                        className="bg-white dark:border-gray-700 dark:bg-gray-800"
+                        className={`${
+                          index % 2 === 0
+                            ? 'bg-gray-50 dark:bg-gray-800'
+                            : 'bg-white dark:bg-gray-900'
+                        } border-b border-[#FAB400] dark:border-gray-700 [&>*]:px-6 [&>*]:py-4`}
                         key={Math.random()}
                       >
-                        <Table.Cell className="whitespace-nowrap font-medium text-gray-900 dark:text-white ">
-                          {item.fund}
+                        <Table.Cell className="whitespace-nowrap font-medium dark:text-white">
+                          {item.fund || ''}
                         </Table.Cell>
                         <Table.Cell>
                           {formatUsd(String(item.item.amount))}

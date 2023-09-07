@@ -95,6 +95,7 @@ const Account: FC<AccountProps> = ({}) => {
 
   const deleteToken = async (id: number | undefined | null) => {
     try {
+      console.log('test', id)
       if (id) {
         const res = await deleteUserToken(id)
 
@@ -172,8 +173,13 @@ const Account: FC<AccountProps> = ({}) => {
       <div className="flex flex-col gap-4 p-4">
         <button
           className="border-2 w-1/2 h-28 p-4 rounded-lg text-start flex gap-4"
-          disabled={hasTokenOfTypes(['qbo'])}
-          onClick={qboLoginHandler}
+          onClick={(e) => {
+            if (!hasTokenOfTypes(['qbo'])) {
+              qboLoginHandler()
+            } else {
+              e.stopPropagation()
+            }
+          }}
         >
           <img src={qboIcon} className="h-full w=full" />
           <div className="flex flex-col gap-2">
@@ -213,8 +219,13 @@ const Account: FC<AccountProps> = ({}) => {
 
         <button
           className="border-2 w-1/2 h-28 p-4 rounded-lg text-start flex gap-4"
-          disabled={hasTokenOfTypes(['pco'])}
-          onClick={pcLoginHandler}
+          onClick={(e) => {
+            if (!hasTokenOfTypes(['pco'])) {
+              pcLoginHandler()
+            } else {
+              e.stopPropagation()
+            }
+          }}
         >
           <img src={pcoIcon} className="h-full w=full" />
           <div className="flex flex-col gap-2">
@@ -254,10 +265,15 @@ const Account: FC<AccountProps> = ({}) => {
 
         <button
           className="border-2 w-1/2 h-28 p-4 rounded-lg text-start flex gap-4"
-          disabled={hasTokenOfTypes(['stripe'])}
-          onClick={stripeLoginHandler}
+          onClick={(e) => {
+            if (!hasTokenOfTypes(['stripe'])) {
+              stripeLoginHandler()
+            } else {
+              e.stopPropagation()
+            }
+          }}
         >
-          <img src={stripeIcon} className="h-16 w-22 object-cover" />
+          <img src={stripeIcon} className="h-full w=full" />
           <div className="flex flex-col gap-2">
             <div className="flex gap-2 items-center">
               {hasTokenOfTypes(['stripe']) ? (
@@ -272,7 +288,6 @@ const Account: FC<AccountProps> = ({}) => {
                   : 'Click to sync with Stripe'}
               </p>
             </div>
-
             <p
               className={`${
                 hasTokenOfTypes(['stripe'])

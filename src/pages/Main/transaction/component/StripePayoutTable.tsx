@@ -13,9 +13,11 @@ import { useSelector } from 'react-redux'
 import { string } from 'yup'
 import { getUnixTime } from 'date-fns'
 import Empty from '@/common/components/empty/Empty'
+import { usePagination } from '@/common/context/PaginationProvider'
+import usePaginationStripe from '@/common/hooks/usePaginationStripe'
+import PaginationStripe from '@/common/components/pagination/PaginationStripe'
 
 interface BatchTableProps {
-  data: Stripe.Charge[] | undefined
   triggerSync: (params: {
     stripeData: any
     payoutDate: string
@@ -24,47 +26,37 @@ interface BatchTableProps {
 }
 
 const StripePayoutTable: FC<BatchTableProps> = ({
-  data,
   triggerSync,
   batchSyncing,
 }) => {
   const { user } = useSelector((state: RootState) => state.common)
   const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
-  const [dateRange, setDateRange] = useState({ startDate: '', endDate: '' })
-
-  const { data: dataBatches } = useQuery<BatchesProps>(
-    ['getBatches', dateRange, bookkeeper],
-    async () => {
-      const email =
-        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-      if (email) return await pcGetBatches(email, dateRange)
-      return []
-    },
-    {
-      refetchOnWindowFocus: false,
-      staleTime: Infinity,
-    },
-  )
+  const { currentPage, currentPageData, totalItems, setCurrentPage } =
+    usePaginationStripe()
+  const { synchedBatches } = usePagination()
 
   const isSync = (date: string): boolean => {
-    const arr = dataBatches?.synchedBatches
+    const arr = synchedBatches
     if (arr?.length) {
-      const arrDates = arr.reduce((dates: string[], item) => {
-        const regex = /(\d{1,2}\/\d{1,2}\/\d{4})/ // Match a date in MM/DD/YYYY format
-        const match = item.batchId.match(regex)
-        if (match && match[1]) {
-          const date = match[1]
-          dates.push(date)
-        }
+      const arrDates = arr.reduce(
+        (dates: string[], item: { batchId: string }) => {
+          const regex = /(\d{1,2}\/\d{1,2}\/\d{4})/ // Match a date in MM/DD/YYYY format
+          const match = item.batchId.match(regex)
+          if (match && match[1]) {
+            const date = match[1]
+            dates.push(date)
+          }
 
-        return dates
-      }, [])
+          return dates
+        },
+        [],
+      )
       return arrDates.includes(date)
     }
     return false
   }
 
-  return !isEmpty(data) ? (
+  return !isEmpty(currentPageData) ? (
     <div className="relative overflow-x-auto pt-8">
       <table className="w-full text-sm text-left text-gray-500">
         <thead className="text-xs text-[#FAB400] uppercase bg-white dark:bg-gray-700 border-y-2 border-[#FAB400]">
@@ -93,8 +85,8 @@ const StripePayoutTable: FC<BatchTableProps> = ({
           </tr>
         </thead>
         <tbody className="[&>*]:h-20 text-left">
-          {!isEmpty(data)
-            ? data?.map((item: any, index: number) => (
+          {!isEmpty(currentPageData)
+            ? currentPageData?.map((item: any, index: number) => (
                 <tr
                   className={`${
                     index % 2 === 0
@@ -183,6 +175,16 @@ const StripePayoutTable: FC<BatchTableProps> = ({
             : null}
         </tbody>
       </table>
+      {Math.ceil(totalItems / 10) > 1 ? (
+        <div className="flex flex-1 flex-col items-end justify-end p-6">
+          <PaginationStripe
+            currentPage={currentPage}
+            onPageChange={(val: any) => setCurrentPage(val)}
+            totalPages={Math.ceil(totalItems / 10)}
+            itemPerPage={10}
+          />
+        </div>
+      ) : null}
     </div>
   ) : (
     <Empty />

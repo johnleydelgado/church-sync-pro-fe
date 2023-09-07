@@ -3,6 +3,7 @@ const MODALS_NAME = {
   registrationWithGoogle: 'registration-google-modal',
   invitation: 'invitation-modal',
   deleteBookeeper: 'delete-bookeeper',
+  modalRegistration: 'modal-registration',
 }
 
 export { MODALS_NAME }

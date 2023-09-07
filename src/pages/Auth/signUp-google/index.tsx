@@ -100,9 +100,18 @@ const SignUpGoogle: FC<SignUpProps> = () => {
         // sendEmail()
         await delay(2000)
         const userData = await getUserRelated(email)
-        const { id, role, firstName, lastName, churchName } = userData.data
+        const { id, role, firstName, lastName, churchName, img_url } =
+          userData.data
         dispatch(
-          setUserData({ id, role, firstName, lastName, churchName, email }),
+          setUserData({
+            id,
+            role,
+            firstName,
+            lastName,
+            churchName,
+            email,
+            img_url,
+          }),
         )
         localStorage.setItem(storageKey.PERSONAL_TOKEN, role)
         setSignUpSuccess(true)

@@ -86,14 +86,59 @@ const Input = (props: any) => (
   />
 )
 
+const customStyles = {
+  control: (base: any, state: any) => ({
+    ...base,
+    background: '#D1FAE580',
+    // match with the menu
+    borderRadius: 0,
+    // Overwrittes the different states of border
+    borderColor: state.isFocused ? '' : '#D1FAE580',
+    // Removes weird border around container
+    boxShadow: state.isFocused ? null : null,
+    '&:hover': {
+      // Overwrittes the different states of border
+      borderColor: state.isFocused ? '' : '#D1FAE580',
+    },
+  }),
+  valueContainer: (base: any) => ({
+    ...base,
+    // paddingLeft: 32,
+  }),
+  menu: (base: any) => ({
+    ...base,
+    // override border radius to match the box
+    borderRadius: 0,
+    // kill the gap
+    marginTop: 0,
+    backgroundColor: '#D1FAE5',
+  }),
+  menuList: (base: any, state: any) => ({
+    ...base,
+    backgroundColor: '#D1FAE5',
+    // kill the white space on first and last option
+    padding: 0,
+  }),
+  singleValue: (base: any, state: any) => ({
+    ...base,
+    color: 'white',
+  }),
+  placeholder: (base: any) => ({
+    ...base,
+    paddingLeft: 32,
+  }),
+}
+
 function Accordion({
   title,
   icon,
   dropdownLinks,
+  isTrigger,
 }: {
   title: string
   icon: ReactNode
   dropdownLinks?: { name: string; link: string }[]
+  isTrigger: boolean
 }) {
   const route = useLocation()
   const [expanded, setExpanded] = useState(
@@ -104,20 +149,23 @@ function Accordion({
 
   return (
     <div className="flex flex-wrap pl-4">
-      <div
-        className="flex flex-1 cursor-pointer items-center"
-        onClick={toggleExpanded}
-      >
-        {icon}
-        <p className="pl-8 text-slate-500">{title}</p>
-        <div className="flex flex-1 justify-end">
-          {expanded ? (
-            <FaChevronUp size={12} color="white" className="ml-2" />
-          ) : (
-            <FaChevronDown size={12} color="white" className="ml-2" />
-          )}
+      {isTrigger ? null : (
+        <div
+          className="flex flex-1 cursor-pointer items-center"
+          onClick={toggleExpanded}
+        >
+          {icon}
+          <p className="pl-8 text-slate-500">{title}</p>
+          <div className="flex flex-1 justify-end">
+            {expanded ? (
+              <FaChevronUp size={12} color="white" className="ml-2" />
+            ) : (
+              <FaChevronDown size={12} color="white" className="ml-2" />
+            )}
+          </div>
         </div>
-      </div>
+      )}
+
       <div
         className={`items-left flex w-full flex-col overflow-hidden pl-6 transition-[max-height] duration-300 ease-out ${
           expanded ? '' : 'max-h-0'
@@ -130,16 +178,18 @@ function Accordion({
                 key={item.name}
                 className={`mt-4 gap-4 flex cursor-pointer rounded-md text-left text-slate-400 p-2 items-center ${
                   route.pathname === item.link ? 'bg-[#FFC107]' : ''
-                }`}
+                } ${isTrigger ? 'mr-8' : ''}`}
               >
                 {item.name === 'Mapping' ? (
                   <BiSortDown size={22} className="ml-2" />
                 ) : null}
-                <Link
-                  to={`${item.link}`} //ex. hardware/all
-                >
-                  {item.name}
-                </Link>
+                {isTrigger ? null : (
+                  <Link
+                    to={`${item.link}`} //ex. hardware/all
+                  >
+                    {item.name}
+                  </Link>
+                )}
               </div>
             ))}
       </div>
@@ -159,7 +209,12 @@ const ItemSideBar = ({
 }: ItemSideBarProps) => (
   <>
     {withDropdown ? (
-      <Accordion title={name} icon={icon} dropdownLinks={dropdownLinks} />
+      <Accordion
+        title={name}
+        icon={icon}
+        dropdownLinks={dropdownLinks}
+        isTrigger={isTrigger}
+      />
     ) : isHide ? null : isTrigger ? (
       <a
         className={`flex gap-x-8 items-center p-2 transition transform hover:text-primary
@@ -313,7 +368,7 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
 
         {!isEmpty(data) ? (
           <div className="flex flex-col items-center w-full gap-4 pb-8">
-            <Button
+            {/* <Button
               className="bg-green-300 bg-opacity-50 w-full rounded-none text-start flex items-center gap-2 justify-between"
               onClick={() => setShowDropdownOrg(!showDropdownOrg)}
             >
@@ -325,6 +380,37 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
               )}
             </Button>
             {showDropdownOrg ? (
+              <div className="w-full ">
+                <div className="absolute h-80">
+                  {organizationList.map((a) => (
+                    <p key={a.value}>{a.label}</p>
+                  ))}
+                </div>
+              </div>
+            ) : null} */}
+
+            <Dropdown
+              options={organizationList}
+              components={{ Input }}
+              placeholder="Search...."
+              className="w-full"
+              onChange={(val) => {
+                if (typeof val === 'object' && val !== null) {
+                  selectOrganizationHandler(val.value || '', val.label || '')
+                }
+              }}
+              styles={customStyles}
+              defaultValue={
+                bookkeeper?.clientEmail
+                  ? {
+                      value: bookkeeper?.clientEmail,
+                      label: bookkeeper?.churchName,
+                    }
+                  : organizationList[0]
+              }
+            />
+
+            {/* {showDropdownOrg ? (
               <Dropdown
                 options={organizationList}
                 components={{ Input }}
@@ -344,7 +430,7 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
                 }
                 className="w-11/12"
               />
-            ) : null}
+            ) : null} */}
           </div>
         ) : null}
 

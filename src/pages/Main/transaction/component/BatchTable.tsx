@@ -1,14 +1,15 @@
-import React, { FC } from 'react'
+import React, { FC, useEffect } from 'react'
 import { formatDate, formatUsd } from '@/common/utils/helper'
-import { isEmpty } from 'lodash'
+import { List, isEmpty } from 'lodash'
 import { AiOutlineSync } from 'react-icons/ai'
 import { HiCheckCircle } from 'react-icons/hi'
 import { Link } from 'react-router-dom'
 import Empty from '@/common/components/empty/Empty'
-import usePagination from '@/common/hooks/usePagination'
 import Pagination from '@/common/components/pagination/Pagination'
 import { useSelector } from 'react-redux'
 import { RootState } from '@/redux/store'
+import Loading from '@/common/components/loading/Loading'
+import { usePagination } from '@/common/context/PaginationProvider'
 
 interface batchDataProps {
   id: string
@@ -39,7 +40,6 @@ interface BatchesAndSyncProps {
 }
 
 interface BatchTableProps {
-  data: BatchesAndSyncProps | undefined
   triggerSync: (params: {
     dataBatch: any
     batchId: string
@@ -48,24 +48,14 @@ interface BatchTableProps {
   batchSyncing: any
 }
 
-const BatchTable: FC<BatchTableProps> = ({
-  data,
-  triggerSync,
-  batchSyncing,
-}) => {
-  const {
-    currentPageData,
-    totalItems,
-    setCurrentPage,
-    currentPage,
-    itemPerPage,
-  } = usePagination({ filteredData: data, itemPerPage: 5 })
+const BatchTable: FC<BatchTableProps> = ({ triggerSync, batchSyncing }) => {
   const { user } = useSelector((state: RootState) => state.common)
   const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
+  const { data, synchedBatches, isLoading, isRefetching } = usePagination()
 
   const email =
     user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-  const finalData = currentPageData
+  const finalData = data
   // extract the logic to a separate function
   const getSyncIconClassName = (batchSyncing: any, batchId: string) => {
     // Return early if batchSyncing is not an array or has less than 2 elements
@@ -99,9 +89,9 @@ const BatchTable: FC<BatchTableProps> = ({
     return batchObj?.trigger ? true : false
   }
 
-  console.log('datadata', finalData)
-
-  return !isEmpty(finalData) ? (
+  return isLoading || isRefetching ? (
+    <Loading />
+  ) : !isEmpty(finalData) ? (
     <div className="relative overflow-x-auto pt-8">
       <table className="w-full text-sm text-left text-gray-500">
         <thead className="text-xs text-[#FAB400] uppercase bg-white dark:bg-gray-700 border-y-2 border-[#FAB400]">
@@ -180,8 +170,8 @@ const BatchTable: FC<BatchTableProps> = ({
                     <td className="">
                       <div className="flex h-10 justify-end">
                         {isEmpty(
-                          data?.synchedBatches.find(
-                            (el) =>
+                          synchedBatches.find(
+                            (el: synchedBatchesProps) =>
                               el.batchId === `${item.batch.id} - ${email}`,
                           ),
                         ) ? (
@@ -228,16 +218,20 @@ const BatchTable: FC<BatchTableProps> = ({
             : null}
         </tbody>
       </table>
-      {Math.ceil(totalItems / itemPerPage) > 1 ? (
+
+      <div className="flex flex-1 flex-col items-end justify-end p-6">
+        <Pagination />
+      </div>
+      {/* {Math.ceil(totalItems / itemPerPage) > 1 ? (
         <div className="flex flex-1 flex-col items-end justify-end p-6">
           <Pagination
             currentPage={currentPage}
-            onPageChange={(val) => setCurrentPage(val)}
+            onPageChange={(val: any) => setCurrentPage(val)}
             totalPages={Math.ceil(totalItems / itemPerPage)}
             itemPerPage={itemPerPage}
           />
         </div>
-      ) : null}
+      ) : null} */}
     </div>
   ) : (
     <Empty />

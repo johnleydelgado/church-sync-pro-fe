@@ -23,9 +23,16 @@ import { successNotification } from '@/common/utils/toast'
 import { isEmpty } from 'lodash'
 import { RootState } from '@/redux/store'
 import { BiSortDown } from 'react-icons/bi'
-import { AiOutlineCloudSync } from 'react-icons/ai'
+import { AiOutlineCloudSync, AiOutlineUserAdd } from 'react-icons/ai'
 import { Link, useSearchParams } from 'react-router-dom'
 import { mainRoute } from '@/common/constant/route'
+import { Button } from '@material-tailwind/react'
+import { MdAppRegistration } from 'react-icons/md'
+import { useDispatch } from 'react-redux'
+import { OPEN_MODAL } from '@/redux/common'
+import { MODALS_NAME } from '@/common/constant/modal'
+import Dropdown from 'react-select'
+import SelectDateRange from '@/common/components/Select/SelectDateRange'
 
 interface AttributesProps {
   color: string
@@ -62,6 +69,7 @@ function classNames(...classes: string[]) {
 }
 
 const Mapping: FC<SettingsProps> = () => {
+  const dispatch = useDispatch()
   const { user } = useSelector((state: RootState) => state.common)
   const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
   const [searchParams, setSearchParams] = useSearchParams()
@@ -185,6 +193,10 @@ const Mapping: FC<SettingsProps> = () => {
     successNotification({ title: 'Settings successfully saved !' })
   }
 
+  const openModalRegistration = () => {
+    dispatch(OPEN_MODAL(MODALS_NAME.modalRegistration))
+  }
+
   useEffect(() => {
     if (!isEmpty(userData?.UserSetting?.settingsData)) {
       setIsAutomationEnable(userData?.UserSetting.isAutomationEnable)
@@ -240,10 +252,7 @@ const Mapping: FC<SettingsProps> = () => {
             <Tab.Panels className="mt-2">
               <Tab.Panel
                 key={1}
-                className={classNames(
-                  'rounded-xl bg-white p-4 px-8',
-                  'ring-white ring-opacity-60 ring-offset-2 ring-offset-blue-400 focus:outline-none focus:ring-2',
-                )}
+                className={classNames('rounded-xl bg-white p-4 px-8')}
               >
                 {isEmpty(fundData) ? (
                   <div className="flex flex-col items-center justify-center h-96">
@@ -260,19 +269,26 @@ const Mapping: FC<SettingsProps> = () => {
                   </div>
                 ) : (
                   <div>
-                    <button
-                      className="border-[1px] p-4 rounded-lg w-72 flex items-center gap-2 justify-center mb-4 cursor-pointer hover:border-yellow-300 hover:border-1"
-                      onClick={() => enableDisableAutomation('donation')}
-                    >
-                      <AiOutlineCloudSync
-                        size={22}
-                        color={isAutomationEnable ? 'black' : 'gray'}
-                      />
-                      <p className="font-thin">
-                        turn {isAutomationEnable ? 'Off' : 'On'} auto-sync
-                      </p>
-                      <p className="text-[#FAB400]">Donations</p>
-                    </button>
+                    <div className="flex justify-between items-center">
+                      <button
+                        className="border-[1px] p-4 rounded-lg w-72 flex items-center gap-2 justify-center mb-4 cursor-pointer hover:border-yellow-300 hover:border-1"
+                        onClick={() => enableDisableAutomation('donation')}
+                      >
+                        <AiOutlineCloudSync
+                          size={22}
+                          color={isAutomationEnable ? 'black' : 'gray'}
+                        />
+                        <p className="font-thin">
+                          turn {isAutomationEnable ? 'Off' : 'On'} auto-sync
+                        </p>
+                        <p className="text-[#FAB400]">Donations</p>
+                      </button>
+                      <div className="flex flex-col -mt-4">
+                        <p className="pb-2">Select Transaction Date</p>
+                        <SelectDateRange />
+                      </div>
+                    </div>
+
                     <Donation fundData={fundData} userData={userData} />
                   </div>
                 )}
@@ -280,10 +296,7 @@ const Mapping: FC<SettingsProps> = () => {
 
               <Tab.Panel
                 key={2}
-                className={classNames(
-                  'rounded-xl bg-white p-4 px-8',
-                  'ring-white ring-opacity-60 ring-offset-2 ring-offset-blue-400 focus:outline-none focus:ring-2',
-                )}
+                className={classNames('rounded-xl bg-white p-4 px-8')}
               >
                 {isEmpty(qboData) ? (
                   <div className="flex flex-col items-center justify-center h-96">
@@ -300,19 +313,34 @@ const Mapping: FC<SettingsProps> = () => {
                   </div>
                 ) : (
                   <div>
-                    <button
-                      className="border-[1px] p-4 rounded-lg w-72 flex items-center gap-2 justify-center mb-4 hover:border-yellow-300 hover:border-1"
-                      onClick={() => enableDisableAutomation('registration')}
-                    >
-                      <AiOutlineCloudSync
-                        size={22}
-                        color={isAutomationRegistration ? 'black' : 'gray'}
-                      />
-                      <p className="font-thin">
-                        turn {isAutomationRegistration ? 'Off' : 'On'} auto-sync
-                      </p>
-                      <p className="text-[#FAB400]">Registration</p>
-                    </button>
+                    <div className="flex justify-between items-center pb-4">
+                      <button
+                        className="border-[1px] p-4 rounded-lg w-72 flex items-center gap-2 justify-center hover:border-yellow-300 hover:border-1"
+                        onClick={() => enableDisableAutomation('registration')}
+                      >
+                        <AiOutlineCloudSync
+                          size={22}
+                          color={isAutomationRegistration ? 'black' : 'gray'}
+                        />
+                        <p className="font-thin">
+                          turn {isAutomationRegistration ? 'Off' : 'On'}{' '}
+                          auto-sync
+                        </p>
+                        <p className="text-[#FAB400]">Registration</p>
+                      </button>
+                      <Button
+                        variant="outlined"
+                        className="border-gray-400 text-black flex items-center gap-3 font-thin"
+                        onClick={openModalRegistration}
+                      >
+                        <MdAppRegistration
+                          size={18}
+                          className="text-[#FAB400]"
+                        />
+                        Add new registration
+                      </Button>
+                    </div>
+
                     <Registration qboData={qboData} userData={userData} />
                   </div>
                 )}

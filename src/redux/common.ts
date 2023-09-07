@@ -18,12 +18,18 @@ export interface UserInfo {
   email: string
   isSubscribe?: string
   role?: 'bookkeeper' | 'client' | string
+  img_url?: string
 }
 
 export interface BookkeeperInfo {
   clientEmail: string
   clientId?: number
   churchName: string
+}
+
+interface transactionDateProps {
+  startDate: Date | null
+  endDate: Date | null
 }
 
 interface CommonState {
@@ -42,6 +48,7 @@ interface CommonState {
     refresh_token: string
     realm_id?: string
   } | null
+  selectedTransactionDate: transactionDateProps
 }
 
 const initialState: CommonState = {
@@ -55,6 +62,7 @@ const initialState: CommonState = {
     email: '',
     isSubscribe: '0',
     role: '',
+    img_url: '',
   },
   thirdPartyTokens: {
     qbo_access_token: null,
@@ -74,6 +82,7 @@ const initialState: CommonState = {
     churchName: '',
   },
   accountState: null,
+  selectedTransactionDate: { startDate: null, endDate: null },
 }
 
 export const common = createSlice({
@@ -131,6 +140,13 @@ export const common = createSlice({
       state.selectedThirdPartyId = initialState.selectedThirdPartyId
       state.thirdPartyTokens = initialState.thirdPartyTokens
       state.bookkeeper = initialState.bookkeeper
+      state.selectedTransactionDate = initialState.selectedTransactionDate
+    },
+    setSelectedTransactionDate: (
+      state,
+      action: PayloadAction<transactionDateProps>,
+    ) => {
+      state.selectedTransactionDate = action.payload
     },
   },
 })
@@ -148,6 +164,7 @@ export const {
   resetUserData,
   setAccountState,
   setBookkeeper,
+  setSelectedTransactionDate,
 } = common.actions
 
 export default common.reducer

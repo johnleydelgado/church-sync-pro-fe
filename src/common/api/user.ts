@@ -4,6 +4,7 @@ import axios from 'axios'
 import { faker } from '@faker-js/faker'
 import { userRoutes } from '../constant/routes-api'
 import { error } from 'console'
+import { resizeFile } from '../utils/image.optimizer'
 const { REACT_APP_API_PATH } = process.env
 
 export interface UserProps {
@@ -319,6 +320,47 @@ const updateInvitationStatus = async (email: string, bookkeeperId?: number) => {
   }
 }
 
+const userUpdate = async ({
+  email,
+  firstName,
+  lastName,
+  churchName,
+  userId,
+  file = undefined,
+  file_name = '',
+}: {
+  email: string
+  firstName: string
+  lastName: string
+  churchName: string
+  userId: number
+  file?: any
+  file_name?: string
+}) => {
+  const url = userRoutes.userUpdate
+  const data = JSON.stringify({
+    email,
+    firstName,
+    lastName,
+    churchName,
+    userId,
+    file: await resizeFile(file),
+    file_name,
+  })
+
+  console.log('aaa', data)
+
+  try {
+    if (email) {
+      const response = await apiCall.post(url, data)
+      return response.data
+    }
+    return []
+  } catch (e: any) {
+    throw new Error(e.message)
+  }
+}
+
 export {
   updateUser,
   createUser,
@@ -337,4 +379,5 @@ export {
   updateInvitationStatus,
   enableAutoSyncSetting,
   deleteBookeeper,
+  userUpdate,
 }

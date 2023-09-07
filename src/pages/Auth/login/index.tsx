@@ -109,9 +109,18 @@ const Login: FC<LoginProps> = () => {
       } else {
         const userData = await getUserRelated(email)
         console.log('userData', userData)
-        const { id, role, firstName, lastName, churchName } = userData.data
+        const { id, role, firstName, lastName, churchName, img_url } =
+          userData.data
         dispatch(
-          setUserData({ id, role, firstName, lastName, churchName, email }),
+          setUserData({
+            id,
+            role,
+            firstName,
+            lastName,
+            churchName,
+            email,
+            img_url,
+          }),
         )
         // dispatch(setBookkeeper({clientEmail:}))
         setLoading(false)

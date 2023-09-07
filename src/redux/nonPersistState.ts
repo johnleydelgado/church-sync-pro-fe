@@ -7,6 +7,7 @@ export interface BookkeeperInfo {
 
 interface CommonState {
   bookkeeperDeletion: BookkeeperInfo | null
+  tabTransaction: { batch: boolean; stripe: boolean }
 }
 
 const initialState: CommonState = {
@@ -14,6 +15,7 @@ const initialState: CommonState = {
     id: '',
     email: '',
   },
+  tabTransaction: { batch: true, stripe: false },
 }
 
 export const nonPersistState = createSlice({
@@ -23,10 +25,17 @@ export const nonPersistState = createSlice({
     setDeleteBookkeeper: (state, action: PayloadAction<BookkeeperInfo>) => {
       state.bookkeeperDeletion = action.payload
     },
+    setTabTransaction: (
+      state,
+      action: PayloadAction<{ batch: boolean; stripe: boolean }>,
+    ) => {
+      state.tabTransaction = action.payload
+    },
   },
 })
 
 // Action creators are generated for each case reducer function
-export const { setDeleteBookkeeper } = nonPersistState.actions
+export const { setDeleteBookkeeper, setTabTransaction } =
+  nonPersistState.actions
 
 export default nonPersistState.reducer
