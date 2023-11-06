@@ -17,6 +17,8 @@ import { BqoDataSelectProps } from '../Mapping'
 import { AiOutlineUserAdd } from 'react-icons/ai'
 import { Button } from '@material-tailwind/react'
 import AddUpdateModalRegistration from './AddUpdateModalRegistration'
+import { setSelectedBankAccount } from '@/redux/common'
+import { useDispatch } from 'react-redux'
 
 interface RegistrationProps {
   qboData: BqoDataSelectProps | undefined
@@ -36,13 +38,15 @@ const Registration: FC<RegistrationProps> = ({ qboData, userData }) => {
     label: string
   } | null>(null)
 
+  const dispatch = useDispatch()
+
   const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
 
   const [registrationSettingsData, setRegistrationSettingsData] = useState<
     qboRegistrationSettings[]
   >([])
 
-  const { thirdPartyTokens, user } = useSelector(
+  const { selectedBankAccount, user } = useSelector(
     (state: RootState) => state.common,
   )
 
@@ -80,7 +84,7 @@ const Registration: FC<RegistrationProps> = ({ qboData, userData }) => {
   //   },
   //   { staleTime: Infinity },
   // )
-
+  //  console.log('tetete', bookkeeper)
   const {
     data: registrationData,
     isLoading: isLoadingRegistration,
@@ -90,6 +94,7 @@ const Registration: FC<RegistrationProps> = ({ qboData, userData }) => {
     async () => {
       const id =
         user.role === 'bookkeeper' ? bookkeeper?.clientId || '' : user.id
+
       if (id) {
         const res = await pcHandleRegistrationEvents({
           action: 'read',
@@ -153,7 +158,6 @@ const Registration: FC<RegistrationProps> = ({ qboData, userData }) => {
       (item) =>
         item.account === undefined ||
         item.class === undefined ||
-        item.customer === undefined ||
         item.registration === undefined,
     )
   }
@@ -185,31 +189,50 @@ const Registration: FC<RegistrationProps> = ({ qboData, userData }) => {
     category: 'account' | 'class' | 'customer'
     registration: string
   }) => {
-    const { value, label } = val
-
     const tempData: qboRegistrationSettings[] = [...registrationSettingsData]
 
-    const index = registrationSettingsData.findIndex(
+    const index = tempData.findIndex(
       (item: qboRegistrationSettings) => item.registration === registration,
     )
 
     const currentItem = tempData[index]
     if (currentItem) {
-      switch (category) {
-        case 'account':
-          currentItem.account = { value, label }
-          break
-        case 'class':
-          currentItem.class = { value, label }
-          break
-        case 'customer':
-          currentItem.customer = { value, label }
-          break
-        default:
-          break
+      // Check if currentItem is defined
+      if (val) {
+        // Check if val is defined (i.e., a value has been selected)
+        const { value, label } = val
+        switch (category) {
+          case 'account':
+            currentItem.account = { value, label }
+            break
+          case 'class':
+            currentItem.class = { value, label }
+            break
+          case 'customer':
+            currentItem.customer = { value, label }
+            break
+          default:
+            break
+        }
+      } else {
+        // If val is null or undefined (i.e., the clear button has been clicked)
+        switch (category) {
+          case 'account':
+            currentItem.account = undefined
+            break
+          case 'class':
+            currentItem.class = undefined
+            break
+          case 'customer':
+            currentItem.customer = undefined
+            break
+          default:
+            break
+        }
       }
     }
 
+    // Update the registrationSettingsData state with the modified tempData
     setRegistrationSettingsData(tempData)
   }
 
@@ -238,6 +261,18 @@ const Registration: FC<RegistrationProps> = ({ qboData, userData }) => {
     }
   }, [selectedRegistrationName])
 
+  const donationAccountValue = (() => {
+    const donationAccount = selectedBankAccount?.find(
+      (a) => a.type === 'registration',
+    )
+    return donationAccount
+      ? {
+          label: donationAccount.label,
+          value: donationAccount.value,
+        }
+      : null
+  })()
+
   useEffect(() => {
     if (!isEmpty(userData?.UserSetting)) {
       const settingsData = userData.UserSetting.settingRegistrationData
@@ -252,29 +287,31 @@ const Registration: FC<RegistrationProps> = ({ qboData, userData }) => {
         <Loading />
       ) : (
         <div>
-          <AddUpdateModalRegistration refetch={refetch} />
-          {isEmpty(registrationData) ? null : (
-            <>
-              <p>Select Registration</p>
-              <Dropdown
-                options={registrationData}
-                components={{ Input }}
-                onChange={(val: any) => {
-                  // selectHandler({
-                  //   val,
-                  //   category: 'customer',
-                  //   registration: val.value || '',
-                  // })
-                  setSelectedRegistrationName({
-                    value: String(val.value),
-                    label: String(val.label),
-                  })
-                }}
-                // value={findDefaultValue(item.attributes.name, 'account')}
-                className="w-72"
-              />
-            </>
-          )}
+          <div className="flex justify-between">
+            <AddUpdateModalRegistration refetch={refetch} />
+            {isEmpty(registrationData) ? null : (
+              <div>
+                <p>Select Registration</p>
+                <Dropdown
+                  options={registrationData}
+                  components={{ Input }}
+                  onChange={(val: any) => {
+                    // selectHandler({
+                    //   val,
+                    //   category: 'customer',
+                    //   registration: val.value || '',
+                    // })
+                    setSelectedRegistrationName({
+                      value: String(val.value),
+                      label: String(val.label),
+                    })
+                  }}
+                  // value={findDefaultValue(item.attributes.name, 'account')}
+                  className="w-72"
+                />
+              </div>
+            )}
+          </div>
 
           <div className="pt-4" />
 
@@ -348,6 +385,7 @@ const Registration: FC<RegistrationProps> = ({ qboData, userData }) => {
                           'customer',
                         )}
                         className="w-72"
+                        isClearable
                       />
                     </div>
                   </div>

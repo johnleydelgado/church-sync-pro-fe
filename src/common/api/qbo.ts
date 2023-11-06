@@ -20,9 +20,10 @@ const QboGetAllQboData = async ({ email }: { email: string }) => {
     const response = await apiCall.post(url, { email })
     const jsonObject = response.data.data
     jsonObject.accounts = jsonObject.accounts.map(
-      (account: { value: string; name: string }) => ({
+      (account: { value: string; name: string; type?: string }) => ({
         value: account.value,
         label: account.name,
+        type: account.type,
       }),
     )
     jsonObject.classes = jsonObject.classes.map(

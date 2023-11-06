@@ -5,6 +5,7 @@ import { faker } from '@faker-js/faker'
 import { userRoutes } from '../constant/routes-api'
 import { error } from 'console'
 import { resizeFile } from '../utils/image.optimizer'
+import { BankAccountExpensesProps, BankAccountProps } from '@/redux/common'
 const { REACT_APP_API_PATH } = process.env
 
 export interface UserProps {
@@ -151,6 +152,48 @@ const enableAutoSyncSetting = async ({
   }
 }
 
+const addUpdateBankSettings = async ({
+  email,
+  data,
+}: {
+  email: string
+  data: BankAccountProps[] | null
+}) => {
+  // await axios.get
+  const url = userRoutes.addUpdateBankSettings
+  const dataJson = JSON.stringify({
+    email,
+    data,
+  })
+  try {
+    const response = await apiCall.post(url, dataJson)
+    return response.data
+  } catch (e: any) {
+    return []
+  }
+}
+
+const addUpdateBankCharges = async ({
+  email,
+  data,
+}: {
+  email: string
+  data: BankAccountExpensesProps | null
+}) => {
+  // await axios.get
+  const url = userRoutes.addUpdateBankCharges
+  const dataJson = JSON.stringify({
+    email,
+    data,
+  })
+  try {
+    const response = await apiCall.post(url, dataJson)
+    return response.data
+  } catch (e: any) {
+    return []
+  }
+}
+
 const getUserRelated = async (email: string) => {
   // await axios.get
   const url = userRoutes.getUserRelated
@@ -180,11 +223,14 @@ const manualSync = async ({
   dataBatch: any
   batchId: string
   realBatchId: string
+  bankData: BankAccountProps[] | null
 }) => {
   // await axios.get
   const url = userRoutes.manualSync
+  const data = JSON.stringify({ ...rest })
+
   try {
-    const response = await apiCall.post(url, rest)
+    const response = await apiCall.post(url, data)
     return response.data
   } catch (e: any) {
     return []
@@ -262,6 +308,39 @@ const sendPasswordReset = async (email: string) => {
     throw new Error(response.data.data)
   }
   return response.data
+}
+
+const resetPassword = async (
+  email: string,
+  token: string,
+  password: string,
+) => {
+  const url = userRoutes.resetPassword
+  const data = JSON.stringify({ email, token, password })
+
+  try {
+    const response = await apiCall.post(url, data)
+
+    // Check if the API call was successful
+    if (response.status === 200) {
+      if (!response.data.success) {
+        throw new Error(response.data.data)
+      }
+      return response.data
+    } else {
+      throw new Error(`API returned status code ${response.status}`)
+    }
+  } catch (e: any) {
+    // Differentiate network errors from API errors
+    if (e.response) {
+      throw new Error(`API Error: ${e.response.data.data || 'Unknown error'}`)
+    } else if (e.request) {
+      // The request was made but no response was received
+      throw new Error('Network Error: No response from server')
+    } else {
+      throw new Error(`Error: ${e.message}`)
+    }
+  }
 }
 
 const checkValidInvitation = async (
@@ -374,10 +453,13 @@ export {
   deleteUserToken,
   sendEmailInvitation,
   sendPasswordReset,
+  resetPassword,
   checkValidInvitation,
   bookkeeperList,
   updateInvitationStatus,
   enableAutoSyncSetting,
   deleteBookeeper,
   userUpdate,
+  addUpdateBankSettings,
+  addUpdateBankCharges,
 }

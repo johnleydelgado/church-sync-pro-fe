@@ -163,16 +163,16 @@ const Account: FC<AccountProps> = ({}) => {
   }, [])
 
   return (
-    <div className="w-full  flex flex-col bg-white px-8 py-4 justify-center mt-2">
-      <div className="flex flex-col gap-2 px-4">
+    <div className="w-full  flex flex-col bg-white lg:px-8 py-4 justify-center mt-2">
+      <div className="flex flex-col gap-2 lg:px-4">
         <p className="text-md font-thin">
           Before we start, connect your accounts first
         </p>
       </div>
 
-      <div className="flex flex-col gap-4 p-4">
+      <div className="flex flex-col gap-4 pt-4 lg:p-4">
         <button
-          className="border-2 w-1/2 h-28 p-4 rounded-lg text-start flex gap-4"
+          className="border-2 w-full lg:w-1/2 h-28 p-4 rounded-lg text-start flex gap-4"
           onClick={(e) => {
             if (!hasTokenOfTypes(['qbo'])) {
               qboLoginHandler()
@@ -218,7 +218,7 @@ const Account: FC<AccountProps> = ({}) => {
         </button>
 
         <button
-          className="border-2 w-1/2 h-28 p-4 rounded-lg text-start flex gap-4"
+          className="border-2 w-full lg:w-1/2 h-28 p-4 rounded-lg text-start flex gap-4"
           onClick={(e) => {
             if (!hasTokenOfTypes(['pco'])) {
               pcLoginHandler()
@@ -264,7 +264,7 @@ const Account: FC<AccountProps> = ({}) => {
         </button>
 
         <button
-          className="border-2 w-1/2 h-28 p-4 rounded-lg text-start flex gap-4"
+          className="border-2 w-full lg:w-1/2 h-28 p-4 rounded-lg text-start flex gap-4"
           onClick={(e) => {
             if (!hasTokenOfTypes(['stripe'])) {
               stripeLoginHandler()

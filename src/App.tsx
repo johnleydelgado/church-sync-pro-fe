@@ -14,10 +14,11 @@ import { ToastContainer } from 'react-toastify'
 import { ThemeProvider } from '@material-tailwind/react'
 import MainUnAuthPage from './pages/MainPage'
 import { persistor, store } from './redux/store'
-import 'react-toastify/dist/ReactToastify.css'
 import { useEffect, useMemo } from 'react'
 import { PaginationProvider } from './common/context/PaginationProvider'
 const { REACT_APP_HOST_BE, REACT_APP_GOOGLE_CALLBACK_URL } = process.env
+
+import 'react-toastify/dist/ReactToastify.css'
 
 function App() {
   const queryClient = new QueryClient()

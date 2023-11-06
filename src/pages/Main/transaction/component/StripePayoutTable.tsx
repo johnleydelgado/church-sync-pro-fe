@@ -16,6 +16,7 @@ import Empty from '@/common/components/empty/Empty'
 import { usePagination } from '@/common/context/PaginationProvider'
 import usePaginationStripe from '@/common/hooks/usePaginationStripe'
 import PaginationStripe from '@/common/components/pagination/PaginationStripe'
+import Loading from '@/common/components/loading/Loading'
 
 interface BatchTableProps {
   triggerSync: (params: {
@@ -29,11 +30,9 @@ const StripePayoutTable: FC<BatchTableProps> = ({
   triggerSync,
   batchSyncing,
 }) => {
-  const { user } = useSelector((state: RootState) => state.common)
-  const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
   const { currentPage, currentPageData, totalItems, setCurrentPage } =
     usePaginationStripe()
-  const { synchedBatches } = usePagination()
+  const { synchedBatches, refetch, isLoading, isRefetching } = usePagination()
 
   const isSync = (date: string): boolean => {
     const arr = synchedBatches
@@ -56,13 +55,26 @@ const StripePayoutTable: FC<BatchTableProps> = ({
     return false
   }
 
-  return !isEmpty(currentPageData) ? (
+  const syncHandler = async (item: { data: any; payoutDate: any }) => {
+    await triggerSync({
+      stripeData: item.data,
+      payoutDate: item.payoutDate,
+    })
+    refetch()
+  }
+
+  return isLoading || isRefetching ? (
+    <Loading />
+  ) : !isEmpty(currentPageData) ? (
     <div className="relative overflow-x-auto pt-8">
       <table className="w-full text-sm text-left text-gray-500">
         <thead className="text-xs text-[#FAB400] uppercase bg-white dark:bg-gray-700 border-y-2 border-[#FAB400]">
           <tr className="[&>*]:px-6 [&>*]:py-3">
             <th scope="col" className="">
-              Stripe payout amount
+              Payout date
+            </th>
+            <th scope="col" className="">
+              Payout amount
             </th>
             <th scope="col" className="">
               Non-Giving income
@@ -71,16 +83,13 @@ const StripePayoutTable: FC<BatchTableProps> = ({
               Fees
             </th>
             <th scope="col" className="">
-              Net Income:
-            </th>
-            <th scope="col" className="">
-              Payout Date
+              Net income
             </th>
             <th scope="col" className="text-right">
               Status
             </th>
             <th scope="col" className="text-right">
-              Action
+              Information
             </th>
           </tr>
         </thead>
@@ -98,7 +107,16 @@ const StripePayoutTable: FC<BatchTableProps> = ({
                   <td className="">
                     <div className="h-10">
                       <p className="p-2 text-left">
+                        {item.payoutDate}
+                        {/* {formatUsd(String(item.grossAmount))} */}
+                      </p>
+                    </div>
+                  </td>
+                  <td className="">
+                    <div className="h-10">
+                      <p className="p-2 text-left">
                         {formatUsd(String(item.grossAmount))}
+                        {/* {formatUsd(String(item.nonGivingIncome))} */}
                       </p>
                     </div>
                   </td>
@@ -106,6 +124,7 @@ const StripePayoutTable: FC<BatchTableProps> = ({
                     <div className="h-10">
                       <p className="p-2 text-left">
                         {formatUsd(String(item.nonGivingIncome))}
+                        {/* {formatUsd(String(item.totalFees) || '')} */}
                       </p>
                     </div>
                   </td>
@@ -123,11 +142,6 @@ const StripePayoutTable: FC<BatchTableProps> = ({
                       </p>
                     </div>
                   </td>
-                  <td className="">
-                    <div className="h-10">
-                      <p className="p-2 text-left">{item.payoutDate}</p>
-                    </div>
-                  </td>
 
                   <td className="">
                     <div className="flex h-10 justify-end">
@@ -136,12 +150,7 @@ const StripePayoutTable: FC<BatchTableProps> = ({
                       ) : (
                         <button
                           className="mr-2"
-                          onClick={() =>
-                            triggerSync({
-                              stripeData: item.data,
-                              payoutDate: item.payoutDate,
-                            })
-                          }
+                          onClick={() => syncHandler(item)}
                         >
                           <AiOutlineSync
                             className={`text-slate-400 cursor-pointer ${

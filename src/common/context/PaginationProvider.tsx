@@ -86,7 +86,7 @@ export const PaginationProvider: React.FC<PaginationProviderProps> = ({
   const [data, setData] = useState<{ batch: batchDataProps; donations: any }[]>(
     [],
   )
-  const { selectedTransactionDate } = useSelector(
+  const { selectedTransactionDate, selectedStartDate } = useSelector(
     (state: RootState) => state.common,
   )
   const [synchedBatches, setSynchedBatches] = useState<any[]>([])
@@ -99,18 +99,17 @@ export const PaginationProvider: React.FC<PaginationProviderProps> = ({
     refetch,
     isRefetching,
   } = useQuery<BatchesAndSyncProps | undefined>(
-    ['getBatches', bookkeeper, offset],
+    ['getBatches', bookkeeper, offset, selectedStartDate],
     async () => {
       const email =
         user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
 
       if (email)
-        return await pcGetBatches(email, selectedTransactionDate, offset || 0)
+        return await pcGetBatches(email, selectedStartDate, offset || 0)
       return []
     },
     {
       refetchOnWindowFocus: false,
-      staleTime: Infinity,
     },
   )
 

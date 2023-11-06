@@ -10,8 +10,9 @@ import { Button } from '@material-tailwind/react'
 import { failNotification, successNotification } from '@/common/utils/toast'
 import { useDispatch } from 'react-redux'
 import Loading from '@/common/components/loading/Loading'
-import { setReTriggerIsUserTokens } from '@/redux/common'
+import { OPEN_MODAL, setReTriggerIsUserTokens } from '@/redux/common'
 import { BqoDataSelectProps } from '../Mapping'
+import { MODALS_NAME } from '@/common/constant/modal'
 
 interface DonationProps {
   fundData: any
@@ -27,7 +28,9 @@ const Input = (props: any) => (
 const delay = (ms: any) => new Promise((res) => setTimeout(res, ms))
 
 const Donation: FC<DonationProps> = ({ fundData, userData }) => {
-  const { user } = useSelector((state: RootState) => state.common)
+  const { user, selectedStartDate } = useSelector(
+    (state: RootState) => state.common,
+  )
   const [settingsData, setSettingsData] = useState<qboSettings[]>([])
   const [onGoingSaving, setOnGoingSaving] = useState<boolean>(false)
 
@@ -66,37 +69,37 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
     fundName: string | null | undefined
     category: 'account' | 'class' | 'customer'
   }) => {
-    const { value, label } = val
     const tempData: qboSettings[] = [...settingsData]
 
-    const index = settingsData.findIndex(
+    const index = tempData.findIndex(
       (item: qboSettings) => item.fundName === fundName,
     )
 
-    if (index === -1) {
-      // if the fundName does not exist in the array, push the object into the array
-      const newObject: qboSettings = {
-        fundName,
-        [category.toLowerCase()]: { value, label },
+    if (index !== -1) {
+      const currentItem = tempData[index]
+
+      if (currentItem) {
+        // Check if currentItem is defined
+        if (val) {
+          const { value, label } = val
+          currentItem[category] = { value, label }
+        } else {
+          currentItem[category] = undefined
+        }
       }
-      tempData.push(newObject)
     } else {
-      const currentItem = tempData[index] ?? { fundName }
-      switch (category) {
-        case 'account':
-          currentItem.account = { value, label }
-          break
-        case 'class':
-          currentItem.class = { value, label }
-          break
-        case 'customer':
-          currentItem.customer = { value, label }
-          break
-        default:
-          break
+      const newObject: qboSettings = { fundName }
+
+      if (val) {
+        const { value, label } = val
+        newObject[category] = { value, label }
+      } else {
+        newObject[category] = undefined
       }
+
+      tempData.push(newObject)
     }
-    // Update the settingsData state with the modified tempData
+
     setSettingsData(tempData)
   }
 
@@ -105,7 +108,6 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
       (item) =>
         item.account === undefined ||
         item.class === undefined ||
-        item.customer === undefined ||
         item.fundName === undefined,
     )
   }
@@ -133,6 +135,9 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
       await delay(2000)
       dispatch(setReTriggerIsUserTokens(!reTriggerIsUserTokens))
       successNotification({ title: 'Settings successfully saved !' })
+      if (!selectedStartDate) {
+        dispatch(OPEN_MODAL(MODALS_NAME.transactionDate))
+      }
       setOnGoingSaving(false)
     } catch (e) {
       console.log('test')
@@ -176,7 +181,7 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
       setSettingsData(settingsData)
     }
   }, [userData])
-  console.log('a', qboData)
+
   return (
     <div>
       {isSavingSettings || isQboDataLoading || onGoingSaving ? (
@@ -249,6 +254,7 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
                       }
                       value={findDefaultValue(item.attributes.name, 'customer')}
                       className="w-72"
+                      isClearable
                     />
                   </div>
                 </div>

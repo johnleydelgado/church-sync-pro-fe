@@ -18,10 +18,10 @@ import {
 import { useSelector } from 'react-redux'
 import { RootState } from '@/redux/store'
 import Dropdown, { components } from 'react-select'
-import { Button } from '@material-tailwind/react'
+import { Avatar, Button } from '@material-tailwind/react'
 import {
   BiChevronDown,
-  BiChevronUp,
+  BiChevronRightCircle,
   BiHelpCircle,
   BiSortDown,
   BiUser,
@@ -41,6 +41,7 @@ import {
 } from '@/common/utils/helper'
 import { Link } from 'react-router-dom'
 import { mainRoute } from '@/common/constant/route'
+import { IoMdImages } from 'react-icons/io'
 
 interface SideBarProps {
   isTrigger: boolean
@@ -86,7 +87,7 @@ const Input = (props: any) => (
   />
 )
 
-const customStyles = {
+export const customStyles = {
   control: (base: any, state: any) => ({
     ...base,
     background: '#D1FAE580',
@@ -242,14 +243,14 @@ const ItemSideBar = ({
 
 const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
   const location = useLocation()
-  const isTabletOrMobile = useMediaQuery({ query: '(max-width: 1224px)' })
+  const isTabletOrMobile = useMediaQuery({ query: '(max-width: 767px)' })
   const [organizationList, setOrginazationList] = useState([
     { value: '', label: '' },
   ])
   const [showDropdownOrg, setShowDropdownOrg] = useState<boolean>(false)
 
   const userData = useSelector((item: RootState) => item.common.user)
-  const { id, role, firstName, lastName } = useSelector(
+  const { id, role, firstName, lastName, img_url } = useSelector(
     (item: RootState) => item.common.user,
   )
   const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
@@ -274,9 +275,9 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
     { staleTime: Infinity },
   )
 
-  useEffect(() => {
-    setIsTrigger(() => isTabletOrMobile)
-  }, [isTabletOrMobile, setIsTrigger])
+  // useEffect(() => {
+  //   setIsTrigger(() => isTabletOrMobile)
+  // }, [isTabletOrMobile, setIsTrigger])
 
   const logoutHandler = useLogoutHandler()
 
@@ -285,7 +286,8 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
   }
 
   const selectOrganizationHandler = async (val: string, churchName: string) => {
-    dispatch(setBookkeeper({ clientEmail: val, churchName }))
+    if (bookkeeper)
+      dispatch(setBookkeeper({ ...bookkeeper, clientEmail: val, churchName }))
   }
 
   useEffect(() => {
@@ -294,6 +296,7 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
         return {
           value: String(a.Client.email) || '',
           label: a.Client.churchName,
+          clientId: a.Client.id,
         }
       })
 
@@ -304,6 +307,7 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
             setBookkeeper({
               clientEmail: temp[0].value,
               churchName: temp[0].label,
+              clientId: temp[0].clientId,
             }),
           )
         }
@@ -312,63 +316,75 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
   }, [data])
 
   return (
-    <aside
-      className={`fixed h-screen left-0 top-0 z-40 w-0 transform transition-width ease-in duration-300 ${
-        isTrigger ? 'w-24' : 'sm:w-64'
-      }`}
-    >
-      <div className="h-full bg-primary shadow-md sm:flex flex-col gap-2">
-        <div
-          className={`hidden absolute -right-4 top-10 bg-[#FFC107] rounded-lg -z-10 h-8 w-8 items-center justify-center cursor-pointer transform transition hover:scale-125 sm:flex ${
-            !isTrigger ? '' : 'rotate-180'
+    <>
+      {isTabletOrMobile ? null : (
+        <aside
+          className={`fixed h-screen left-0 top-0 z-40 w-0 transform transition-width ease-in duration-300 ${
+            isTrigger ? 'w-24' : 'sm:w-64'
           }`}
-          onClick={() => setIsTrigger(!isTrigger)}
         >
-          <CgArrowLeft className="text-white" size={30} />
-        </div>
+          <div className="h-full bg-primary shadow-md sm:flex flex-col gap-2">
+            <div
+              className={`hidden absolute -right-4 top-10 bg-[#FFC107] rounded-lg -z-10 h-8 w-8 items-center justify-center cursor-pointer transform transition hover:scale-125 sm:flex ${
+                !isTrigger ? '' : 'rotate-180'
+              }`}
+              onClick={() => setIsTrigger(!isTrigger)}
+            >
+              <CgArrowLeft className="text-white" size={30} />
+            </div>
 
-        <div
-          className={`flex ${
-            !isTrigger ? 'px-8' : 'px-5'
-          } w-full pt-2 items-center`}
-        >
-          <p className="text-white p-2 text-xl">
-            {!isTrigger ? 'Church Sync Pro' : 'CSP'}
-          </p>
-        </div>
+            <div
+              className={`flex ${
+                !isTrigger ? 'px-8' : 'px-5'
+              } w-full pt-2 items-center`}
+            >
+              <p className="text-white p-2 text-xl">
+                {!isTrigger ? 'Church Sync Pro' : 'CSP'}
+              </p>
+            </div>
 
-        {!isTrigger ? (
-          <div className="flex gap-2 items-center px-8 w-full">
-            <HiOutlineUserCircle size={32} color="white" />
-            <p className="text-white p-2">
-              {capitalAtFirstLetter(firstName) +
-                ' ' +
-                capitalAtFirstLetter(lastName)}
-            </p>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-2 items-center pt-8 w-full">
-            <HiOutlineUserCircle size={32} color="white" />
-            <p className="text-white p-2">
-              {getFirstCharCapital(firstName) +
-                ' ' +
-                getFirstCharCapital(lastName)}
-            </p>
-          </div>
-        )}
+            {!isTrigger ? (
+              <div className="flex gap-2 items-center px-8 w-full">
+                {img_url ? (
+                  <Avatar src={img_url} size="lg" className="mb-4" />
+                ) : (
+                  <HiOutlineUserCircle size={32} color="white" />
+                )}
+                <p className="text-white p-2">
+                  {capitalAtFirstLetter(firstName) +
+                    ' ' +
+                    capitalAtFirstLetter(lastName)}
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2 items-center pt-8 w-full">
+                {img_url ? (
+                  <Avatar src={img_url} size="lg" />
+                ) : (
+                  <HiOutlineUserCircle size={32} color="white" />
+                )}
+                <p className="text-white p-2">
+                  {getFirstCharCapital(firstName) +
+                    ' ' +
+                    getFirstCharCapital(lastName)}
+                </p>
+              </div>
+            )}
 
-        {!isTrigger ? (
-          <div className="flex gap-2 items-center px-8 pb-8 pl-14">
-            <div className="rounded-lg bg-green-400 p-2 w-2 h-2" />
-            <p className="text-white text-xs">
-              {role === 'client' ? 'Client`s account' : 'Bookkeeper account'}
-            </p>
-          </div>
-        ) : null}
+            {!isTrigger ? (
+              <div className="flex gap-2 items-center px-8 pb-8 pl-14">
+                <div className="rounded-lg bg-green-400 p-2 w-2 h-2" />
+                <p className="text-white text-xs">
+                  {role === 'client'
+                    ? 'Client`s account'
+                    : 'Bookkeeper account'}
+                </p>
+              </div>
+            ) : null}
 
-        {!isEmpty(data) ? (
-          <div className="flex flex-col items-center w-full gap-4 pb-8">
-            {/* <Button
+            {!isEmpty(data) ? (
+              <div className="flex flex-col items-center w-full gap-4 pb-8">
+                {/* <Button
               className="bg-green-300 bg-opacity-50 w-full rounded-none text-start flex items-center gap-2 justify-between"
               onClick={() => setShowDropdownOrg(!showDropdownOrg)}
             >
@@ -389,28 +405,31 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
               </div>
             ) : null} */}
 
-            <Dropdown
-              options={organizationList}
-              components={{ Input }}
-              placeholder="Search...."
-              className="w-full"
-              onChange={(val) => {
-                if (typeof val === 'object' && val !== null) {
-                  selectOrganizationHandler(val.value || '', val.label || '')
-                }
-              }}
-              styles={customStyles}
-              defaultValue={
-                bookkeeper?.clientEmail
-                  ? {
-                      value: bookkeeper?.clientEmail,
-                      label: bookkeeper?.churchName,
+                <Dropdown
+                  options={organizationList}
+                  components={{ Input }}
+                  placeholder="Search...."
+                  className="w-full"
+                  onChange={(val) => {
+                    if (typeof val === 'object' && val !== null) {
+                      selectOrganizationHandler(
+                        val.value || '',
+                        val.label || '',
+                      )
                     }
-                  : organizationList[0]
-              }
-            />
+                  }}
+                  styles={customStyles}
+                  defaultValue={
+                    bookkeeper?.clientEmail
+                      ? {
+                          value: bookkeeper?.clientEmail,
+                          label: bookkeeper?.churchName,
+                        }
+                      : organizationList[0]
+                  }
+                />
 
-            {/* {showDropdownOrg ? (
+                {/* {showDropdownOrg ? (
               <Dropdown
                 options={organizationList}
                 components={{ Input }}
@@ -431,73 +450,106 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
                 className="w-11/12"
               />
             ) : null} */}
-          </div>
-        ) : null}
+              </div>
+            ) : null}
 
-        <div
-          className={` text-white transform transition-all delay-300 duration-200  ${
-            isTrigger ? 'px-4 items-center' : 'px-8'
-          } flex flex-col gap-8`}
-        >
-          {pages.map((el) => (
-            <ItemSideBar
-              {...el}
-              isTrigger={isTrigger}
-              pathName={location.pathname}
-              key={el.name}
-              isHide={
-                el.name === 'Bookkeepers' && userData.role === 'bookkeeper'
-              }
-            />
-          ))}
-        </div>
-        {isTrigger ? (
-          <div className="flex flex-col">
-            <Link
-              to={mainRoute.ASK_US}
-              className={`mt-auto transition transform duration-100 hover:bg-[#FFC107] hover:text-primary text-white bg-[${
-                location.pathname === '/ask-us' ? '#FFC107' : ''
-              }]`}
+            <div
+              className={` text-white transform transition-all delay-300 duration-200  ${
+                isTrigger ? 'px-4 items-center' : 'px-8'
+              } flex flex-col gap-8`}
             >
-              <div className="flex gap-x-8  p-8 items-center">
-                <BiHelpCircle size={30} className="group-hover:text-white" />
+              {pages.map((el) => (
+                <ItemSideBar
+                  {...el}
+                  isTrigger={isTrigger}
+                  pathName={location.pathname}
+                  key={el.name}
+                  isHide={
+                    el.name === 'Bookkeepers' && userData.role === 'bookkeeper'
+                  }
+                />
+              ))}
+            </div>
+            {isTrigger ? (
+              <div className="flex flex-col">
+                <Link
+                  to={mainRoute.ASK_US}
+                  className={`mt-auto transition transform duration-100 hover:bg-[#FFC107] hover:text-primary text-white bg-[${
+                    location.pathname === '/ask-us' ? '#FFC107' : ''
+                  }]`}
+                >
+                  <div className="flex gap-x-8  p-8 items-center">
+                    <BiHelpCircle
+                      size={30}
+                      className="group-hover:text-white"
+                    />
+                  </div>
+                </Link>
+                <button
+                  className="mt-auto transition transform duration-100 hover:bg-[#FFC107] hover:text-primary text-white"
+                  onClick={handleLogout}
+                >
+                  <div className="flex gap-x-8  p-8 items-center">
+                    <HiOutlineLogout
+                      size={30}
+                      className="group-hover:text-white"
+                    />
+                  </div>
+                </button>
               </div>
-            </Link>
-            <button
-              className="mt-auto transition transform duration-100 hover:bg-[#FFC107] hover:text-primary text-white"
-              onClick={handleLogout}
-            >
-              <div className="flex gap-x-8  p-8 items-center">
-                <HiOutlineLogout size={30} className="group-hover:text-white" />
+            ) : (
+              <div className="flex flex-col justify-end h-full ">
+                <Link
+                  to={mainRoute.QUICK_START_QUIDE}
+                  className={`group transition transform duration-100 hover:bg-[#FFC107] hover:text-primary text-white bg-[${
+                    location.pathname === '/quick-start-guide' ? '#FFC107' : ''
+                  }]`}
+                >
+                  <div className="flex justify-between gap-x-8  p-8 py-4 items-center">
+                    <p className="font-normal group-hover:text-white">
+                      Get Started
+                    </p>
+
+                    <BiChevronRightCircle
+                      size={30}
+                      className="group-hover:text-white"
+                    />
+                  </div>
+                </Link>
+                <Link
+                  to={mainRoute.ASK_US}
+                  className={`group transition transform duration-100 hover:bg-[#FFC107] hover:text-primary text-white bg-[${
+                    location.pathname === '/ask-us' ? '#FFC107' : ''
+                  }]`}
+                >
+                  <div className="flex gap-x-8  p-8 py-4 items-center">
+                    <BiHelpCircle
+                      size={30}
+                      className="group-hover:text-white"
+                    />
+                    <p className="font-normal group-hover:text-white">Ask Us</p>
+                  </div>
+                </Link>
+                <button
+                  className="group transition transform duration-100 hover:bg-[#FFC107] hover:text-primary text-white"
+                  onClick={handleLogout}
+                >
+                  <div className="flex gap-x-8  p-8 py-4 pb-8 items-center">
+                    <HiOutlineLogout
+                      size={30}
+                      className="group-hover:text-white"
+                    />
+                    <p className="font-normal group-hover:text-white">
+                      Log-out
+                    </p>
+                  </div>
+                </button>
               </div>
-            </button>
+            )}
           </div>
-        ) : (
-          <div className="flex flex-col justify-end h-full ">
-            <Link
-              to={mainRoute.ASK_US}
-              className={`group transition transform duration-100 hover:bg-[#FFC107] hover:text-primary text-white bg-[${
-                location.pathname === '/ask-us' ? '#FFC107' : ''
-              }]`}
-            >
-              <div className="flex gap-x-8  p-8 items-center">
-                <BiHelpCircle size={30} className="group-hover:text-white" />
-                <p className="font-normal group-hover:text-white">Ask Us</p>
-              </div>
-            </Link>
-            <button
-              className="group transition transform duration-100 hover:bg-[#FFC107] hover:text-primary text-white"
-              onClick={handleLogout}
-            >
-              <div className="flex gap-x-8  p-8 items-center">
-                <HiOutlineLogout size={30} className="group-hover:text-white" />
-                <p className="font-normal group-hover:text-white">Log-out</p>
-              </div>
-            </button>
-          </div>
-        )}
-      </div>
-    </aside>
+        </aside>
+      )}
+    </>
   )
 }
 

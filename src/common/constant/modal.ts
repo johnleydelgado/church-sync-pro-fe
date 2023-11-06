@@ -4,6 +4,7 @@ const MODALS_NAME = {
   invitation: 'invitation-modal',
   deleteBookeeper: 'delete-bookeeper',
   modalRegistration: 'modal-registration',
+  transactionDate: 'modal-transactionDate',
 }
 
 export { MODALS_NAME }

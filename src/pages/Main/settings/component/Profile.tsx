@@ -4,7 +4,7 @@ import { useSelector } from 'react-redux'
 import { RootState } from '@/redux/store'
 
 import { useDispatch } from 'react-redux'
-import { Avatar, Button, Input } from '@material-tailwind/react'
+import { Avatar, Button, Input, Spinner } from '@material-tailwind/react'
 import qboIcon from '@/common/assets/qbo-icon.png'
 import { capitalAtFirstLetter } from '@/common/utils/helper'
 import { useFormik } from 'formik'
@@ -29,18 +29,17 @@ const TextInput = ({
   error?: string
   onChange?: (e: any) => void
 }) => (
-  <div className="flex gap-8 w-1/3">
+  <div className="grid grid-cols-2 w-1/3 gap-24 md:gap-12">
     <p className="w-32">{title}</p>
     <div>
       <Input
-        className="rounded-l !border-t-blue-gray-200 focus:!border-t-gray-900 w-96"
+        className="rounded-md border-green-500 w-96"
         color="black"
         defaultValue={defValue}
         disabled={!isEditing}
-        labelProps={{
-          className: 'before:content-none after:content-none',
-        }}
         onChange={onChange}
+        variant="outlined"
+        label={title}
       />
       {error ? <p className="text-red-600">{error}</p> : null}
     </div>
@@ -52,7 +51,7 @@ const Profile: FC<AccountProps> = ({}) => {
   const subscribed = useRef(false)
   const [file, setFile] = useState<File | null>(null)
   const [createObjectURL, setCreateObjectURL] = useState('')
-
+  const [loadingSave, setLoadingSave] = useState<boolean>(false)
   const { email, id, role, firstName, lastName, churchName, img_url } =
     useSelector((item: RootState) => item.common.user)
 
@@ -70,6 +69,7 @@ const Profile: FC<AccountProps> = ({}) => {
     }),
     onSubmit: async (values) => {
       // forgotPasswordHandler(values.password)
+      setLoadingSave(true)
       const data = {
         ...values,
         userId: id || 0,
@@ -84,6 +84,8 @@ const Profile: FC<AccountProps> = ({}) => {
       } catch (e: any) {
         console.log('')
         setIsEditing(false)
+      } finally {
+        setLoadingSave(false)
       }
     },
   })
@@ -98,7 +100,7 @@ const Profile: FC<AccountProps> = ({}) => {
 
   return (
     <div className="w-full  flex flex-col bg-white justify-center mt-2">
-      <div className="flex items-center justify-between gap-2 p-4 w-2/5">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 md:p-4 sm:w-3/6 md:w-3/6 lg:w-full xl:w-1/2  w-full">
         <p className="text-4xl font-bold text-[#27A1DB]">Profile</p>
         <div>
           {isEditing ? (
@@ -114,7 +116,10 @@ const Profile: FC<AccountProps> = ({}) => {
                 className="bg-[#FAB400] rounded-full"
                 onClick={() => formik.handleSubmit()}
               >
-                Save changes
+                <div className="flex gap-4 items-center">
+                  <p>Save changes</p>
+                  {loadingSave ? <Spinner /> : null}
+                </div>
               </Button>
             </div>
           ) : (
@@ -129,9 +134,9 @@ const Profile: FC<AccountProps> = ({}) => {
         </div>
       </div>
 
-      <div className="flex flex-col gap-4 p-4">
+      <div className="flex flex-col gap-4 py-2 md:p-4 lg:p-4">
         <div className="flex gap-4">
-          <div className="flex flex-col gap-4 items-center px-4 py-2">
+          <div className="flex flex-col gap-4 items-center md:px-4 py-2">
             {createObjectURL ? (
               <Avatar
                 className="rounded-t-lg object-cover md:w-auto md:rounded-none md:rounded-l-lg "
@@ -173,7 +178,7 @@ const Profile: FC<AccountProps> = ({}) => {
         </div>
       </div>
 
-      <div className="flex flex-col gap-4 pl-10">
+      <div className="flex flex-col gap-4 md:pl-10">
         <p className="text-[#27A1DB] text-lg">Personal Information</p>
 
         <TextInput

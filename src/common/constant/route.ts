@@ -22,6 +22,7 @@ export const mainRoute = {
   PCO_QBO_STRIPE: '/pco-qbo-stripe',
   PCO_QBO_STRIPE_SYNC: '/sync-pco-qbo-stripe',
   ASK_US: '/ask-us',
+  QUICK_START_QUIDE: '/quick-start-guide',
   AUTOMATION: '/automation',
   AUTOMATION_MAPPING: '/automation/mapping',
 }

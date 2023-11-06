@@ -75,7 +75,9 @@ interface FinalDataProps {
 const ViewDetails: FC<indexProps> = ({}) => {
   const { batchId } = useParams()
   const navigation = useNavigate()
-  const { user } = useSelector((state: RootState) => state.common)
+  const { user, selectedBankAccount } = useSelector(
+    (state: RootState) => state.common,
+  )
   const [finalData, setFinalData] = useState<FinalDataProps | null>(null)
   const [newData, setNewData] = useState<any>(null)
 
@@ -84,7 +86,6 @@ const ViewDetails: FC<indexProps> = ({}) => {
 
   const { data, synchedBatches, refetch, isLoading, isRefetching } =
     usePagination()
-  console.log('data', data)
 
   const { data: fundData } = useQuery<FundProps[]>(
     ['getFunds', bookkeeper],
@@ -115,7 +116,7 @@ const ViewDetails: FC<indexProps> = ({}) => {
         ),
       })
     }
-  }, [data, batchId])
+  }, [data, batchId, synchedBatches])
 
   useEffect(() => {
     if (!isEmpty(fundData) && !isEmpty(finalData)) {
@@ -161,8 +162,6 @@ const ViewDetails: FC<indexProps> = ({}) => {
     }
   }, [finalData, fundData])
 
-  console.log('aa', finalData)
-
   const triggerSyncBatch = async ({
     dataBatch,
     batchId,
@@ -181,11 +180,12 @@ const ViewDetails: FC<indexProps> = ({}) => {
         dataBatch,
         realBatchId: `${batchId} - ${email}`,
         batchId: batchId,
+        bankData: selectedBankAccount,
       })
       if (result.success) {
         setIsSynching(false)
         successNotification({ title: `Batch: ${batchName} successfully sync` })
-        refetch()
+        refetch({ force: true })
       } else {
         setIsSynching(false)
         failNotification({ title: 'Error' })

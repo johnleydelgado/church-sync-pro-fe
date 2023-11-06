@@ -14,6 +14,7 @@ import { IoIosArrowBack } from 'react-icons/io'
 import { BiSync } from 'react-icons/bi'
 import Stripe from 'stripe'
 import {
+  finalSyncStripe,
   getStripePayouts,
   syncStripePayout,
   syncStripePayoutRegistration,
@@ -38,13 +39,24 @@ interface FinalDataProps {
   item: { amount: string; fee: string; net: string; description: string }
 }
 
+interface BatchDataProps {
+  amount: number
+  created: string
+  totalAmount: number
+  fundName: string
+  payoutDate: string
+  type: string
+}
+
 const formatString = 'M/d/yyyy'
 
 const ViewDetails: FC<indexProps> = ({}) => {
   const { payoutDate } = useParams()
   const navigation = useNavigate()
   const [isFetching, setIsFetching] = useState(false)
-  const { user } = useSelector((state: RootState) => state.common)
+  const { user, selectedBankAccount } = useSelector(
+    (state: RootState) => state.common,
+  )
   const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
   const [stripePayoutData, setStripePayoutData] = useState<FinalDataProps[]>()
   const [isSynching, setIsSynching] = useState(false)
@@ -127,6 +139,86 @@ const ViewDetails: FC<indexProps> = ({}) => {
     }
   }
 
+  // const triggerSyncStripe = async () => {
+  //   try {
+  //     setIsSynching(true)
+  //     const filterFundName = fundData?.length
+  //       ? fundData.map((item) => item.attributes.name)
+  //       : []
+
+  //     const email =
+  //       user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
+
+  //     const date = String(fromUnixTime(Number(payoutDate)))
+  //     // Format the date
+  //     const formattedDate = format(new Date(date), formatString)
+
+  //     if (stripePayoutData)
+  //       await Promise.all(
+  //         stripePayoutData.map(async (a, indexArr: number) => {
+  //           const description = a.item.description
+  //           const regex = /#(\d+)/ // match the #
+  //           const match = description?.match(regex)
+
+  //           if (match) {
+  //             const donationId = match[1]
+  //             const index = filterFundName?.findIndex((word) =>
+  //               description.includes(word),
+  //             )
+
+  //             const fundReg = filterFundName?.find((word) =>
+  //               a.fund.toLowerCase().includes(word.toLowerCase()),
+  //             )
+
+  //             const fundName = filterFundName[index]
+  //             let response: { success?: boolean } = {}
+
+  //             if (index !== -1) {
+  //               if (fundName) {
+  //                 response = await syncStripePayout({
+  //                   email,
+  //                   donationId: String(donationId),
+  //                   fundName: String(fundReg),
+  //                   payoutDate: formattedDate || '',
+  //                   bankData: selectedBankAccount,
+  //                 })
+  //                 console.log(
+  //                   'fundName',
+  //                   email,
+  //                   String(donationId),
+  //                   String(fundReg),
+  //                   formattedDate || '',
+  //                 )
+  //               }
+  //             } else {
+  //               response = await syncStripePayoutRegistration({
+  //                 email,
+  //                 amount: String(a.item.net),
+  //                 fundName: String(fundReg),
+  //                 payoutDate: formattedDate || '',
+  //                 bankData: selectedBankAccount,
+  //               })
+  //             }
+
+  //             if (response.success) {
+  //               successNotification({
+  //                 title: `Stripe payout successfully sync`,
+  //               })
+  //               refetch()
+  //             } else {
+  //               failNotification({ title: 'Error' })
+  //             }
+  //           }
+  //         }),
+  //       )
+  //   } catch (e) {
+  //     setIsSynching(false)
+  //     failNotification({ title: 'Error' })
+  //   } finally {
+  //     setIsSynching(false)
+  //   }
+  // }
+
   const triggerSyncStripe = async () => {
     try {
       setIsSynching(true)
@@ -141,7 +233,7 @@ const ViewDetails: FC<indexProps> = ({}) => {
       // Format the date
       const formattedDate = format(new Date(date), formatString)
 
-      if (stripePayoutData)
+      if (stripePayoutData) {
         await Promise.all(
           stripePayoutData.map(async (a, indexArr: number) => {
             const description = a.item.description
@@ -153,50 +245,142 @@ const ViewDetails: FC<indexProps> = ({}) => {
               const index = filterFundName?.findIndex((word) =>
                 description.includes(word),
               )
+              const parts = description.split('-')
 
-              const fundReg = filterFundName?.find((word) =>
-                a.fund.toLowerCase().includes(word.toLowerCase()),
-              )
-
+              const regName = parts[parts.length - 1]?.trim() || ''
               const fundName = filterFundName[index]
-              let response = ''
+
+              const registrationFund =
+                userData.data.UserSetting.settingRegistrationData.find(
+                  (item: any) => item.registration === regName,
+                )
+
+              const fundNameRegistration = registrationFund
+                ? `${capitalAtFirstLetter(
+                    registrationFund.class.label || '',
+                  )} (${capitalAtFirstLetter(regName || '')})`
+                : ''
+
+              const fundReg =
+                filterFundName?.find((word) =>
+                  fundNameRegistration
+                    .toLowerCase()
+                    .includes(word.toLowerCase()),
+                ) ||
+                registrationFund?.class?.label ||
+                ''
+
+              let arr = {}
 
               if (index !== -1) {
-                if (fundName) {
-                  response = await syncStripePayout(
-                    email,
-                    String(donationId),
-                    String(fundReg),
-                    formattedDate || '',
-                  )
-                  console.log(
-                    'fundName',
-                    email,
-                    String(donationId),
-                    String(fundReg),
-                    formattedDate || '',
-                  )
+                arr = {
+                  ...arr,
+                  email,
+                  batchData: {
+                    amount: Number(a.item.amount),
+                    created: formattedDate || '',
+                    fundName: fundName,
+                    payoutDate: formattedDate || '',
+                    totalAmount: Number(a.item.amount),
+                    type: 'batch',
+                  } as BatchDataProps,
+                  bankData: selectedBankAccount,
+                  fee: a.item.fee,
                 }
               } else {
-                response = await syncStripePayoutRegistration(
+                arr = {
+                  ...arr,
                   email,
-                  String(a.item.net),
-                  String(fundReg),
-                  formattedDate || '',
-                )
-              }
+                  batchData: {
+                    amount: Number(a.item.amount),
+                    created: formattedDate || '',
+                    fundName: fundReg,
+                    payoutDate: formattedDate || '',
+                    totalAmount: Number(a.item.amount),
 
-              if (response === 'success') {
-                successNotification({
-                  title: `Stripe payout successfully sync`,
-                })
-                refetch()
-              } else {
-                // failNotification({ title: 'Error' })
+                    type: 'registration',
+                  } as BatchDataProps,
+                  bankData: selectedBankAccount,
+                  fee: a.item.fee,
+                }
+              }
+              return Promise.resolve(arr)
+            }
+
+            return Promise.resolve(null)
+          }),
+        ).then(async (results: any[]) => {
+          // Calculate fund totals and update results in one pass
+          const updatedResults = results.map((item) => {
+            const fundName = item.batchData?.fundName
+            if (fundName) {
+              const fundTotal = results.reduce((acc, curr) => {
+                return curr.batchData?.fundName === fundName
+                  ? acc + curr.batchData.totalAmount
+                  : acc
+              }, 0)
+
+              return {
+                ...item,
+                batchData: {
+                  ...item.batchData,
+                  totalAmount: fundTotal,
+                },
               }
             }
-          }),
-        )
+            return item
+          })
+
+          // Grouping the updated results by fundName
+          const groupedResults = updatedResults.reduce((acc, curr) => {
+            const fundName = curr.batchData?.fundName
+            const fee = curr.fee || 0
+
+            if (fundName) {
+              if (!acc[fundName]) {
+                acc[fundName] = []
+              }
+              acc[fundName].push(curr)
+            }
+            // Initialize Charge object if it doesn't exist
+            if (!acc['Charge']) {
+              acc['Charge'] = [
+                {
+                  email: curr?.email,
+                  batchData: {
+                    amount: 0,
+                    created: formattedDate || '',
+                    fundName: '',
+                    payoutDate: formattedDate || '',
+                    totalAmount: 0,
+                    type: 'registration',
+                    totalFee: 0,
+                  } as BatchDataProps,
+                  bankData: selectedBankAccount,
+                },
+              ]
+            }
+
+            // Accumulate fees in Charge object
+            acc['Charge'][0].batchData.totalFee += fee
+
+            return acc
+          }, {})
+
+          const response = await finalSyncStripe({
+            data: groupedResults,
+          })
+
+          if (response.success) {
+            successNotification({
+              title: `Stripe payout successfully sync`,
+            })
+            refetch()
+          } else {
+            failNotification({ title: 'Error' })
+          }
+        })
+      }
     } catch (e) {
       setIsSynching(false)
       failNotification({ title: 'Error' })
@@ -224,7 +408,7 @@ const ViewDetails: FC<indexProps> = ({}) => {
         donationId: null,
       },
     ])
-  }, [isLoadingBatchData, isRefetchingBatchData])
+  }, [isLoadingBatchData, isRefetchingBatchData, synchedBatchesF])
 
   useEffect(() => {
     const fetchData = async () => {
@@ -315,6 +499,8 @@ const ViewDetails: FC<indexProps> = ({}) => {
     }
   }, [fundData, userData])
 
+  console.log('stripePayoutData', stripePayoutData)
+
   return (
     <MainLayout>
       <div className="flex flex-col h-full gap-4 font-sans">
@@ -399,30 +585,35 @@ const ViewDetails: FC<indexProps> = ({}) => {
 
                     <div className="flex flex-col gap-2">
                       <p className="font-semibold text-gray-500">
-                        No. Of Donations
-                      </p>
-                      <p className="font-light text-gray-500 text-center">
-                        {stripePayoutData?.length}
-                      </p>
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                      <p className="font-semibold text-gray-500">
-                        Stripe total fees
-                      </p>
-                      <p className="font-light text-gray-500">
-                        {formatUsd(String(stripePayoutData?.[0]?.totalFees))}
-                      </p>
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                      <p className="font-semibold text-gray-500">
                         Non Giving Income
                       </p>
                       <p className="font-light text-gray-500">
                         {formatUsd(
                           String(stripePayoutData?.[0]?.nonGivingIncome),
                         )}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <p className="font-semibold text-gray-500">Stripe fees</p>
+                      <p className="font-light text-gray-500">
+                        {formatUsd(String(stripePayoutData?.[0]?.totalFees))}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <p className="font-semibold text-gray-500">Net Deposit</p>
+                      <p className="font-light text-gray-500 text-center">
+                        {formatUsd(String(stripePayoutData?.[0]?.net))}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <p className="font-semibold text-gray-500">
+                        No. Of Donations
+                      </p>
+                      <p className="font-light text-gray-500 text-center">
+                        {stripePayoutData?.length}
                       </p>
                     </div>
                   </div>

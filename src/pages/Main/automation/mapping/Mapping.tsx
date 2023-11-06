@@ -6,8 +6,9 @@ import { useMutation, useQuery } from 'react-query'
 import { useSelector } from 'react-redux'
 
 import { QboGetAllQboData } from '@/common/api/qbo'
-import { components } from 'react-select'
 import {
+  addUpdateBankCharges,
+  addUpdateBankSettings,
   enableAutoSyncSetting,
   getTokenList,
   getUserRelated,
@@ -29,10 +30,29 @@ import { mainRoute } from '@/common/constant/route'
 import { Button } from '@material-tailwind/react'
 import { MdAppRegistration } from 'react-icons/md'
 import { useDispatch } from 'react-redux'
-import { OPEN_MODAL } from '@/redux/common'
+import {
+  BankAccountExpensesProps,
+  BankAccountProps,
+  OPEN_MODAL,
+  setSelectedBankAccount,
+  setSelectedBankExpense,
+  setSelectedStartDate,
+} from '@/redux/common'
 import { MODALS_NAME } from '@/common/constant/modal'
-import Dropdown from 'react-select'
-import SelectDateRange from '@/common/components/Select/SelectDateRange'
+import 'react-datepicker/dist/react-datepicker.css'
+import { format, parseISO } from 'date-fns'
+import TransactionDateModal from './component/TransactionDateModal'
+import Dropdown, { components } from 'react-select'
+
+// import 'react-datepicker/dist/react-datepicker.css'
+// import { Value } from 'react-date-picker/dist/cjs/shared/types'
+
+const Input = (props: any) => (
+  <components.Input
+    {...props}
+    inputClassName="outline-none border-none shadow-none focus:ring-transparent"
+  />
+)
 
 interface AttributesProps {
   color: string
@@ -57,7 +77,7 @@ export interface FundProps {
 }
 
 export interface BqoDataSelectProps {
-  accounts: { value: string; label: string }[]
+  accounts: { value: string; label: string; type?: string }[]
   classes: { value: string; label: string }[]
   customers: { value: string; label: string }[]
 }
@@ -70,15 +90,18 @@ function classNames(...classes: string[]) {
 
 const Mapping: FC<SettingsProps> = () => {
   const dispatch = useDispatch()
-  const { user } = useSelector((state: RootState) => state.common)
+  const { user, selectedBankAccount, selectedBankExpense } = useSelector(
+    (state: RootState) => state.common,
+  )
   const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
+
   const [searchParams, setSearchParams] = useSearchParams()
 
   const reTriggerIsUserTokens = useSelector(
     (item: RootState) => item.common.reTriggerIsUserTokens,
   )
 
-  const { mutate, isLoading: isSavingSettings } = useMutation<
+  const { mutate } = useMutation<
     unknown,
     unknown,
     {
@@ -88,18 +111,23 @@ const Mapping: FC<SettingsProps> = () => {
     }
   >(enableAutoSyncSetting)
 
-  const { data: tokenList } = useQuery<AccountTokenDataProps[]>(
-    ['getTokenList', bookkeeper],
-    async () => {
-      const email =
-        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-      if (email) return await getTokenList(email)
-    },
+  const { mutate: saveBankData } = useMutation<
+    unknown,
+    unknown,
     {
-      staleTime: Infinity,
-      cacheTime: Infinity,
-    },
-  )
+      email: string
+      data: BankAccountProps[] | null
+    }
+  >(addUpdateBankSettings)
+
+  const { mutate: saveBankCharges } = useMutation<
+    unknown,
+    unknown,
+    {
+      email: string
+      data: BankAccountExpensesProps | null
+    }
+  >(addUpdateBankCharges)
 
   const { data: fundData, isLoading } = useQuery<FundProps[]>(
     ['getFunds', bookkeeper], // Same query key as in the first page
@@ -125,7 +153,6 @@ const Mapping: FC<SettingsProps> = () => {
     },
     { staleTime: Infinity },
   )
-
   const { data: qboData, isLoading: isQboDataLoading } =
     useQuery<BqoDataSelectProps>(
       ['getAllQboData', bookkeeper],
@@ -143,21 +170,6 @@ const Mapping: FC<SettingsProps> = () => {
       { staleTime: Infinity, refetchOnWindowFocus: false },
     )
 
-  const { data: isUserTokens } = useQuery(
-    ['isUserTokens', tokenList, bookkeeper],
-    async () => {
-      const email =
-        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-
-      if (email) return await isUserHaveTokens(email)
-      return false
-    },
-    {
-      staleTime: Infinity,
-      refetchOnWindowFocus: false,
-    },
-  )
-
   const [isAutomationEnable, setIsAutomationEnable] = useState<boolean>(false)
   const [isAutomationRegistration, setIsAutomationRegistration] =
     useState<boolean>(false)
@@ -165,6 +177,7 @@ const Mapping: FC<SettingsProps> = () => {
   const [categories, setCategories] = useState({
     Donation: [],
     Registration: [],
+    Bank: [],
   })
 
   useEffect(() => {
@@ -197,6 +210,16 @@ const Mapping: FC<SettingsProps> = () => {
     dispatch(OPEN_MODAL(MODALS_NAME.modalRegistration))
   }
 
+  const donationAccountValue = (type: 'donation' | 'registration') => {
+    const donationAccount = selectedBankAccount?.find((a) => a.type === type)
+    return donationAccount
+      ? {
+          label: donationAccount.label,
+          value: donationAccount.value,
+        }
+      : null
+  }
+
   useEffect(() => {
     if (!isEmpty(userData?.UserSetting?.settingsData)) {
       setIsAutomationEnable(userData?.UserSetting.isAutomationEnable)
@@ -204,10 +227,50 @@ const Mapping: FC<SettingsProps> = () => {
         userData?.UserSetting.isAutomationRegistration,
       )
     }
+
+    if (!isEmpty(userData?.UserSetting?.settingBankData)) {
+      dispatch(setSelectedBankAccount(userData?.UserSetting?.settingBankData))
+    }
+
+    if (!isEmpty(userData?.UserSetting?.settingBankCharges)) {
+      dispatch(
+        setSelectedBankExpense(userData?.UserSetting?.settingBankCharges),
+      )
+    }
   }, [userData])
+
+  useEffect(() => {
+    const save = async () => {
+      if (selectedBankAccount) {
+        const email =
+          user.role === 'bookkeeper'
+            ? bookkeeper?.clientEmail || ''
+            : user.email
+        await saveBankData({ email, data: selectedBankAccount })
+      }
+    }
+
+    save()
+  }, [selectedBankAccount])
+
+  useEffect(() => {
+    const save = async () => {
+      if (selectedBankExpense) {
+        const email =
+          user.role === 'bookkeeper'
+            ? bookkeeper?.clientEmail || ''
+            : user.email
+        await saveBankCharges({ email, data: selectedBankExpense })
+      }
+    }
+
+    save()
+  }, [selectedBankExpense])
 
   return (
     <MainLayout>
+      <TransactionDateModal />
+
       {isLoading || isQboDataLoading ? (
         <Loading />
       ) : (
@@ -224,7 +287,11 @@ const Mapping: FC<SettingsProps> = () => {
             </div>
           </div>
 
-          <Tab.Group defaultIndex={searchParams.get('tab') === '1' ? 1 : 0}>
+          <Tab.Group
+            defaultIndex={
+              searchParams.get('tab') ? Number(searchParams.get('tab')) - 1 : 0
+            }
+          >
             <div className="flex">
               <Tab.List className="flex space-x-1 rounded-xl bg-transparent px-4 py-2 w-96">
                 {Object.keys(categories).map((category, index: number) => (
@@ -283,10 +350,6 @@ const Mapping: FC<SettingsProps> = () => {
                         </p>
                         <p className="text-[#FAB400]">Donations</p>
                       </button>
-                      <div className="flex flex-col -mt-4">
-                        <p className="pb-2">Select Transaction Date</p>
-                        <SelectDateRange />
-                      </div>
                     </div>
 
                     <Donation fundData={fundData} userData={userData} />
@@ -314,20 +377,25 @@ const Mapping: FC<SettingsProps> = () => {
                 ) : (
                   <div>
                     <div className="flex justify-between items-center pb-4">
-                      <button
-                        className="border-[1px] p-4 rounded-lg w-72 flex items-center gap-2 justify-center hover:border-yellow-300 hover:border-1"
-                        onClick={() => enableDisableAutomation('registration')}
-                      >
-                        <AiOutlineCloudSync
-                          size={22}
-                          color={isAutomationRegistration ? 'black' : 'gray'}
-                        />
-                        <p className="font-thin">
-                          turn {isAutomationRegistration ? 'Off' : 'On'}{' '}
-                          auto-sync
-                        </p>
-                        <p className="text-[#FAB400]">Registration</p>
-                      </button>
+                      <div>
+                        <button
+                          className="border-[1px] p-4 rounded-lg w-72 flex items-center gap-2 justify-center hover:border-yellow-300 hover:border-1"
+                          onClick={() =>
+                            enableDisableAutomation('registration')
+                          }
+                        >
+                          <AiOutlineCloudSync
+                            size={22}
+                            color={isAutomationRegistration ? 'black' : 'gray'}
+                          />
+                          <p className="font-thin">
+                            turn {isAutomationRegistration ? 'Off' : 'On'}{' '}
+                            auto-sync
+                          </p>
+                          <p className="text-[#FAB400]">Registration</p>
+                        </button>
+                      </div>
+
                       <Button
                         variant="outlined"
                         className="border-gray-400 text-black flex items-center gap-3 font-thin"
@@ -342,6 +410,170 @@ const Mapping: FC<SettingsProps> = () => {
                     </div>
 
                     <Registration qboData={qboData} userData={userData} />
+                  </div>
+                )}
+              </Tab.Panel>
+
+              <Tab.Panel
+                key={3}
+                className={classNames('rounded-xl bg-white p-4 px-8')}
+              >
+                {isEmpty(qboData) ? (
+                  <div className="flex flex-col items-center justify-center h-96">
+                    <p className="text-2xl text-center font-thin">
+                      Please set up your accounts in order to continue with the
+                      registration mapping process.
+                    </p>
+                    <Link
+                      to={mainRoute.SETTINGS + '?tab=3'}
+                      className="text-xl pt-4 underline text-blue-400"
+                    >
+                      Click Here !
+                    </Link>
+                  </div>
+                ) : (
+                  <div>
+                    <div className={`flex py-4  border-b-[1px] gap-8`}>
+                      <div>
+                        <p className="font-semibold text-[#27A1DB] pb-4">
+                          Donations
+                        </p>
+                        <p className="pb-2">Select Bank Account</p>
+                        <Dropdown<{ value: string; label: string } | null>
+                          options={qboData?.accounts
+                            ?.filter((a) => a.type === 'Bank')
+                            .map((a) => ({
+                              value: a.value,
+                              label: a.label,
+                            }))}
+                          placeholder="Select Bank Account"
+                          components={{ Input }}
+                          onChange={(val) => {
+                            const updatedBankAccounts = (
+                              selectedBankAccount || []
+                            ).filter((account) => account.type !== 'donation')
+                            updatedBankAccounts.push({
+                              type: 'donation',
+                              label: val?.label || '',
+                              value: val?.value || '',
+                            })
+                            dispatch(
+                              setSelectedBankAccount(updatedBankAccounts),
+                            )
+                          }}
+                          value={donationAccountValue('donation')}
+                          className="w-72"
+                        />
+                      </div>
+
+                      <div>
+                        <p className="font-semibold text-[#27A1DB] pb-4">
+                          Registration
+                        </p>
+                        <p className="pb-2">Select Bank Account</p>
+                        <Dropdown<{ value: string; label: string } | null>
+                          options={qboData?.accounts
+                            ?.filter((a) => a.type === 'Bank')
+                            .map((a) => ({
+                              value: a.value,
+                              label: a.label,
+                            }))}
+                          placeholder="Select Bank Account"
+                          components={{ Input }}
+                          onChange={(val) => {
+                            const updatedBankAccounts = (
+                              selectedBankAccount || []
+                            ).filter(
+                              (account) => account.type !== 'registration',
+                            )
+                            updatedBankAccounts.push({
+                              type: 'registration',
+                              label: val?.label || '',
+                              value: val?.value || '',
+                            })
+                            dispatch(
+                              setSelectedBankAccount(updatedBankAccounts),
+                            )
+                          }}
+                          value={donationAccountValue('registration')}
+                          className="w-72"
+                        />
+                      </div>
+                    </div>
+
+                    <div className={`flex py-4  border-b-[1px] gap-8`}>
+                      <div>
+                        <p className="font-semibold text-[#27A1DB] pb-4">
+                          Bank Expenses
+                        </p>
+                        <div className="flex gap-8">
+                          <div>
+                            <p className="pb-2">Select Account</p>
+                            <Dropdown<{ value: string; label: string } | null>
+                              options={qboData?.accounts
+                                ?.filter((a) => a.type === 'Expense')
+                                .map((a) => ({
+                                  value: a.value,
+                                  label: a.label,
+                                }))}
+                              placeholder="Select Account"
+                              components={{ Input }}
+                              onChange={(val) => {
+                                dispatch(
+                                  setSelectedBankExpense({
+                                    account: {
+                                      label: val?.label || '',
+                                      value: val?.value || '',
+                                    },
+                                    class: {
+                                      // Here, you retain the class information from the current state
+                                      label:
+                                        selectedBankExpense?.class.label || '',
+                                      value:
+                                        selectedBankExpense?.class.value || '',
+                                    },
+                                  }),
+                                )
+                              }}
+                              value={selectedBankExpense?.account} // Only send the account part to the Dropdown
+                              className="w-72"
+                            />
+                          </div>
+                          <div>
+                            <p className="pb-2">Select Classes</p>
+                            <Dropdown<{ value: string; label: string } | null>
+                              options={qboData?.classes.map((a) => ({
+                                value: a.value,
+                                label: a.label,
+                              }))}
+                              placeholder="Select Classes"
+                              components={{ Input }}
+                              onChange={(val) => {
+                                dispatch(
+                                  setSelectedBankExpense({
+                                    account: {
+                                      label:
+                                        selectedBankExpense?.account.label ||
+                                        '',
+                                      value:
+                                        selectedBankExpense?.account.value ||
+                                        '',
+                                    },
+                                    class: {
+                                      label: val?.label || '',
+                                      value: val?.value || '',
+                                      // Here, you retain the class information from the current state
+                                    },
+                                  }),
+                                )
+                              }}
+                              value={selectedBankExpense?.class} // Only send the account part to the Dropdown
+                              className="w-72"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
               </Tab.Panel>

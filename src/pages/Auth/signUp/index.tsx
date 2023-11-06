@@ -259,7 +259,7 @@ const SignUp: FC<SignUpProps> = () => {
     //     </form>
     //   </div>
     // </div>
-    <div className="h-full flex font-lato">
+    <div className="h-screen flex font-lato">
       <div
         className="flex-grow"
         style={{
@@ -268,12 +268,13 @@ const SignUp: FC<SignUpProps> = () => {
           backgroundPosition: 'center',
         }}
       >
-        <div
-          style={{ backgroundColor: 'rgba(251, 251, 251, 0.5)' }}
-          className="w-[520px] h-5/6 overflow-auto absolute top-1/2 transform -translate-y-1/2 right-28 shadow-2xl rounded-3xl"
-        >
-          <div className="flex flex-col gap-2 p-12 items-center">
-            {/* <div
+        <div className="flex w-full h-full justify-end items-center">
+          <div
+            style={{ backgroundColor: 'rgba(251, 251, 251, 0.8)' }}
+            className="sm:w-96 xs:w-96 md:w-[520px] h-5/6 overflow-auto shadow-2xl rounded-3xl m-4 sm:mr-12"
+          >
+            <div className="flex flex-col gap-2 p-12 items-center">
+              {/* <div
             className="flex justify-center group items-center cursor-pointer hover:bg-btmColor rounded-xl p-4"
             onClick={googleSignInClicked}
           >
@@ -283,103 +284,104 @@ const SignUp: FC<SignUpProps> = () => {
               Login or Sig up with google
             </span>
           </div> */}
-            <p>Create an account</p>
-            <div className="border-[0.5px] w-52" />
-            <p className="font-thin text-xl pb-2">Select your user type</p>
-            <div className="flex gap-12">
-              <button
-                className={`flex flex-col items-center transform transition-transform hover:scale-105 rounded-md p-6 ${
-                  userType === 'client' ? 'bg-blue-gray-50' : ''
-                }`}
-                onClick={() => userTypeHandler('client')}
+              <p>Create an account</p>
+              <div className="border-[0.5px] w-52" />
+              <p className="font-thin text-xl pb-2">Select your user type</p>
+              <div className="flex gap-12">
+                <button
+                  className={`flex flex-col items-center transform transition-transform hover:scale-105 rounded-md p-6 ${
+                    userType === 'client' ? 'bg-blue-gray-50' : ''
+                  }`}
+                  onClick={() => userTypeHandler('client')}
+                >
+                  <img src={clientLogo} className="h-20 w-20" />
+                  <p>Client</p>
+                </button>
+                <button
+                  className={`flex flex-col items-center transform transition-transform hover:scale-105 rounded-md p-6 ${
+                    userType === 'bookkeeper' ? 'bg-blue-gray-50' : ''
+                  }`}
+                  onClick={() => userTypeHandler('bookkeeper')}
+                >
+                  <img src={bookeeperLogo} className="h-20 w-20" />
+                  <p>Bookkeeper</p>
+                </button>
+              </div>
+              {/* FORMS */}
+              <form
+                className="flex flex-col gap-1 pt-6 w-80"
+                onSubmit={formik.handleSubmit}
               >
-                <img src={clientLogo} className="h-20 w-20" />
-                <p>Client</p>
-              </button>
-              <button
-                className={`flex flex-col items-center transform transition-transform hover:scale-105 rounded-md p-6 ${
-                  userType === 'bookkeeper' ? 'bg-blue-gray-50' : ''
-                }`}
-                onClick={() => userTypeHandler('bookkeeper')}
-              >
-                <img src={bookeeperLogo} className="h-20 w-20" />
-                <p>Bookkeeper</p>
-              </button>
-            </div>
-            {/* FORMS */}
-            <form
-              className="flex flex-col gap-1 pt-6 w-80"
-              onSubmit={formik.handleSubmit}
-            >
-              {userType === 'client' ? (
+                {userType === 'client' ? (
+                  <CommonTextField
+                    error={formik.errors.churchName}
+                    icon={BiChurch}
+                    name="churchName"
+                    onChange={formik.handleChange}
+                    placeholder=""
+                    title="Church Name"
+                    type="text"
+                    value={formik.values.churchName}
+                  />
+                ) : null}
+
                 <CommonTextField
-                  error={formik.errors.churchName}
-                  icon={BiChurch}
-                  name="churchName"
+                  error={formik.errors.firstName}
+                  icon={AiOutlineUser}
+                  name="firstName"
                   onChange={formik.handleChange}
-                  placeholder=""
-                  title="Church Name"
+                  placeholder="John"
+                  title="First Name"
                   type="text"
-                  value={formik.values.churchName}
+                  value={formik.values.firstName}
                 />
-              ) : null}
 
-              <CommonTextField
-                error={formik.errors.firstName}
-                icon={AiOutlineUser}
-                name="firstName"
-                onChange={formik.handleChange}
-                placeholder="John"
-                title="First Name"
-                type="text"
-                value={formik.values.firstName}
-              />
+                <CommonTextField
+                  error={formik.errors.lastName}
+                  icon={AiOutlineUser}
+                  name="lastName"
+                  onChange={formik.handleChange}
+                  placeholder="Doe"
+                  title="Last Name"
+                  type="text"
+                  value={formik.values.lastName}
+                />
 
-              <CommonTextField
-                error={formik.errors.lastName}
-                icon={AiOutlineUser}
-                name="lastName"
-                onChange={formik.handleChange}
-                placeholder="Doe"
-                title="Last Name"
-                type="text"
-                value={formik.values.lastName}
-              />
+                <CommonTextField
+                  error={formik.errors.email}
+                  icon={HiOutlineMail}
+                  name="email"
+                  onChange={formik.handleChange}
+                  placeholder="johndoe@gmail.com"
+                  title="Email"
+                  type="text"
+                  value={formik.values.email}
+                />
 
-              <CommonTextField
-                error={formik.errors.email}
-                icon={HiOutlineMail}
-                name="email"
-                onChange={formik.handleChange}
-                placeholder="johndoe@gmail.com"
-                title="Email"
-                type="text"
-                value={formik.values.email}
-              />
+                <CommonTextField
+                  error={formik.errors.password}
+                  icon={HiOutlineLockClosed}
+                  name="password"
+                  onChange={formik.handleChange}
+                  placeholder="*********"
+                  title="Password"
+                  type="text"
+                  value={formik.values.password}
+                  isPassword
+                />
 
-              <CommonTextField
-                error={formik.errors.password}
-                icon={HiOutlineLockClosed}
-                name="password"
-                onChange={formik.handleChange}
-                placeholder="*********"
-                title="Password"
-                type="text"
-                value={formik.values.password}
-                isPassword
-              />
-
-              <Button
-                className="bg-btmColor rounded-md shadow-sm h-12 my-4 hover:bg-slate-600 [&>*]:text-white"
-                type="submit"
-              >
-                {isLoading ? (
-                  <Spinner className="mr-8" />
-                ) : (
-                  <p>Create account</p>
-                )}
-              </Button>
-            </form>
+                <Button
+                  className="bg-btmColor rounded-md shadow-sm h-12 my-4 hover:bg-slate-600 [&>*]:text-white"
+                  type="submit"
+                >
+                  {isLoading ? (
+                    <Spinner className="mr-8" />
+                  ) : (
+                    <p>Create account</p>
+                  )}
+                </Button>
+              </form>
+            </div>
           </div>
         </div>
       </div>

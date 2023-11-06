@@ -22,6 +22,7 @@ const { REACT_APP_GOOGLE_CALLBACK_URL, REACT_APP_HOST_BE } = process.env
 const ForgotPassword: FC<LoginProps> = () => {
   const navigate = useNavigate()
   const dispatch = useDispatch()
+  const [isLoading, setIsLoading] = useState<boolean>(false)
 
   const formik = useFormik({
     initialValues: {
@@ -36,10 +37,14 @@ const ForgotPassword: FC<LoginProps> = () => {
   })
 
   const forgotPasswordHandler = async (email: string) => {
+    setIsLoading(true)
     try {
       await sendPasswordReset(email)
+      navigate(route.ROOT)
     } catch (e: any) {
       failNotification({ title: e.message })
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -53,38 +58,41 @@ const ForgotPassword: FC<LoginProps> = () => {
           backgroundPosition: 'center',
         }}
       >
-        <div
-          style={{ backgroundColor: 'rgba(251, 251, 251, 0.5)' }}
-          className="w-[520px]  absolute top-1/2 transform -translate-y-1/2 right-28 shadow-2xl rounded-3xl"
-        >
-          <div className="flex flex-col gap-8 p-12 items-center">
-            <img src={logo} alt="" />
-            <p className="text-lg font-bold text-gray-500">Forget Password</p>
-            <div className="border-[0.5px] w-52 -mt-6" />
+        <div className="flex w-full h-full justify-end items-center">
+          <div
+            style={{ backgroundColor: 'rgba(251, 251, 251, 0.8)' }}
+            className="sm:w-96 xs:w-96 md:w-[520px] shadow-2xl rounded-3xl m-4 sm:mr-12"
+          >
+            <div className="flex flex-col gap-8 p-12 items-center">
+              <img src={logo} alt="" />
+              <p className="text-lg font-bold text-gray-500">Forget Password</p>
+              <div className="border-[0.5px] w-52 -mt-6" />
 
-            {/* FORMS */}
-            <form
-              className="flex flex-col gap-4 [&>*]:text-red-600 w-72"
-              onSubmit={formik.handleSubmit}
-            >
-              <TextInput
-                id="email"
-                type="email"
-                icon={HiOutlineMail}
-                placeholder="Type your e-mail here"
-                className="shadow-sm rounded-lg hover:border-primary focus:border-primary font-light"
-                onChange={formik.handleChange}
-                value={formik.values.email}
-                helperText={formik.errors.email}
-              />
-
-              <Button
-                className="bg-btmColor rounded-md shadow-sm h-12 my-4 hover:bg-slate-600 [&>*]:text-white"
-                type="submit"
+              {/* FORMS */}
+              <form
+                className="flex flex-col gap-4 [&>*]:text-red-600 w-72"
+                onSubmit={formik.handleSubmit}
               >
-                FORGOT PASSWORD
-              </Button>
-            </form>
+                <TextInput
+                  id="email"
+                  type="email"
+                  icon={HiOutlineMail}
+                  placeholder="Type your e-mail here"
+                  className="shadow-sm rounded-lg hover:border-primary focus:border-primary font-light"
+                  onChange={formik.handleChange}
+                  value={formik.values.email}
+                  helperText={formik.errors.email}
+                />
+
+                <Button
+                  className="bg-btmColor rounded-md shadow-sm h-12 my-4 hover:bg-slate-600 [&>*]:text-white"
+                  type="submit"
+                >
+                  {isLoading ? <Spinner className="mr-8" /> : null}
+                  FORGOT PASSWORD
+                </Button>
+              </form>
+            </div>
           </div>
         </div>
       </div>

@@ -53,6 +53,7 @@ import InviteLink from './Main/invite-link/InviteLink'
 import { useGetTokenList } from '@/common/hooks/useGetTokenList'
 import AskUs from './Main/ask-us/AskUs'
 import Home from './Main/home/Home'
+import QuickStartGuide from './Main/quick-start-guide/QuickStartGuide'
 
 interface indexProps {}
 
@@ -259,6 +260,12 @@ const MainPage: FC<indexProps> = () => {
         <Route
           path={mainRoute.ASK_US}
           element={<PrivateRoute Component={AskUs} guards={[authGuard]} />}
+        />
+        <Route
+          path={mainRoute.QUICK_START_QUIDE}
+          element={
+            <PrivateRoute Component={QuickStartGuide} guards={[authGuard]} />
+          }
         />
         <Route path="*" element={<ErrorPage />} />
       </Routes>

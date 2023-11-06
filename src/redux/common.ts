@@ -32,6 +32,23 @@ interface transactionDateProps {
   endDate: Date | null
 }
 
+export interface BankAccountProps {
+  type: 'donation' | 'registration'
+  value: string
+  label: string
+}
+
+export interface BankAccountExpensesProps {
+  account: {
+    value: string
+    label: string
+  }
+  class: {
+    value: string
+    label: string
+  }
+}
+
 interface CommonState {
   openModals: any[]
   isFetching: boolean
@@ -49,6 +66,15 @@ interface CommonState {
     realm_id?: string
   } | null
   selectedTransactionDate: transactionDateProps
+  selectedStartDate: Date | null
+  tabSettings: {
+    account: boolean
+    billing: boolean
+    connect: boolean
+    bookkeeper: boolean
+  }
+  selectedBankAccount: BankAccountProps[] | null
+  selectedBankExpense: BankAccountExpensesProps | null
 }
 
 const initialState: CommonState = {
@@ -83,6 +109,15 @@ const initialState: CommonState = {
   },
   accountState: null,
   selectedTransactionDate: { startDate: null, endDate: null },
+  selectedStartDate: null,
+  tabSettings: {
+    account: true,
+    billing: false,
+    connect: false,
+    bookkeeper: false,
+  },
+  selectedBankAccount: null,
+  selectedBankExpense: null,
 }
 
 export const common = createSlice({
@@ -141,12 +176,41 @@ export const common = createSlice({
       state.thirdPartyTokens = initialState.thirdPartyTokens
       state.bookkeeper = initialState.bookkeeper
       state.selectedTransactionDate = initialState.selectedTransactionDate
+      state.selectedBankAccount = initialState.selectedBankAccount
+      state.selectedBankExpense = initialState.selectedBankExpense
+      // state.selectedStartDate = initialState.selectedStartDate
     },
     setSelectedTransactionDate: (
       state,
       action: PayloadAction<transactionDateProps>,
     ) => {
       state.selectedTransactionDate = action.payload
+    },
+    setSelectedStartDate: (state, action: PayloadAction<Date | null>) => {
+      state.selectedStartDate = action.payload
+    },
+    setTabSettings: (
+      state,
+      action: PayloadAction<{
+        account: boolean
+        billing: boolean
+        connect: boolean
+        bookkeeper: boolean
+      }>,
+    ) => {
+      state.tabSettings = action.payload
+    },
+    setSelectedBankAccount: (
+      state,
+      action: PayloadAction<BankAccountProps[] | null>,
+    ) => {
+      state.selectedBankAccount = action.payload
+    },
+    setSelectedBankExpense: (
+      state,
+      action: PayloadAction<BankAccountExpensesProps | null>,
+    ) => {
+      state.selectedBankExpense = action.payload
     },
   },
 })
@@ -165,6 +229,10 @@ export const {
   setAccountState,
   setBookkeeper,
   setSelectedTransactionDate,
+  setSelectedStartDate,
+  setTabSettings,
+  setSelectedBankAccount,
+  setSelectedBankExpense,
 } = common.actions
 
 export default common.reducer

@@ -291,106 +291,108 @@ const Login: FC<LoginProps> = () => {
           backgroundPosition: 'center',
         }}
       >
-        <div
-          style={{ backgroundColor: 'rgba(251, 251, 251, 0.5)' }}
-          className="w-[520px] h-[632px] absolute top-1/2 transform -translate-y-1/2 right-28 shadow-2xl rounded-3xl"
-        >
-          <div className="flex flex-col gap-8 p-12 items-center">
-            <img src={logo} alt="" />
-            <div
-              className="flex justify-center group items-center cursor-pointer hover:bg-btmColor rounded-xl p-2"
-              onClick={googleSignInClicked}
-            >
-              {googleLoading ? <Spinner className="mr-8" /> : null}
-              <FcGoogle size={48} className="mr-4" />
-              <span className="text-md font-thin text-slate-700 group-hover:text-white group-hover:font-normal">
-                Login or Sig up with google
-              </span>
-            </div>
-            <div className="border-[0.5px] w-52 -mt-6" />
-
-            {/* FORMS */}
-            <form
-              className="flex flex-col gap-4 [&>*]:text-red-600 w-72"
-              onSubmit={formik.handleSubmit}
-            >
-              <TextInput
-                id="email"
-                type="email"
-                icon={HiOutlineMail}
-                placeholder="johndoe@gmail.com"
-                className="shadow-sm rounded-lg hover:border-primary focus:border-primary font-light"
-                onChange={formik.handleChange}
-                value={formik.values.email}
-                helperText={formik.errors.email}
-              />
-
+        <div className="flex w-full h-full justify-end items-center">
+          <div
+            style={{ backgroundColor: 'rgba(251, 251, 251, 0.8)' }}
+            className="sm:w-96 xs:w-96 md:w-[520px] h-[632px] shadow-2xl rounded-3xl m-4 sm:mr-12"
+          >
+            <div className="flex flex-col gap-8 p-12 items-center">
+              <img src={logo} alt="" />
               <div
-                className={`${
-                  formik.values.password ? 'flex' : 'block'
-                } w-full relative`}
+                className="flex justify-center group items-center cursor-pointer hover:bg-btmColor rounded-xl p-2"
+                onClick={googleSignInClicked}
+              >
+                {googleLoading ? <Spinner className="mr-8" /> : null}
+                <FcGoogle size={48} className="mr-4" />
+                <span className="text-md font-thin text-slate-700 group-hover:text-white group-hover:font-normal">
+                  Login or Sig up with google
+                </span>
+              </div>
+              <div className="border-[0.5px] w-52 -mt-6" />
+
+              {/* FORMS */}
+              <form
+                className="flex flex-col gap-4 [&>*]:text-red-600 w-72"
+                onSubmit={formik.handleSubmit}
               >
                 <TextInput
-                  id="password"
-                  type={`${showPassword ? 'text' : 'password'}`}
-                  name="password"
-                  icon={HiOutlineLockClosed}
-                  placeholder="*****************"
-                  className="shadow-sm rounded-lg hover:border-blue-900 font-light w-full"
+                  id="email"
+                  type="email"
+                  icon={HiOutlineMail}
+                  placeholder="johndoe@gmail.com"
+                  className="shadow-sm rounded-lg hover:border-primary focus:border-primary font-light"
                   onChange={formik.handleChange}
-                  value={formik.values.password}
-                  security="false"
-                  helperText={formik.errors.password}
+                  value={formik.values.email}
+                  helperText={formik.errors.email}
                 />
+
                 <div
-                  className="absolute right-2 top-2 text-slate-600 cursor-pointer p-1 hover:bg-blue-900 hover:text-white rounded-full"
-                  onClick={() => setShowPassword(!showPassword)}
+                  className={`${
+                    formik.values.password ? 'flex' : 'block'
+                  } w-full relative`}
                 >
-                  {showPassword ? (
-                    <HiEyeOff size={20} className="text-blue-gray-600" />
-                  ) : (
-                    <HiEye size={20} className="text-blue-gray-600" />
-                  )}
+                  <TextInput
+                    id="password"
+                    type={`${showPassword ? 'text' : 'password'}`}
+                    name="password"
+                    icon={HiOutlineLockClosed}
+                    placeholder="*****************"
+                    className="shadow-sm rounded-lg hover:border-blue-900 font-light w-full"
+                    onChange={formik.handleChange}
+                    value={formik.values.password}
+                    security="false"
+                    helperText={formik.errors.password}
+                  />
+                  <div
+                    className="absolute right-2 top-2 text-slate-600 cursor-pointer p-1 hover:bg-blue-900 hover:text-white rounded-full"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <HiEyeOff size={20} className="text-blue-gray-600" />
+                    ) : (
+                      <HiEye size={20} className="text-blue-gray-600" />
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <Checkbox id="remember" className="p-2" />
-                  <Label htmlFor="remember">
-                    <p className="text-slate-600 font-light text-sm">
-                      Remember me
-                    </p>
-                  </Label>
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <Checkbox id="remember" className="p-2" />
+                    <Label htmlFor="remember">
+                      <p className="text-slate-600 font-light text-sm">
+                        Remember me
+                      </p>
+                    </Label>
+                  </div>
+                  <Link
+                    to={route.FORGOT_PASSWORD}
+                    className="text-gray-800 text-sm cursor-pointer italic"
+                  >
+                    Forget your password ?
+                  </Link>
                 </div>
-                <Link
-                  to={route.FORGOT_PASSWORD}
-                  className="text-gray-800 text-sm cursor-pointer italic"
-                >
-                  Forget your password ?
-                </Link>
-              </div>
 
-              <Button
-                className="bg-btmColor rounded-md shadow-sm h-12 my-4 hover:bg-slate-600 [&>*]:text-white"
-                type="submit"
-              >
-                {loading ? <Spinner className="mr-8" /> : null}
-                LOGIN
-              </Button>
-
-              <div className="flex gap-1 justify-center">
-                <span className="text-gray-600 text-sm italic">
-                  Dont have account?
-                </span>
-                <Link
-                  to="/signup"
-                  className="text-gray-800 text-sm italic cursor-pointer"
+                <Button
+                  className="bg-btmColor rounded-md shadow-sm h-12 my-4 hover:bg-slate-600 [&>*]:text-white"
+                  type="submit"
                 >
-                  Register
-                </Link>
-              </div>
-            </form>
+                  {loading ? <Spinner className="mr-8" /> : null}
+                  LOGIN
+                </Button>
+
+                <div className="flex gap-1 justify-center">
+                  <span className="text-gray-600 text-sm italic">
+                    Dont have account?
+                  </span>
+                  <Link
+                    to="/signup"
+                    className="text-gray-800 text-sm italic cursor-pointer"
+                  >
+                    Register
+                  </Link>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       </div>

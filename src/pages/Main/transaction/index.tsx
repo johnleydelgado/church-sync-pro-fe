@@ -1,7 +1,7 @@
-import { pcGetBatches, pcGetFunds } from '@/common/api/planning-center'
+import { pcGetFunds } from '@/common/api/planning-center'
 import Loading from '@/common/components/loading/Loading'
 import MainLayout from '@/common/components/main-layout/MainLayout'
-import React, { FC, useEffect, useState } from 'react'
+import React, { FC, useState } from 'react'
 import { useQuery } from 'react-query'
 import { useSelector } from 'react-redux'
 import { RootState } from '../../../redux/store'
@@ -9,18 +9,34 @@ import { isEmpty } from 'lodash'
 import { getUserRelated, manualSync } from '@/common/api/user'
 import { failNotification, successNotification } from '@/common/utils/toast'
 import BatchTable from './component/BatchTable'
-import { getStripePayouts, syncStripePayout } from '@/common/api/stripe'
+import {
+  finalSyncStripe,
+  getStripePayouts,
+  syncStripePayout,
+  syncStripePayoutRegistration,
+} from '@/common/api/stripe'
 import StripePayoutTable from './component/StripePayoutTable'
 import Stripe from 'stripe'
 import { FundProps } from '../settings'
-import ReactDatePicker from 'react-datepicker'
-import 'react-datepicker/dist/react-datepicker.css'
-import SelectDateRange from '@/common/components/Select/SelectDateRange'
+
 import { BiSync } from 'react-icons/bi'
 import { Link } from 'react-router-dom'
 import { mainRoute } from '@/common/constant/route'
 import { useDispatch } from 'react-redux'
 import { setTabTransaction } from '@/redux/nonPersistState'
+import DatePicker from 'react-datepicker'
+import 'react-datepicker/dist/react-datepicker.css'
+import { setSelectedStartDate } from '@/redux/common'
+import { capitalAtFirstLetter } from '@/common/utils/helper'
+
+interface BatchDataProps {
+  amount: number
+  created: string
+  totalAmount: number
+  fundName: string
+  payoutDate: string
+  type: string
+}
 
 export interface AttributesProps {
   batch: { id: string; attributes: any }
@@ -67,12 +83,10 @@ interface BatchesAndSyncProps {
 interface DashboardProps {}
 
 const Dashboard: FC<DashboardProps> = () => {
-  const [value, setValue] = useState([new Date(), new Date()])
   const dispatch = useDispatch()
-  const { user } = useSelector((state: RootState) => state.common)
+  const { user, selectedStartDate, selectedBankAccount, selectedBankExpense } =
+    useSelector((state: RootState) => state.common)
   const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
-
-  const [dateRange, setDateRange] = useState({ startDate: '', endDate: '' })
 
   const { tabTransaction } = useSelector(
     (state: RootState) => state.nonPersistState,
@@ -81,22 +95,6 @@ const Dashboard: FC<DashboardProps> = () => {
   const [batchSyncing, setBatchSynching] = useState([
     { batchId: '', trigger: false, realBatchId: '' },
   ])
-
-  // const { data, isLoading, refetch, isRefetching } = useQuery<
-  //   BatchesAndSyncProps | undefined
-  // >(
-  //   ['getBatches', dateRange, bookkeeper],
-  //   async () => {
-  //     const email =
-  //       user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-  //     if (email) return await pcGetBatches(email, dateRange, offSet?.next)
-  //     return []
-  //   },
-  //   {
-  //     refetchOnWindowFocus: false,
-  //     staleTime: Infinity,
-  //   },
-  // )
 
   const { data: userData } = useQuery(
     ['getUserRelated'],
@@ -145,12 +143,18 @@ const Dashboard: FC<DashboardProps> = () => {
     },
   )
 
-  const handleDateChange = (newValue: string | Date) => {
-    if (
-      Array.isArray(newValue) &&
-      newValue.every((item) => item instanceof Date)
-    ) {
-      setValue(newValue)
+  const handleDateChange = (value: any) => {
+    // If you are only interested in single date selections, you could check if value is an instance of Date
+    if (value instanceof Date) {
+      dispatch(setSelectedStartDate(value))
+    }
+    // if value is an array, it's a date range. You might want to handle it differently
+    else if (Array.isArray(value)) {
+      // handle date range
+    }
+    // if value is null, the date selection was cleared
+    else if (value === null) {
+      dispatch(setSelectedStartDate(null))
     }
   }
 
@@ -189,9 +193,15 @@ const Dashboard: FC<DashboardProps> = () => {
         dataBatch,
         realBatchId: `${batchId} - ${email}`,
         batchId: batchId,
+        bankData: selectedBankAccount,
       })
       if (result.success) {
         successNotification({ title: `Batch: ${batchName} successfully sync` })
+        setBatchSynching((prev) =>
+          prev.map((item) =>
+            item.batchId === batchId ? { ...item, trigger: false } : item,
+          ),
+        )
         // refetch()
       } else {
         failNotification({ title: 'Error' })
@@ -222,51 +232,168 @@ const Dashboard: FC<DashboardProps> = () => {
       const filterFundName = fundData?.length
         ? fundData.map((item) => item.attributes.name)
         : []
+      console.log('stripeData', stripeData)
+
       await Promise.all(
-        stripeData.map(async (a: { description: string }, indexArr: number) => {
-          const description = a.description
-          const regex = /#(\d+)/ // match the #
-          const match = description?.match(regex)
+        stripeData.map(
+          (a: {
+            description: string
+            fund: string
+            net: number
+            amount: number
+            fee: number
+          }) => {
+            const description = a.description
+            const regex = /#(\d+)/
+            const match = description?.match(regex)
 
-          if (match) {
-            const donationId = match[1]
-            const index = filterFundName?.findIndex((word) =>
-              description.includes(word),
-            )
+            if (match) {
+              const donationId = match[1]
+              const index = filterFundName?.findIndex((word) =>
+                description.includes(word),
+              )
 
-            const email =
-              user.role === 'bookkeeper'
-                ? bookkeeper?.clientEmail || ''
-                : user.email
+              const email =
+                user.role === 'bookkeeper'
+                  ? bookkeeper?.clientEmail || ''
+                  : user.email
 
-            const fundName = filterFundName[index]
+              const parts = description.split('-')
 
-            if (index !== -1) {
-              if (fundName) {
-                const response = await syncStripePayout(
-                  email,
-                  String(donationId),
-                  String(fundName),
-                  payoutDate,
+              const regName = parts[parts.length - 1]?.trim() || ''
+
+              const fundName = filterFundName[index]
+
+              const registrationFund =
+                userData.data.UserSetting.settingRegistrationData.find(
+                  (item: any) => item.registration === regName,
                 )
 
-                // if (indexArr === stripeData.length - 1) {
-                //   console.log('This is the last iteration')
-                // }
+              const fundNameRegistration = registrationFund
+                ? `${capitalAtFirstLetter(
+                    registrationFund.class.label || '',
+                  )} (${capitalAtFirstLetter(regName || '')})`
+                : ''
 
-                if (response === 'success') {
-                  successNotification({
-                    title: `Stripe payout successfully sync`,
-                  })
-                  // refetch()
-                } else {
-                  failNotification({ title: 'Error' })
+              const fundReg =
+                filterFundName?.find((word) =>
+                  fundNameRegistration
+                    .toLowerCase()
+                    .includes(word.toLowerCase()),
+                ) ||
+                registrationFund?.class?.label ||
+                ''
+
+              let arr = {}
+              if (index !== -1) {
+                arr = {
+                  ...arr,
+                  email,
+                  batchData: {
+                    amount: a.amount,
+                    created: payoutDate,
+                    fundName: fundName,
+                    payoutDate: payoutDate,
+                    totalAmount: a.amount,
+                    type: 'batch',
+                  } as BatchDataProps,
+                  bankData: selectedBankAccount,
+                  fee: a.fee,
+                }
+              } else {
+                arr = {
+                  ...arr,
+                  email,
+                  batchData: {
+                    amount: a.amount,
+                    created: payoutDate,
+                    fundName: fundReg,
+                    payoutDate: payoutDate,
+                    totalAmount: a.amount,
+                    type: 'registration',
+                  } as BatchDataProps,
+                  bankData: selectedBankAccount,
+                  fee: a.fee,
                 }
               }
+              return Promise.resolve(arr)
+            }
+
+            return Promise.resolve(null)
+          },
+        ),
+      ).then(async (results: any[]) => {
+        // Calculate fund totals and update results in one pass
+        const updatedResults = results.map((item) => {
+          const fundName = item.batchData?.fundName
+          if (fundName) {
+            const fundTotal = results.reduce((acc, curr) => {
+              return curr.batchData?.fundName === fundName
+                ? acc + curr.batchData.totalAmount
+                : acc
+            }, 0)
+
+            return {
+              ...item,
+              batchData: {
+                ...item.batchData,
+                totalAmount: fundTotal,
+              },
             }
           }
-        }),
-      )
+          return item
+        })
+        console.log('results: ', results)
+
+        // Grouping the updated results by fundName
+        const groupedResults = updatedResults.reduce((acc, curr) => {
+          const fundName = curr.batchData?.fundName
+          const fee = curr.fee || 0
+
+          if (fundName) {
+            if (!acc[fundName]) {
+              acc[fundName] = []
+            }
+            acc[fundName].push(curr)
+          }
+          // Initialize Charge object if it doesn't exist
+          if (!acc['Charge']) {
+            acc['Charge'] = [
+              {
+                email: curr?.email,
+                batchData: {
+                  amount: 0,
+                  created: payoutDate,
+                  fundName: '',
+                  payoutDate: payoutDate,
+                  totalAmount: 0,
+                  type: 'registration',
+                  totalFee: 0,
+                } as BatchDataProps,
+                bankData: selectedBankAccount,
+              },
+            ]
+          }
+
+          // Accumulate fees in Charge object
+          acc['Charge'][0].batchData.totalFee += fee
+
+          return acc
+        }, {})
+        console.log('groupedResults', groupedResults)
+
+        const response = await finalSyncStripe({
+          data: groupedResults,
+        })
+
+        if (response.success) {
+          successNotification({
+            title: `Stripe payout successfully sync`,
+          })
+        } else {
+          failNotification({ title: 'Error' })
+        }
+      })
     } catch (e) {
       failNotification({ title: 'Error' })
     } finally {
@@ -343,14 +470,17 @@ const Dashboard: FC<DashboardProps> = () => {
 
             {/*  */}
 
-            <div className="flex w-full">
-              {/* <SelectDateRange onChange={handleDateChange} value={value} /> */}
-              {/* <div>
-                <SelectDateRange
-                  setDateRangeVal={setDateRange}
-                  dateRangeVal={dateRange}
-                />
-              </div> */}
+            <div className="flex flex-col w-full gap-2">
+              <p className="font-bold text-lg text-gray-400">
+                Select start date
+              </p>
+              <DatePicker
+                selected={
+                  selectedStartDate ? new Date(selectedStartDate) : null
+                }
+                onChange={handleDateChange}
+                className="rounded-xl border-yellow-300"
+              />
             </div>
 
             {/* Table */}

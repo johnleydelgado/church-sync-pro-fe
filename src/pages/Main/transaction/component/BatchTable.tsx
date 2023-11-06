@@ -51,7 +51,8 @@ interface BatchTableProps {
 const BatchTable: FC<BatchTableProps> = ({ triggerSync, batchSyncing }) => {
   const { user } = useSelector((state: RootState) => state.common)
   const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
-  const { data, synchedBatches, isLoading, isRefetching } = usePagination()
+  const { data, synchedBatches, isLoading, isRefetching, refetch } =
+    usePagination()
 
   const email =
     user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
@@ -89,6 +90,16 @@ const BatchTable: FC<BatchTableProps> = ({ triggerSync, batchSyncing }) => {
     return batchObj?.trigger ? true : false
   }
 
+  const syncHandler = async (item: { batch: any; donations?: any }) => {
+    await triggerSync({
+      dataBatch: item.batch,
+      batchId: item.batch.id,
+      batchName: item.batch.attributes.description || '',
+    })
+
+    refetch()
+  }
+
   return isLoading || isRefetching ? (
     <Loading />
   ) : !isEmpty(finalData) ? (
@@ -97,7 +108,10 @@ const BatchTable: FC<BatchTableProps> = ({ triggerSync, batchSyncing }) => {
         <thead className="text-xs text-[#FAB400] uppercase bg-white dark:bg-gray-700 border-y-2 border-[#FAB400]">
           <tr className="[&>*]:px-6 [&>*]:py-3">
             <th scope="col" className="">
-              Batch Date
+              Committed Date
+            </th>
+            <th scope="col" className="">
+              Batch Name
             </th>
             <th scope="col" className="">
               Batch Number
@@ -108,14 +122,11 @@ const BatchTable: FC<BatchTableProps> = ({ triggerSync, batchSyncing }) => {
             <th scope="col" className="">
               Number of debits
             </th>
-            <th scope="col" className="">
-              Committed Date
-            </th>
             <th scope="col" className="text-right">
               Status
             </th>
             <th scope="col" className="text-right">
-              Action
+              Information
             </th>
           </tr>
         </thead>
@@ -137,7 +148,15 @@ const BatchTable: FC<BatchTableProps> = ({ triggerSync, batchSyncing }) => {
                     <td className="">
                       <div className="h-10">
                         <p className="p-2 text-left">
-                          {formatDate(item.batch.attributes.created_at)}
+                          {/* {formatDate(item.batch.attributes.created_at)} */}
+                          {formatDate(item.batch.attributes.committed_at)}
+                        </p>
+                      </div>
+                    </td>
+                    <td className="">
+                      <div className="h-10">
+                        <p className="p-2 text-left">
+                          {item.batch.attributes.description}
                         </p>
                       </div>
                     </td>
@@ -157,13 +176,7 @@ const BatchTable: FC<BatchTableProps> = ({ triggerSync, batchSyncing }) => {
                       <div className="h-10">
                         <p className="p-2 text-left">
                           {item.donations.data?.length || 0}
-                        </p>
-                      </div>
-                    </td>
-                    <td className="">
-                      <div className="h-10">
-                        <p className="p-2 text-left">
-                          {formatDate(item.batch.attributes.committed_at)}
+                          {/* {formatDate(item.batch.attributes.committed_at)} */}
                         </p>
                       </div>
                     </td>
@@ -176,14 +189,7 @@ const BatchTable: FC<BatchTableProps> = ({ triggerSync, batchSyncing }) => {
                           ),
                         ) ? (
                           <button
-                            onClick={() =>
-                              triggerSync({
-                                dataBatch: item.batch,
-                                batchId: item.batch.id,
-                                batchName:
-                                  item.batch.attributes.description || '',
-                              })
-                            }
+                            onClick={() => syncHandler(item)}
                             disabled={isButtonDisabled(
                               batchSyncing,
                               item.batch.id,
