@@ -3,6 +3,7 @@ import { HiBookmark, HiHome } from 'react-icons/hi'
 
 import {
   MdAccountCircle,
+  MdChecklist,
   MdIntegrationInstructions,
   MdManageAccounts,
 } from 'react-icons/md'
@@ -73,9 +74,9 @@ export const dropdownArrLinkSettings: DropdownLink[] = [
 
 const pages: PageProps[] = [
   {
-    name: 'Home',
+    name: 'Guide',
     link: mainRoute.QUICK_START_QUIDE,
-    icon: <HiHome size={30} />,
+    icon: <MdChecklist size={30} />,
   },
   {
     name: 'Transaction',

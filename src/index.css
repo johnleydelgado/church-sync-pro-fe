@@ -5,3 +5,24 @@
 .react-daterange-picker__wrapper {
   @apply border-green-700 bg-white rounded-lg p-2;
 }
+.sidebar {
+  overflow-y: auto;
+  padding-right: 0px;
+}
+/* overflow-y width */
+.sidebar::-webkit-scrollbar {
+  width: 5px;
+  height: 0px;
+  padding-right: 0px;
+}
+/* overflow-y Track */
+.sidebar::-webkit-scrollbar-track {
+  background: none;
+  padding-right: 0px;
+}
+/* overflow-y Handle */
+.sidebar::-webkit-scrollbar-thumb {
+  background: rgb(255 193 7 / 0.9);
+  border-radius: 15px !important;
+  padding-right: 0px;
+}

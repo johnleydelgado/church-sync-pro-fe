@@ -53,12 +53,12 @@ const AskUs: FC<BookkeeperProps> = ({}) => {
                     Ask Us
                   </span>
                 </div>
-                <Link
-                  to="http://churchsyncpro.com"
-                  className="text-[#27A1DB] text-lg"
-                >
-                  Go to help.churchsyncpro.com
-                </Link>
+                <span className="text-lg">
+                  <span>email us at </span>
+                  <span className="text-[#27A1DB] underline">
+                    help@churchsyncpro.com
+                  </span>
+                </span>
               </div>
             </div>
           </div>
