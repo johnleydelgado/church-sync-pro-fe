@@ -1,4 +1,4 @@
-import React, { FC, useState } from 'react'
+import React, { FC, useEffect, useState } from 'react'
 import { BatchesProps } from '..'
 import { formatDate, formatUsd } from '@/common/utils/helper'
 import { isEmpty } from 'lodash'
@@ -8,7 +8,6 @@ import { Link } from 'react-router-dom'
 import Stripe from 'stripe'
 import { useQuery } from 'react-query'
 import { RootState } from '@/redux/store'
-import { pcGetBatches } from '@/common/api/planning-center'
 import { useSelector } from 'react-redux'
 import { string } from 'yup'
 import { getUnixTime } from 'date-fns'
@@ -17,6 +16,8 @@ import { usePagination } from '@/common/context/PaginationProvider'
 import usePaginationStripe from '@/common/hooks/usePaginationStripe'
 import PaginationStripe from '@/common/components/pagination/PaginationStripe'
 import Loading from '@/common/components/loading/Loading'
+import { useDispatch } from 'react-redux'
+import { setStripeCurrentPage } from '@/redux/common'
 
 interface BatchTableProps {
   triggerSync: (params: {
@@ -24,15 +25,25 @@ interface BatchTableProps {
     payoutDate: string
   }) => Promise<void>
   batchSyncing: any
+  amount: number
 }
 
 const StripePayoutTable: FC<BatchTableProps> = ({
   triggerSync,
   batchSyncing,
+  amount,
 }) => {
-  const { currentPage, currentPageData, totalItems, setCurrentPage } =
+  const { isLoading, isRefetching, totalItems, setAmount } =
     usePaginationStripe()
-  const { synchedBatches, refetch, isLoading, isRefetching } = usePagination()
+  const { synchedBatches, refetch } = usePagination()
+  const dispatch = useDispatch()
+  const currentPageData = useSelector(
+    (state: RootState) => state.common.stripeCurrentData,
+  )
+
+  const currentPage = useSelector(
+    (state: RootState) => state.common.stripeCurrentPage || 1,
+  )
 
   const isSync = (date: string): boolean => {
     const arr = synchedBatches
@@ -58,10 +69,20 @@ const StripePayoutTable: FC<BatchTableProps> = ({
   const syncHandler = async (item: { data: any; payoutDate: any }) => {
     await triggerSync({
       stripeData: item.data,
-      payoutDate: item.payoutDate,
+      payoutDate: item?.payoutDate,
     })
-    refetch()
+    // refetch()
   }
+
+  useEffect(() => {
+    if (amount) {
+      setAmount(amount)
+    } else {
+      setAmount(0)
+    }
+  }, [amount])
+
+  console.log('totalItems', totalItems)
 
   return isLoading || isRefetching ? (
     <Loading />
@@ -172,7 +193,9 @@ const StripePayoutTable: FC<BatchTableProps> = ({
                       <Link
                         className="p-2 underline text-[#FAB400] font-semibold"
                         to={`/transaction/view-page-stripe/${getUnixTime(
-                          new Date(item.payoutDate),
+                          item.payoutDate
+                            ? new Date(item.payoutDate)
+                            : new Date(),
                         )}`}
                       >
                         View Details
@@ -184,7 +207,15 @@ const StripePayoutTable: FC<BatchTableProps> = ({
             : null}
         </tbody>
       </table>
-      {Math.ceil(totalItems / 10) > 1 ? (
+      <div className="flex flex-1 flex-col items-end justify-end p-6">
+        <PaginationStripe
+          currentPage={currentPage}
+          onPageChange={(val: any) => dispatch(setStripeCurrentPage(val))}
+          totalPages={Math.ceil(totalItems / 10)}
+          itemPerPage={10}
+        />
+      </div>
+      {/* {Math.ceil(totalItems / 10) > 1 ? (
         <div className="flex flex-1 flex-col items-end justify-end p-6">
           <PaginationStripe
             currentPage={currentPage}
@@ -192,8 +223,8 @@ const StripePayoutTable: FC<BatchTableProps> = ({
             totalPages={Math.ceil(totalItems / 10)}
             itemPerPage={10}
           />
-        </div>
-      ) : null}
+        </div> 
+      ) : null}*/}
     </div>
   ) : (
     <Empty />

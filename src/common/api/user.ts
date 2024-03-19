@@ -6,6 +6,7 @@ import { userRoutes } from '../constant/routes-api'
 import { error } from 'console'
 import { resizeFile } from '../utils/image.optimizer'
 import { BankAccountExpensesProps, BankAccountProps } from '@/redux/common'
+import { BillingData } from '@/pages/Main/settings/component/Billing'
 const { REACT_APP_API_PATH } = process.env
 
 export interface UserProps {
@@ -39,6 +40,7 @@ export interface qboRegistrationSettings {
   account?: { value: string; label: string }
   class?: { value: string; label: string }
   customer?: { value: string; label: string }
+  isActive?: boolean
 }
 
 export interface SettingQBOProps {
@@ -128,6 +130,24 @@ const createSettings = async ({
   }
 }
 
+const updateRegisterSettings = async ({
+  data,
+  email,
+}: {
+  data: qboRegistrationSettings[] | null
+  email: string
+}) => {
+  const url = userRoutes.updateRegisterSettings
+  const obj = JSON.stringify({ email, settingRegistrationData: data })
+
+  try {
+    const response = await apiCall.post(url, obj)
+    return response.data
+  } catch (e: any) {
+    throw new Error(e)
+  }
+}
+
 const enableAutoSyncSetting = async ({
   email,
   isAutomationEnable,
@@ -165,6 +185,39 @@ const addUpdateBankSettings = async ({
     email,
     data,
   })
+  try {
+    const response = await apiCall.post(url, dataJson)
+    return response.data
+  } catch (e: any) {
+    return []
+  }
+}
+
+const addUpdateBilling = async ({
+  email,
+  data,
+}: {
+  email: string
+  data: BillingData | null
+}) => {
+  // await axios.get
+  const url = userRoutes.addUpdateBilling
+  const dataJson = JSON.stringify({
+    email,
+    data,
+  })
+  try {
+    const response = await apiCall.post(url, dataJson)
+    return response.data
+  } catch (e: any) {
+    return []
+  }
+}
+
+const viewBilling = async ({ userId }: { userId: number | undefined }) => {
+  // await axios.get
+  const url = userRoutes.viewBilling
+  const dataJson = JSON.stringify({ userId })
   try {
     const response = await apiCall.post(url, dataJson)
     return response.data
@@ -224,6 +277,7 @@ const manualSync = async ({
   batchId: string
   realBatchId: string
   bankData: BankAccountProps[] | null
+  donations: any
 }) => {
   // await axios.get
   const url = userRoutes.manualSync
@@ -233,7 +287,7 @@ const manualSync = async ({
     const response = await apiCall.post(url, data)
     return response.data
   } catch (e: any) {
-    return []
+    return e.response.data
   }
 }
 
@@ -399,6 +453,46 @@ const updateInvitationStatus = async (email: string, bookkeeperId?: number) => {
   }
 }
 
+const crudUserEmailPreferences = async (
+  userId: number,
+  email?: string,
+  type?: string,
+) => {
+  const url = userRoutes.crudUserEmailPreferences
+  const data = JSON.stringify({ userId, email, type })
+
+  try {
+    if (userId) {
+      const response = await apiCall.post(url, data)
+      console.log('response', response)
+      return response.data.data
+    }
+    return []
+  } catch (e: any) {
+    return e.message || 'An error occurred'
+  }
+}
+
+const setStartDataAutomation = async (
+  email?: string,
+  type?: 'donation' | 'registration',
+  date?: string,
+) => {
+  const url = userRoutes.setStartDataAutomation
+  const data = JSON.stringify({ date, email, type })
+
+  try {
+    if (email) {
+      const response = await apiCall.post(url, data)
+      console.log('response', response)
+      return response.data.data
+    }
+    return []
+  } catch (e: any) {
+    return e.message || 'An error occurred'
+  }
+}
+
 const userUpdate = async ({
   email,
   firstName,
@@ -423,7 +517,7 @@ const userUpdate = async ({
     lastName,
     churchName,
     userId,
-    file: await resizeFile(file),
+    file: file ? await resizeFile(file) : '',
     file_name,
   })
 
@@ -445,6 +539,7 @@ export {
   createUser,
   addTokenInUser,
   createSettings,
+  updateRegisterSettings,
   getUserRelated,
   manualSync,
   isUserHaveTokens,
@@ -461,5 +556,9 @@ export {
   deleteBookeeper,
   userUpdate,
   addUpdateBankSettings,
+  addUpdateBilling,
+  viewBilling,
   addUpdateBankCharges,
+  crudUserEmailPreferences,
+  setStartDataAutomation,
 }

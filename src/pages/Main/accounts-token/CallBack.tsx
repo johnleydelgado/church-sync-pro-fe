@@ -1,5 +1,5 @@
 import Loading from '@/common/components/loading/Loading'
-import { mainRoute } from '@/common/constant/route'
+import { mainRoute, routeSettings } from '@/common/constant/route'
 import { setAccountState } from '@/redux/common'
 import axios from 'axios'
 import React, { FC, useCallback, useEffect, useRef, useState } from 'react'
@@ -35,7 +35,7 @@ const CallBack: FC<CallBackProps> = ({}) => {
               realm_id: realmId,
             }),
           )
-          navigate(mainRoute.SETTINGS)
+          navigate(routeSettings.INTEGRATIONS)
         }
       } catch (e: any) {
         console.log(e)
@@ -64,7 +64,7 @@ const CallBack: FC<CallBackProps> = ({}) => {
           dispatch(
             setAccountState({ type: 'pco', access_token, refresh_token }),
           )
-          navigate(mainRoute.SETTINGS)
+          navigate(routeSettings.INTEGRATIONS)
         }
       } catch (e: any) {
         console.log(e)
@@ -91,7 +91,7 @@ const CallBack: FC<CallBackProps> = ({}) => {
           dispatch(
             setAccountState({ type: 'stripe', access_token, refresh_token }),
           )
-          navigate(mainRoute.SETTINGS)
+          navigate(routeSettings.INTEGRATIONS)
         }
       } catch (e: any) {
         console.log(e)

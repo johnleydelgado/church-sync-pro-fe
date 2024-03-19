@@ -35,10 +35,22 @@ const pcGetBatches = async (
   email: string | null | undefined,
   dateRange?: any,
   offset?: number,
+  filterDate?: any,
+  startFilterDate?: any,
+  endFilterDate?: any,
+  amount?: number,
 ) => {
   // await axios.get
   const url = pcRoutes.getBatches
-  const dataJson = JSON.stringify({ email, dateRange, offset })
+  const dataJson = JSON.stringify({
+    email,
+    dateRange,
+    offset,
+    filterDate,
+    startFilterDate,
+    endFilterDate,
+    amount,
+  })
   try {
     const response = await apiCall.post(url, dataJson)
     console.log('a', response.data)

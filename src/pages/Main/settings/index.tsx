@@ -71,7 +71,7 @@ const Settings: FC<SettingsProps> = () => {
     : tabSettings?.billing
     ? 'Billing Info'
     : tabSettings?.connect
-    ? 'Connect Accounts'
+    ? 'Integrations'
     : tabSettings?.bookkeeper
     ? 'Bookkeepers Tab'
     : 'Account Data'
@@ -83,7 +83,7 @@ const Settings: FC<SettingsProps> = () => {
       case '2':
         return 'Billing Info'
       case '3':
-        return 'Connect Accounts'
+        return 'Integrations'
       case '4':
         return 'Bookkeepers Tab'
       default:

@@ -168,6 +168,8 @@ const NavBar: FC<NavBarProps> = () => {
           value: String(a.Client.email) || '',
           label: a.Client.churchName,
           clientId: a.Client.id,
+          bookkeeperIntegrationAccessEnabled:
+            a.bookkeeperIntegrationAccessEnabled,
         }
       })
 
@@ -179,6 +181,8 @@ const NavBar: FC<NavBarProps> = () => {
               clientEmail: temp[0].value,
               churchName: temp[0].label,
               clientId: temp[0].clientId,
+              bookkeeperIntegrationAccessEnabled:
+                temp[0].bookkeeperIntegrationAccessEnabled,
             }),
           )
         }
@@ -233,7 +237,7 @@ const NavBar: FC<NavBarProps> = () => {
       </Navbar>
 
       <Drawer open={openNav} onClose={() => console.log('')}>
-        <div className="h-full bg-primary shadow-md flex flex-col gap-2">
+        <div className="h-full bg-primary shadow-md flex flex-col gap-2 overflow-y-auto">
           <div className={`flex px-8 w-full pt-2 items-center justify-between`}>
             <p className="text-white p-2 text-xl">Church Sync Pro</p>
             <IconButton

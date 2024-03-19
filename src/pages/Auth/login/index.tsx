@@ -125,7 +125,7 @@ const Login: FC<LoginProps> = () => {
         // dispatch(setBookkeeper({clientEmail:}))
         setLoading(false)
         localStorage.setItem(storageKey.PERSONAL_TOKEN, role)
-        window.location.href = mainRoute.TRANSACTION
+        window.location.href = mainRoute.QUICK_START_QUIDE
         // window.location.href = route.SECONDARY_LOGIN
       }
     } catch (err: any) {

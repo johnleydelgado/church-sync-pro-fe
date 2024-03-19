@@ -26,5 +26,20 @@ module.exports = withMT({
       },
     },
   },
-  plugins: [require('flowbite/plugin')],
+  plugins: [require('flowbite/plugin'),
+  function({ addUtilities }) {
+    const newUtilities = {
+      '.popover-arrow': {
+        width: '0',
+        height: '0',
+        borderLeft: '10px solid transparent',
+        borderRight: '10px solid transparent',
+        borderBottom: '10px solid white',
+        position: 'absolute',
+        top: '-5px',
+        left: 'calc(50% - 10px)',
+      },
+    }
+    addUtilities(newUtilities)
+  }],
 })

@@ -1,4 +1,4 @@
-import { pcGetBatches, pcGetFunds } from '@/common/api/planning-center'
+import { pcGetFunds } from '@/common/api/planning-center'
 import MainLayout from '@/common/components/main-layout/MainLayout'
 import { RootState } from '@/redux/store'
 import React, { FC, useEffect, useState } from 'react'
@@ -181,6 +181,7 @@ const ViewDetails: FC<indexProps> = ({}) => {
         realBatchId: `${batchId} - ${email}`,
         batchId: batchId,
         bankData: selectedBankAccount,
+        donations: finalData?.batches?.donations.data,
       })
       if (result.success) {
         setIsSynching(false)
@@ -188,7 +189,7 @@ const ViewDetails: FC<indexProps> = ({}) => {
         refetch({ force: true })
       } else {
         setIsSynching(false)
-        failNotification({ title: 'Error' })
+        failNotification({ title: result.message })
       }
     } catch (e) {
       setIsSynching(false)

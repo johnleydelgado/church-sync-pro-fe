@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit'
+import { stat } from 'fs'
 import { number, string } from 'yup'
 
 export interface thirdPartyTokens {
@@ -25,6 +26,7 @@ export interface BookkeeperInfo {
   clientEmail: string
   clientId?: number
   churchName: string
+  bookkeeperIntegrationAccessEnabled?: boolean
 }
 
 interface transactionDateProps {
@@ -47,6 +49,29 @@ export interface BankAccountExpensesProps {
     value: string
     label: string
   }
+}
+
+interface DateRangeTransactionProps {
+  type: 'batch' | 'stripe'
+  dateRange:
+    | 'This Month'
+    | 'Last Month'
+    | 'Last 7 Days'
+    | 'Last 30 Days'
+    | 'Last 3 Months'
+    | 'Last 6 Months'
+    | '2024'
+    | '2023'
+    | '2022'
+    | '2021'
+    | '2020'
+    | '2019'
+    | '2018'
+    | 'Custom'
+    | undefined
+  isCustom: boolean
+  startDate: Date | null
+  endDate: Date | null
 }
 
 interface CommonState {
@@ -75,6 +100,14 @@ interface CommonState {
   }
   selectedBankAccount: BankAccountProps[] | null
   selectedBankExpense: BankAccountExpensesProps | null
+  isQuickStartHide: boolean
+  mappingNumber: number
+  persistPage: number
+  tabTransaction: { batch: boolean; stripe: boolean }
+  lastObjectId: any
+  stripeCurrentData: any
+  stripeCurrentPage: number
+  dateRangeTransaction: DateRangeTransactionProps[]
 }
 
 const initialState: CommonState = {
@@ -118,6 +151,22 @@ const initialState: CommonState = {
   },
   selectedBankAccount: null,
   selectedBankExpense: null,
+  isQuickStartHide: false,
+  mappingNumber: 0,
+  persistPage: 1,
+  tabTransaction: { batch: true, stripe: false },
+  lastObjectId: '',
+  stripeCurrentData: [],
+  stripeCurrentPage: 1,
+  dateRangeTransaction: [
+    {
+      dateRange: undefined,
+      isCustom: false,
+      startDate: null,
+      endDate: null,
+      type: 'batch',
+    },
+  ],
 }
 
 export const common = createSlice({
@@ -178,6 +227,7 @@ export const common = createSlice({
       state.selectedTransactionDate = initialState.selectedTransactionDate
       state.selectedBankAccount = initialState.selectedBankAccount
       state.selectedBankExpense = initialState.selectedBankExpense
+      state.dateRangeTransaction = initialState.dateRangeTransaction
       // state.selectedStartDate = initialState.selectedStartDate
     },
     setSelectedTransactionDate: (
@@ -212,6 +262,36 @@ export const common = createSlice({
     ) => {
       state.selectedBankExpense = action.payload
     },
+    setIsQuickStartHide: (state, action: PayloadAction<boolean>) => {
+      state.isQuickStartHide = action.payload
+    },
+    setMappingNumber: (state, action: PayloadAction<number>) => {
+      state.mappingNumber = action.payload
+    },
+    setPersistPage: (state, action: PayloadAction<number>) => {
+      state.persistPage = action.payload
+    },
+    setTabTransaction: (
+      state,
+      action: PayloadAction<{ batch: boolean; stripe: boolean }>,
+    ) => {
+      state.tabTransaction = action.payload
+    },
+    setLastObjectId: (state, action: PayloadAction<any>) => {
+      state.lastObjectId = action.payload
+    },
+    setStripeCurrentData: (state, action: PayloadAction<any>) => {
+      state.stripeCurrentData = action.payload
+    },
+    setStripeCurrentPage: (state, action: PayloadAction<number>) => {
+      state.stripeCurrentPage = action.payload
+    },
+    setDateRangeTransaction: (
+      state,
+      action: PayloadAction<DateRangeTransactionProps[]>,
+    ) => {
+      state.dateRangeTransaction = action.payload
+    },
   },
 })
 
@@ -233,6 +313,14 @@ export const {
   setTabSettings,
   setSelectedBankAccount,
   setSelectedBankExpense,
+  setIsQuickStartHide,
+  setMappingNumber,
+  setPersistPage,
+  setTabTransaction,
+  setLastObjectId,
+  setStripeCurrentData,
+  setStripeCurrentPage,
+  setDateRangeTransaction,
 } = common.actions
 
 export default common.reducer

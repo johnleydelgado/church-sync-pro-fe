@@ -26,6 +26,8 @@ interface PaginationContextProps {
   isRefetching: boolean
   setData: React.Dispatch<React.SetStateAction<any>>
   setOffset: React.Dispatch<React.SetStateAction<number>>
+  setAmount: React.Dispatch<React.SetStateAction<number>>
+  amount: number
   refetch: any
 }
 
@@ -83,12 +85,13 @@ export const PaginationProvider: React.FC<PaginationProviderProps> = ({
   const [currentPage, setCurrentPage] = useState(1)
   const [offset, setOffset] = useState(0)
   const [totalCount, setTotalCount] = useState(0)
+  const [amount, setAmount] = useState(0)
+
   const [data, setData] = useState<{ batch: batchDataProps; donations: any }[]>(
     [],
   )
-  const { selectedTransactionDate, selectedStartDate } = useSelector(
-    (state: RootState) => state.common,
-  )
+  const { selectedTransactionDate, selectedStartDate, dateRangeTransaction } =
+    useSelector((state: RootState) => state.common)
   const [synchedBatches, setSynchedBatches] = useState<any[]>([])
   const [prevOffset, setPrevOffset] = useState<number | null>(null)
   const [nextOffset, setNextOffset] = useState<number | null>(null)
@@ -99,13 +102,39 @@ export const PaginationProvider: React.FC<PaginationProviderProps> = ({
     refetch,
     isRefetching,
   } = useQuery<BatchesAndSyncProps | undefined>(
-    ['getBatches', bookkeeper, offset, selectedStartDate],
+    [
+      'getBatches',
+      bookkeeper,
+      offset,
+      selectedStartDate,
+      dateRangeTransaction,
+      amount,
+    ],
     async () => {
       const email =
         user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
+      const filterDate = dateRangeTransaction?.find(
+        (item) => item.type === 'batch',
+      )?.dateRange
+
+      const startFilterDate = dateRangeTransaction?.find(
+        (item) => item.type === 'batch',
+      )?.startDate
+
+      const endFilterDate = dateRangeTransaction?.find(
+        (item) => item.type === 'batch',
+      )?.endDate
 
       if (email)
-        return await pcGetBatches(email, selectedStartDate, offset || 0)
+        return await pcGetBatches(
+          email,
+          selectedStartDate,
+          offset || 0,
+          filterDate,
+          startFilterDate,
+          endFilterDate,
+          amount,
+        )
       return []
     },
     {
@@ -147,6 +176,8 @@ export const PaginationProvider: React.FC<PaginationProviderProps> = ({
         synchedBatches,
         isLoading,
         isRefetching,
+        setAmount,
+        amount,
         setData,
         setOffset,
         refetch,

@@ -1,3 +1,4 @@
+import { customerInitialValues, CustomerProps } from '@/common/constant/formik'
 import { createSlice, PayloadAction } from '@reduxjs/toolkit'
 
 export interface BookkeeperInfo {
@@ -7,7 +8,7 @@ export interface BookkeeperInfo {
 
 interface CommonState {
   bookkeeperDeletion: BookkeeperInfo | null
-  tabTransaction: { batch: boolean; stripe: boolean }
+  projectFieldValues: CustomerProps | null
 }
 
 const initialState: CommonState = {
@@ -15,7 +16,7 @@ const initialState: CommonState = {
     id: '',
     email: '',
   },
-  tabTransaction: { batch: true, stripe: false },
+  projectFieldValues: null,
 }
 
 export const nonPersistState = createSlice({
@@ -25,17 +26,17 @@ export const nonPersistState = createSlice({
     setDeleteBookkeeper: (state, action: PayloadAction<BookkeeperInfo>) => {
       state.bookkeeperDeletion = action.payload
     },
-    setTabTransaction: (
+    setProjectFieldValues: (
       state,
-      action: PayloadAction<{ batch: boolean; stripe: boolean }>,
+      action: PayloadAction<CustomerProps | null>,
     ) => {
-      state.tabTransaction = action.payload
+      state.projectFieldValues = action.payload
     },
   },
 })
 
 // Action creators are generated for each case reducer function
-export const { setDeleteBookkeeper, setTabTransaction } =
+export const { setDeleteBookkeeper, setProjectFieldValues } =
   nonPersistState.actions
 
 export default nonPersistState.reducer

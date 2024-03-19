@@ -9,6 +9,7 @@ const formatUsd = (number: string) => {
 }
 
 const formatDate = (dateString: string) => {
+  if (!dateString) return ''
   // Convert the date string to a JavaScript Date object
   const date = parseISO(dateString)
 

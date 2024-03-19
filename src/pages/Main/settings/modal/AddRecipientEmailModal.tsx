@@ -17,7 +17,8 @@ import { useSelector } from 'react-redux'
 
 interface ModalRegistrationProps {
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'xxl'
-  refetch?: any
+  sendHandler: any
+  handleCloseModals: any
 }
 
 function isValidEmail(email: string): boolean {
@@ -25,7 +26,11 @@ function isValidEmail(email: string): boolean {
   return emailRegex.test(email)
 }
 
-const ModalInvitation: FC<ModalRegistrationProps> = ({ size, refetch }) => {
+const AddRecipientEmailModal: FC<ModalRegistrationProps> = ({
+  size,
+  sendHandler,
+  handleCloseModals,
+}) => {
   const dispatch = useDispatch()
   const [email, setEmail] = useState<string>('')
   const [isSending, setIsSending] = useState<boolean>(false)
@@ -35,35 +40,7 @@ const ModalInvitation: FC<ModalRegistrationProps> = ({ size, refetch }) => {
     (state: RootState) => state.common.user,
   )
 
-  const handleCloseModals = () => {
-    dispatch(CLOSE_MODAL(MODALS_NAME.invitation))
-  }
-
-  const isOpen = openModals.includes(MODALS_NAME.invitation)
-
-  const sendHandler = async () => {
-    setIsSending(true)
-
-    try {
-      if (!isValidEmail(email)) {
-        return failNotification({
-          title: 'The format of the email is incorrect.',
-        })
-      }
-      await sendEmailInvitation(
-        `${capitalAtFirstLetter(firstName)} ${capitalAtFirstLetter(lastName)}`,
-        email,
-        user.id || 0,
-      )
-      refetch()
-      successNotification({ title: 'Invite successfully sent !' })
-      handleCloseModals()
-    } catch (e) {
-      console.log('e', e)
-    } finally {
-      setIsSending(false)
-    }
-  }
+  const isOpen = openModals.includes(MODALS_NAME.addRecipientEmail)
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
@@ -97,7 +74,7 @@ const ModalInvitation: FC<ModalRegistrationProps> = ({ size, refetch }) => {
                     as="h3"
                     className="text-xl font-semibold leading-6 text-btmColor"
                   >
-                    Send an invite
+                    Add recipient email
                   </Dialog.Title>
                   <FiUserPlus className="text-btmColor" size={30} />
                 </div>
@@ -106,7 +83,7 @@ const ModalInvitation: FC<ModalRegistrationProps> = ({ size, refetch }) => {
                   <CommonTextField
                     name="email"
                     onChange={(e: any) => setEmail(e.target.value)}
-                    placeholder="type your e-mail here"
+                    placeholder="type e-mail here"
                     title=""
                     type="text"
                     value={email}
@@ -117,7 +94,7 @@ const ModalInvitation: FC<ModalRegistrationProps> = ({ size, refetch }) => {
                   ) : (
                     <Button
                       className="text-btmColor underline underline-offset-8 text-xl tracking-wider"
-                      onClick={sendHandler}
+                      onClick={() => sendHandler({ email })}
                       variant="text"
                     >
                       Send
@@ -133,4 +110,4 @@ const ModalInvitation: FC<ModalRegistrationProps> = ({ size, refetch }) => {
   )
 }
 
-export default ModalInvitation
+export default AddRecipientEmailModal

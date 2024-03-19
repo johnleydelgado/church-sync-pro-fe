@@ -35,7 +35,7 @@ export const useGetTokenList = () => {
     isLoading,
     isRefetching,
   } = useQuery<AccountTokenDataProps[]>(
-    ['getTokenList'],
+    ['getTokenList', bookkeeper],
     async () => {
       const emailLatest =
         role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : email

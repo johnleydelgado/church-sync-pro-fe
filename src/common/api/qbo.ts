@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import axios from 'axios'
 import { qboRoutes } from '../constant/routes-api'
+import { CustomerProps } from '../constant/formik'
 const { REACT_APP_API_PATH } = process.env
 
 const apiCall = axios.create({
@@ -33,9 +34,10 @@ const QboGetAllQboData = async ({ email }: { email: string }) => {
       }),
     )
     jsonObject.customers = jsonObject.customers.map(
-      (customer: { value: string; name: string }) => ({
+      (customer: { value: string; name: string; companyName: string }) => ({
         value: customer.value,
         label: customer.name,
+        companyName: customer.companyName,
       }),
     )
 
@@ -61,4 +63,72 @@ const deleteQboDeposit = async (
   }
 }
 
-export { QboGetAllQboData, deleteQboDeposit }
+const addProject = async (
+  email: string | null | undefined,
+  data: CustomerProps,
+) => {
+  // await axios.get
+  const url = qboRoutes.addProject
+  const dataJson = JSON.stringify({ email, data })
+  try {
+    const response = await apiCall.post(url, dataJson)
+    const data = response.data.data
+    return data
+  } catch (e: any) {
+    throw new Error(e)
+  }
+}
+
+const updateProject = async (
+  email: string | null | undefined,
+  data: CustomerProps,
+) => {
+  // await axios.get
+  const url = qboRoutes.updateProject
+  const dataJson = JSON.stringify({ email, data })
+  try {
+    const response = await apiCall.post(url, dataJson)
+    const data = response.data.data
+    return data
+  } catch (e: any) {
+    console.error('Error response:', e.response)
+    // Here you can access the specific error message and details
+    const errorCode = e.response.data.code
+    const errorMessage = e.response.data.message
+    const errorData = e.response.data.data
+    const errorType = errorData?.Fault?.type
+    const detailedMessage = errorData?.Fault?.Error?.[0]?.Message
+
+    // Log detailed error message
+    console.error(
+      `Error code: ${errorCode}, Message: ${errorMessage}, Type: ${errorType}, Details: ${detailedMessage}`,
+    )
+
+    // You can throw a new error with the detailed message or handle it accordingly
+    throw { message: detailedMessage || 'Error occured while updating project' }
+  }
+}
+
+const findCustomers = async (
+  email: string | null | undefined,
+  Id: string | number,
+) => {
+  // await axios.get
+  const url = qboRoutes.findCustomer
+  const dataJson = JSON.stringify({ email, Id })
+  try {
+    const response = await apiCall.post(url, dataJson)
+    const data = response.data.data
+    return data
+  } catch (e: any) {
+    throw new Error(e)
+  }
+}
+
+export {
+  QboGetAllQboData,
+  deleteQboDeposit,
+  addProject,
+  updateProject,
+  findCustomers,
+}

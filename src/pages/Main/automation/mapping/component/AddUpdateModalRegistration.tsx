@@ -57,6 +57,7 @@ const AddUpdateModalRegistration: FC<ModalRegistrationProps> = ({
         })
         refetch()
         successNotification({ title: 'registration created successfully !' })
+        handleCloseModals()
         return res
       }
     } catch (e) {

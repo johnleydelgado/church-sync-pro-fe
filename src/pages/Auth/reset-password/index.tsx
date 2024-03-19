@@ -98,7 +98,7 @@ const ResetPassword: FC<ResetPasswordProps> = () => {
                     type={`${showPassword ? 'text' : 'password'}`}
                     name="password"
                     icon={HiOutlineLockClosed}
-                    placeholder="password"
+                    placeholder="enter new password"
                     className="shadow-sm rounded-lg hover:border-blue-900 font-light w-full"
                     onChange={formik.handleChange}
                     value={formik.values.password}
@@ -131,7 +131,7 @@ const ResetPassword: FC<ResetPasswordProps> = () => {
                     type={`${showPassword2 ? 'text' : 'password'}`}
                     name="confirmPassword"
                     icon={HiOutlineLockClosed}
-                    placeholder="confirm password"
+                    placeholder="confirm new password"
                     className="shadow-sm rounded-lg hover:border-blue-900 font-light w-full"
                     onChange={formik.handleChange}
                     value={formik.values.confirmPassword}
@@ -156,6 +156,7 @@ const ResetPassword: FC<ResetPasswordProps> = () => {
                   className="bg-btmColor rounded-md shadow-sm h-12 my-4 hover:bg-slate-600 [&>*]:text-white"
                   type="submit"
                 >
+                  {isLoading ? <Spinner className="mr-8" /> : null}
                   Submit
                 </Button>
               </form>

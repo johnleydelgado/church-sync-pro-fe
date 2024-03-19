@@ -14,12 +14,48 @@ export interface UserSignUpProps {
   password: string
 }
 
+export interface CustomerProps {
+  firstName: string
+  middleName: string
+  lastName: string
+  projectName: string
+  projectDisplayName: string
+  email: string
+  phoneno: string
+  mobileno: string
+  other: string
+  nameToPrintOnChecks: string
+  parentRef: string
+  billWithParent?: boolean
+  webAdd?: string
+  active?: boolean
+  Id?: number
+  syncToken?: string
+}
+
 export const signUpInitialValues: UserSignUpProps = {
   churchName: '',
   firstName: '',
   lastName: '',
   email: '',
   password: '',
+}
+
+export const customerInitialValues: CustomerProps = {
+  firstName: '',
+  middleName: '',
+  lastName: '',
+  projectName: '',
+  projectDisplayName: '',
+  email: '',
+  phoneno: '',
+  mobileno: '',
+  other: '',
+  nameToPrintOnChecks: '',
+  parentRef: '',
+  billWithParent: false,
+  webAdd: '',
+  active: true,
 }
 
 export const signUpValidationSchema = object({

@@ -26,3 +26,12 @@ export const mainRoute = {
   AUTOMATION: '/automation',
   AUTOMATION_MAPPING: '/automation/mapping',
 }
+
+export const routeSettings = {
+  ACCOUNT_DATA: '/settings/account-data',
+  BILLING_INFO: '/settings/billing-info',
+  INTEGRATIONS: '/settings/integrations',
+  BOOKKEEPER: '/settings/bookkeeper',
+  PROJECTS: '/settings/projects',
+  SELECT_RECIPIENT_EMAILS: '/settings/select-recipient-emais',
+}

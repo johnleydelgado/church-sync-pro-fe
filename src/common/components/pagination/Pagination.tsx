@@ -30,6 +30,8 @@ const Pagination = () => {
     setOffset(newOffset)
   }
 
+  console.log('totalCount', totalCount, totalPages)
+
   return (
     <nav aria-label="Page navigation" className="">
       <ul className="inline-flex items-center -space-x-px">

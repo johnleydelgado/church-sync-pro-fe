@@ -46,20 +46,58 @@ interface BatchDataProps {
   fundName: string
   payoutDate: string
   type: string
+  description?: string
+}
+
+interface StripeObj {
+  data: any[] // Replace any with the actual type of the items in the array
+  grossAmount: number
+  net: number
+  nonGivingIncome: number
+  totalFees: number
+  payoutDate: string
 }
 
 const formatString = 'M/d/yyyy'
+
+function extractCategory(description: string): string {
+  const parts = description.split(' - ').map((part) => part.trim())
+  let category = ''
+
+  // Check if the last part contains an amount in parentheses
+  if (/\(\$.*\)$/.test(parts[parts.length - 1] ?? '')) {
+    // If so, the category is the part immediately before the last
+    if (parts.length === 3 && /\(.*\)$/.test(parts[2] ?? '')) {
+      category = parts[2]?.replace(/\s*\(.*\)$/, '') ?? ''
+    } else {
+      category = parts.slice(0, -1).join(' - ')
+      category = category.split(' - ').slice(2).join(' - ')
+    }
+  } else {
+    // Otherwise, join all parts after the first two to get the category
+    category = parts.slice(2).join(' - ')
+  }
+  return category
+}
 
 const ViewDetails: FC<indexProps> = ({}) => {
   const { payoutDate } = useParams()
   const navigation = useNavigate()
   const [isFetching, setIsFetching] = useState(false)
-  const { user, selectedBankAccount } = useSelector(
-    (state: RootState) => state.common,
-  )
+  const {
+    user,
+    selectedBankAccount,
+    persistPage,
+    lastObjectId,
+    selectedStartDate,
+  } = useSelector((state: RootState) => state.common)
+
   const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
   const [stripePayoutData, setStripePayoutData] = useState<FinalDataProps[]>()
   const [isSynching, setIsSynching] = useState(false)
+  const stripeCurrentData = useSelector(
+    (state: RootState) => state.common.stripeCurrentData,
+  )
 
   // Assuming you have access to user.email in the second page
   const { data: fundData, isLoading } = useQuery<FundProps[]>(
@@ -71,6 +109,41 @@ const ViewDetails: FC<indexProps> = ({}) => {
     },
     {
       staleTime: Infinity, // The data will be considered fresh indefinitely
+      refetchOnWindowFocus: false,
+    },
+  )
+
+  const { data: stripePayoutRes, isLoading: isLoadingStripe } = useQuery<
+    StripeObj[]
+  >(
+    ['getStripePayouts', bookkeeper, selectedStartDate, stripeCurrentData],
+    async () => {
+      const email =
+        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
+
+      if (!isEmpty(stripeCurrentData)) {
+        return stripeCurrentData
+      }
+
+      if (email) {
+        try {
+          const payouts = await getStripePayouts(
+            email,
+            selectedStartDate,
+            persistPage,
+            lastObjectId,
+          )
+          return payouts
+        } catch (error) {
+          console.error('Failed to fetch stripe payouts:', error)
+          // Handle the error appropriately
+        }
+      }
+
+      return []
+    },
+    {
+      staleTime: Infinity,
       refetchOnWindowFocus: false,
     },
   )
@@ -139,86 +212,6 @@ const ViewDetails: FC<indexProps> = ({}) => {
     }
   }
 
-  // const triggerSyncStripe = async () => {
-  //   try {
-  //     setIsSynching(true)
-  //     const filterFundName = fundData?.length
-  //       ? fundData.map((item) => item.attributes.name)
-  //       : []
-
-  //     const email =
-  //       user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-
-  //     const date = String(fromUnixTime(Number(payoutDate)))
-  //     // Format the date
-  //     const formattedDate = format(new Date(date), formatString)
-
-  //     if (stripePayoutData)
-  //       await Promise.all(
-  //         stripePayoutData.map(async (a, indexArr: number) => {
-  //           const description = a.item.description
-  //           const regex = /#(\d+)/ // match the #
-  //           const match = description?.match(regex)
-
-  //           if (match) {
-  //             const donationId = match[1]
-  //             const index = filterFundName?.findIndex((word) =>
-  //               description.includes(word),
-  //             )
-
-  //             const fundReg = filterFundName?.find((word) =>
-  //               a.fund.toLowerCase().includes(word.toLowerCase()),
-  //             )
-
-  //             const fundName = filterFundName[index]
-  //             let response: { success?: boolean } = {}
-
-  //             if (index !== -1) {
-  //               if (fundName) {
-  //                 response = await syncStripePayout({
-  //                   email,
-  //                   donationId: String(donationId),
-  //                   fundName: String(fundReg),
-  //                   payoutDate: formattedDate || '',
-  //                   bankData: selectedBankAccount,
-  //                 })
-  //                 console.log(
-  //                   'fundName',
-  //                   email,
-  //                   String(donationId),
-  //                   String(fundReg),
-  //                   formattedDate || '',
-  //                 )
-  //               }
-  //             } else {
-  //               response = await syncStripePayoutRegistration({
-  //                 email,
-  //                 amount: String(a.item.net),
-  //                 fundName: String(fundReg),
-  //                 payoutDate: formattedDate || '',
-  //                 bankData: selectedBankAccount,
-  //               })
-  //             }
-
-  //             if (response.success) {
-  //               successNotification({
-  //                 title: `Stripe payout successfully sync`,
-  //               })
-  //               refetch()
-  //             } else {
-  //               failNotification({ title: 'Error' })
-  //             }
-  //           }
-  //         }),
-  //       )
-  //   } catch (e) {
-  //     setIsSynching(false)
-  //     failNotification({ title: 'Error' })
-  //   } finally {
-  //     setIsSynching(false)
-  //   }
-  // }
-
   const triggerSyncStripe = async () => {
     try {
       setIsSynching(true)
@@ -239,15 +232,14 @@ const ViewDetails: FC<indexProps> = ({}) => {
             const description = a.item.description
             const regex = /#(\d+)/ // match the #
             const match = description?.match(regex)
-
             if (match) {
               const donationId = match[1]
               const index = filterFundName?.findIndex((word) =>
                 description.includes(word),
               )
-              const parts = description.split('-')
+              // const parts = description.split('-')
+              const regName = extractCategory(description)
 
-              const regName = parts[parts.length - 1]?.trim() || ''
               const fundName = filterFundName[index]
 
               const registrationFund =
@@ -257,7 +249,7 @@ const ViewDetails: FC<indexProps> = ({}) => {
 
               const fundNameRegistration = registrationFund
                 ? `${capitalAtFirstLetter(
-                    registrationFund.class.label || '',
+                    registrationFund?.class?.label || '',
                   )} (${capitalAtFirstLetter(regName || '')})`
                 : ''
 
@@ -299,6 +291,7 @@ const ViewDetails: FC<indexProps> = ({}) => {
                     totalAmount: Number(a.item.amount),
 
                     type: 'registration',
+                    description: regName || '',
                   } as BatchDataProps,
                   bankData: selectedBankAccount,
                   fee: a.item.fee,
@@ -341,6 +334,11 @@ const ViewDetails: FC<indexProps> = ({}) => {
                 acc[fundName] = []
               }
               acc[fundName].push(curr)
+            } else {
+              if (!acc['Empty']) {
+                acc['Empty'] = []
+              }
+              acc['Empty'].push(curr)
             }
             // Initialize Charge object if it doesn't exist
             if (!acc['Charge']) {
@@ -377,7 +375,7 @@ const ViewDetails: FC<indexProps> = ({}) => {
             })
             refetch()
           } else {
-            failNotification({ title: 'Error' })
+            failNotification({ title: response.message })
           }
         })
       }
@@ -424,7 +422,12 @@ const ViewDetails: FC<indexProps> = ({}) => {
           return
         }
 
-        const stripePayoutRes = await getStripePayouts(email)
+        // const stripePayoutRes = await getStripePayouts(
+        //   email,
+        //   selectedStartDate,
+        //   persistPage,
+        //   lastObjectId,
+        // )
         const date = String(fromUnixTime(Number(payoutDate)))
 
         const filterFundName = fundData?.length
@@ -433,57 +436,75 @@ const ViewDetails: FC<indexProps> = ({}) => {
             )
           : []
 
-        const newStripeObj = stripePayoutRes.find(
-          (item: { payoutDate: string }) =>
-            item.payoutDate === format(new Date(date), formatString),
-        )
+        console.log('stripePayoutRes', stripePayoutRes)
+
+        const newStripeObj: StripeObj | undefined = stripePayoutRes
+          ? stripePayoutRes.find(
+              (item: { payoutDate: string }) =>
+                item.payoutDate === format(new Date(date), formatString),
+            )
+          : undefined
 
         let data: any[] = []
 
         if (newStripeObj?.data && Array.isArray(newStripeObj.data)) {
+          console.log('Go to if')
+
           data = await Promise.all(
-            newStripeObj.data.map((item: any) => {
-              const index = filterFundName?.findIndex((word: any) =>
-                item.description.includes(word),
-              )
+            newStripeObj.data.map(async (item: any) => {
+              try {
+                const index = filterFundName?.findIndex((word) =>
+                  item.description.includes(word),
+                )
 
-              if (index !== -1) {
-                const str = filterFundName[index]
-                return {
-                  fund: str,
-                  grossAmount: newStripeObj.grossAmount,
-                  net: newStripeObj.net,
-                  nonGivingIncome: newStripeObj.nonGivingIncome,
-                  totalFees: newStripeObj.totalFees,
-                  payoutDate: newStripeObj.payoutDate,
-                  item,
-                }
-              } else {
-                const parts = item.description.split(' - ')
-                const registrationFund =
-                  userData.data.UserSetting.settingRegistrationData.find(
-                    (item: any) => item.registration === (parts[2] || parts[1]),
-                  )
+                if (index !== -1) {
+                  console.log('index', index)
 
-                return {
-                  fund: registrationFund
-                    ? `${capitalAtFirstLetter(
-                        registrationFund.class.label || '',
-                      )} (${capitalAtFirstLetter(parts[2] || parts[1] || '')})`
-                    : '',
-                  grossAmount: newStripeObj.grossAmount,
-                  net: newStripeObj.net,
-                  nonGivingIncome: newStripeObj.nonGivingIncome,
-                  totalFees: newStripeObj.totalFees,
-                  payoutDate: newStripeObj.payoutDate,
-                  item,
+                  const str = filterFundName[index]
+                  console.log('fund', str)
+
+                  return {
+                    fund: str,
+                    grossAmount: newStripeObj.grossAmount,
+                    net: newStripeObj.net,
+                    nonGivingIncome: newStripeObj.nonGivingIncome,
+                    totalFees: newStripeObj.totalFees,
+                    payoutDate: newStripeObj.payoutDate,
+                    item,
+                  }
+                } else {
+                  const descriptionFinal = extractCategory(item.description)
+                  console.log('descriptionFinal', descriptionFinal)
+
+                  const registrationFund =
+                    userData.data.UserSetting.settingRegistrationData.find(
+                      (settingItem: any) =>
+                        settingItem.registration === descriptionFinal,
+                    )
+
+                  return {
+                    fund: registrationFund
+                      ? `${capitalAtFirstLetter(
+                          registrationFund?.class?.label || '',
+                        )} (${capitalAtFirstLetter(descriptionFinal || '')})`
+                      : '',
+                    grossAmount: newStripeObj.grossAmount,
+                    net: newStripeObj.net,
+                    nonGivingIncome: newStripeObj.nonGivingIncome,
+                    totalFees: newStripeObj.totalFees,
+                    payoutDate: newStripeObj.payoutDate,
+                    item,
+                  }
                 }
+              } catch (e) {
+                // Log the error or handle it as needed
+                console.error('An error occurred:', e)
+                return null // or any other value indicating failure
               }
             }),
           )
         }
-
-        setStripePayoutData(data)
+        setStripePayoutData(data.filter((item) => item !== null))
       } catch (error) {
         console.error('An error occurred:', error)
       } finally {
@@ -497,14 +518,15 @@ const ViewDetails: FC<indexProps> = ({}) => {
     ) {
       fetchData()
     }
-  }, [fundData, userData])
-
-  console.log('stripePayoutData', stripePayoutData)
+  }, [fundData, userData, isLoadingStripe])
 
   return (
     <MainLayout>
       <div className="flex flex-col h-full gap-4 font-sans">
-        {isLoadingBatchData || isFetching || isRefetchingBatchData ? (
+        {isLoadingBatchData ||
+        isFetching ||
+        isRefetchingBatchData ||
+        isLoadingStripe ? (
           <Loading />
         ) : (
           <>
@@ -645,7 +667,7 @@ const ViewDetails: FC<indexProps> = ({}) => {
                         key={Math.random()}
                       >
                         <Table.Cell className="whitespace-nowrap font-medium dark:text-white">
-                          {item.fund || ''}
+                          {item?.fund || ''}
                         </Table.Cell>
                         <Table.Cell>
                           {formatUsd(String(item.item.amount))}

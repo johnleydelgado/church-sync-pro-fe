@@ -12,13 +12,20 @@ const apiCall = axios.create({
   },
 })
 
-const getStripePayouts = async (email: string) => {
+const getStripePayouts = async (
+  email: string,
+  selectedDate: any,
+  page?: number,
+  lastObjectId?: any,
+) => {
   const url = stripeRoutes.getStripePayouts
   try {
-    const response = await apiCall.get(url + `?email=${email}`)
-    console.log('url', url)
+    const response = await apiCall.get(
+      url +
+        `?email=${email}&selectedDate=${selectedDate}&cPage=${page}&lastObjectId=${lastObjectId}`,
+    )
     return response.data.data
-  } catch (e: any) {
+  } catch (e) {
     return []
   }
 }
@@ -102,7 +109,7 @@ const finalSyncStripe = async ({ ...rest }: { data: any }) => {
     const response = await apiCall.post(url, data)
     return response.data
   } catch (e: any) {
-    return []
+    return e.response.data
   }
 }
 

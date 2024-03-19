@@ -6,13 +6,16 @@ import { QboGetAllQboData } from '@/common/api/qbo'
 import { RootState } from '@/redux/store'
 import { useSelector } from 'react-redux'
 import { SettingQBOProps, createSettings, qboSettings } from '@/common/api/user'
-import { Button } from '@material-tailwind/react'
+import { Button, IconButton } from '@material-tailwind/react'
 import { failNotification, successNotification } from '@/common/utils/toast'
 import { useDispatch } from 'react-redux'
 import Loading from '@/common/components/loading/Loading'
 import { OPEN_MODAL, setReTriggerIsUserTokens } from '@/redux/common'
 import { BqoDataSelectProps } from '../Mapping'
 import { MODALS_NAME } from '@/common/constant/modal'
+import ModalCreateUpdateProject from '@/common/components/modal/ModalCreateUpdateProject'
+import { BiChevronRight } from 'react-icons/bi'
+import { BsPlus } from 'react-icons/bs'
 
 interface DonationProps {
   fundData: any
@@ -25,6 +28,42 @@ const Input = (props: any) => (
     inputClassName="outline-none border-none shadow-none focus:ring-transparent"
   />
 )
+
+const Option = (props: any) => {
+  const { data, innerRef, innerProps, isSelected } = props
+
+  // Create a dynamic class string based on the option value
+  const labelClasses =
+    data.value === 'Add Project'
+      ? 'font-bold text-green-400'
+      : 'font-normal text-current'
+
+  console.log('isSelected', isSelected)
+  return (
+    <div
+      ref={innerRef}
+      {...innerProps}
+      className={isSelected ? 'bg-blue-100' : ''}
+    >
+      <components.Option {...props}>
+        {/* Apply the dynamic classes to the label */}
+        <span className={labelClasses}>{data.label}</span>
+        {data.value === 'Add Project' && (
+          <IconButton
+            className="text-green-500 bg-transparent shadow-none ml-28"
+            onClick={(e) => {
+              // Prevent the select option from being triggered
+              e.stopPropagation()
+            }}
+          >
+            <BsPlus size={22} />
+          </IconButton>
+        )}
+      </components.Option>
+    </div>
+  )
+}
+
 const delay = (ms: any) => new Promise((res) => setTimeout(res, ms))
 
 const Donation: FC<DonationProps> = ({ fundData, userData }) => {
@@ -33,6 +72,7 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
   )
   const [settingsData, setSettingsData] = useState<qboSettings[]>([])
   const [onGoingSaving, setOnGoingSaving] = useState<boolean>(false)
+  const [openStates, setOpenStates] = useState<Record<number, boolean>>({})
 
   const dispatch = useDispatch()
   const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
@@ -59,6 +99,11 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
       },
       { refetchOnWindowFocus: false },
     )
+
+  // Adding a new option at the top of the list
+  const modifiedOptionsCustomer = qboData?.customers
+    ? [{ value: 'Add Project', label: 'Add Project' }, ...qboData.customers]
+    : []
 
   const selectHandler = ({
     val,
@@ -105,17 +150,16 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
 
   const isAnyKeyMissing = (): boolean => {
     return settingsData.some(
-      (item) =>
-        item.account === undefined ||
-        item.class === undefined ||
-        item.fundName === undefined,
+      (item) => !isEmpty(item) && item.account === undefined,
     )
   }
 
   const handleSubmit = async () => {
+    const nonEmptySettingsData = settingsData.filter((item) => !isEmpty(item))
+    const lengthOfNonEmptySettingsData = nonEmptySettingsData.length
     if (
       isAnyKeyMissing() ||
-      fundData?.length !== settingsData.length ||
+      fundData?.length !== lengthOfNonEmptySettingsData ||
       isEmpty(settingsData)
     ) {
       failNotification({
@@ -182,12 +226,15 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
     }
   }, [userData])
 
+  console.log('openStates', openStates)
+
   return (
     <div>
       {isSavingSettings || isQboDataLoading || onGoingSaving ? (
         <Loading />
       ) : (
         <>
+          <ModalCreateUpdateProject />
           {fundData?.map((item: any, index: number) => (
             <div
               key={index}
@@ -237,22 +284,36 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
                       }
                       value={findDefaultValue(item.attributes.name, 'class')}
                       className="w-72"
+                      isClearable
                     />
                   </div>
                   {/* Projects */}
                   <div className="flex flex-col gap-2">
                     <p>Projects</p>
                     <Dropdown
-                      options={qboData?.customers}
-                      components={{ Input }}
-                      onChange={(val) =>
+                      key={index}
+                      options={modifiedOptionsCustomer}
+                      components={{ Input, Option }}
+                      onChange={(val) => {
+                        // If the "Add Project" option is selected, keep the dropdown open and don't change the value
+                        if (val?.value === 'Add Project') {
+                          setOpenStates((prev) => ({ ...prev, [index]: true }))
+                          return dispatch(OPEN_MODAL(MODALS_NAME.projectCU))
+                        }
+
                         selectHandler({
                           val,
                           fundName: item.attributes.name,
                           category: 'customer',
                         })
+
+                        // Close the dropdown
+                        setOpenStates((prev) => ({ ...prev, [index]: false }))
+                      }}
+                      menuIsOpen={openStates[index] as boolean}
+                      onMenuOpen={() =>
+                        setOpenStates((prev) => ({ ...prev, [index]: true }))
                       }
-                      value={findDefaultValue(item.attributes.name, 'customer')}
                       className="w-72"
                       isClearable
                     />

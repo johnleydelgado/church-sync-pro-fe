@@ -5,27 +5,23 @@ import { HiOutlineLogout, HiOutlineUserCircle } from 'react-icons/hi'
 import { useMediaQuery } from 'react-responsive'
 import { useLocation } from 'react-router'
 import Session from 'supertokens-web-js/recipe/session'
-import { FaChevronDown, FaChevronUp } from 'react-icons/fa'
+import { FaChevronDown, FaChevronUp, FaTimes } from 'react-icons/fa'
 import pages, { DropdownLink } from './constant'
 import { storage, storageKey } from '@/common/utils/storage'
 import { useDispatch } from 'react-redux'
 import {
+  OPEN_MODAL,
   resetUserData,
   setBookkeeper,
+  setIsQuickStartHide,
   setReTriggerIsUserTokens,
   setUserData,
 } from '@/redux/common'
 import { useSelector } from 'react-redux'
 import { RootState } from '@/redux/store'
 import Dropdown, { components } from 'react-select'
-import { Avatar, Button } from '@material-tailwind/react'
-import {
-  BiChevronDown,
-  BiChevronRightCircle,
-  BiHelpCircle,
-  BiSortDown,
-  BiUser,
-} from 'react-icons/bi'
+import { Avatar, Button, IconButton } from '@material-tailwind/react'
+import { BiHelpCircle } from 'react-icons/bi'
 import { useQuery } from 'react-query'
 import {
   bookkeeperList,
@@ -42,6 +38,8 @@ import {
 import { Link } from 'react-router-dom'
 import { mainRoute } from '@/common/constant/route'
 import { IoMdImages } from 'react-icons/io'
+import { MODALS_NAME } from '@/common/constant/modal'
+import HideQuickGuideModal from '../modal/HideQuickGuideModal'
 
 interface SideBarProps {
   isTrigger: boolean
@@ -57,6 +55,7 @@ interface ItemSideBarProps {
   isHide?: boolean
   withDropdown?: boolean
   dropdownLinks?: DropdownLink[]
+  role?: string
 }
 
 interface Token {
@@ -135,11 +134,13 @@ function Accordion({
   icon,
   dropdownLinks,
   isTrigger,
+  role,
 }: {
   title: string
   icon: ReactNode
-  dropdownLinks?: { name: string; link: string }[]
+  dropdownLinks?: { name: string; link: string; childrenIcon?: any }[]
   isTrigger: boolean
+  role?: string
 }) {
   const route = useLocation()
   const [expanded, setExpanded] = useState(
@@ -174,25 +175,30 @@ function Accordion({
       >
         {!dropdownLinks || isEmpty(dropdownLinks)
           ? null
-          : dropdownLinks.map((item) => (
-              <div
-                key={item.name}
-                className={`mt-4 gap-4 flex cursor-pointer rounded-md text-left text-slate-400 p-2 items-center ${
-                  route.pathname === item.link ? 'bg-[#FFC107]' : ''
-                } ${isTrigger ? 'mr-8' : ''}`}
-              >
-                {item.name === 'Mapping' ? (
-                  <BiSortDown size={22} className="ml-2" />
-                ) : null}
-                {isTrigger ? null : (
-                  <Link
-                    to={`${item.link}`} //ex. hardware/all
+          : dropdownLinks.map((item) => {
+              if (role === 'bookkeeper' && item.name === 'Bookkeeper') {
+                return null
+              }
+
+              return (
+                <Link to={`${item.link}`} className="block" key={item.name}>
+                  <div
+                    className={`mt-4 gap-4 flex hover:bg-[#FFC107]  cursor-pointer rounded-md text-left text-slate-400 p-2 items-center ${
+                      route.pathname === item.link ? 'bg-[#FFC107]' : ''
+                    } ${isTrigger ? 'mr-8' : ''}`}
                   >
-                    {item.name}
-                  </Link>
-                )}
-              </div>
-            ))}
+                    {item.childrenIcon || null}
+                    {isTrigger ? null : (
+                      <Link
+                        to={`${item.link}`} //ex. hardware/all
+                      >
+                        {item.name}
+                      </Link>
+                    )}
+                  </div>
+                </Link>
+              )
+            })}
       </div>
     </div>
   )
@@ -207,39 +213,67 @@ const ItemSideBar = ({
   isHide,
   withDropdown,
   dropdownLinks,
-}: ItemSideBarProps) => (
-  <>
-    {withDropdown ? (
-      <Accordion
-        title={name}
-        icon={icon}
-        dropdownLinks={dropdownLinks}
-        isTrigger={isTrigger}
-      />
-    ) : isHide ? null : isTrigger ? (
-      <a
-        className={`flex gap-x-8 items-center p-2 transition transform hover:text-primary
+  role,
+}: ItemSideBarProps) => {
+  const dispatch = useDispatch()
+  return (
+    <>
+      {withDropdown ? (
+        <Accordion
+          title={name}
+          icon={icon}
+          dropdownLinks={dropdownLinks}
+          isTrigger={isTrigger}
+          role={role}
+        />
+      ) : isHide ? null : isTrigger ? (
+        <a
+          className={`flex gap-x-8 items-center p-2 transition transform hover:text-primary
        duration-100 hover:bg-[#FFC107] rounded-md ${
          pathName?.includes(link || '') ? 'bg-[#FFC107]' : ''
        }`}
-        href={link}
-      >
-        {icon}
-      </a>
-    ) : (
-      <a
-        className={`flex gap-x-8 items-center px-4 py-2 transition transform hover:text-primary
+          href={link}
+        >
+          {icon}
+        </a>
+      ) : link === mainRoute.QUICK_START_QUIDE ? (
+        <a
+          className={`flex gap-x-8 items-center px-4 py-2 transition transform hover:text-primary
+   duration-100 hover:bg-[#FFC107] ${
+     pathName?.includes(link || '') ? 'bg-[#FFC107]' : ''
+   } rounded-md`}
+          href={link}
+        >
+          {icon}
+          <p className="font-normal">{name}</p>
+          {pathName === mainRoute.QUICK_START_QUIDE && (
+            <IconButton
+              className="bg-transparent text-white shadow-none" // No need for ml-auto here as flex justify-end will take care of it
+              onClick={(event) => {
+                event.preventDefault()
+                event.stopPropagation()
+                dispatch(OPEN_MODAL(MODALS_NAME.hideQuickGuideModal))
+              }}
+            >
+              <FaTimes size={18} />
+            </IconButton>
+          )}
+        </a>
+      ) : (
+        <a
+          className={`flex gap-x-8 items-center px-4 py-2 transition transform hover:text-primary
        duration-100 hover:bg-[#FFC107] ${
          pathName?.includes(link || '') ? 'bg-[#FFC107]' : ''
        } rounded-md`}
-        href={link}
-      >
-        {icon}
-        <p className="font-normal">{name}</p>
-      </a>
-    )}
-  </>
-)
+          href={link}
+        >
+          {icon}
+          <p className="font-normal">{name}</p>
+        </a>
+      )}
+    </>
+  )
+}
 
 const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
   const location = useLocation()
@@ -247,13 +281,15 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
   const [organizationList, setOrginazationList] = useState([
     { value: '', label: '' },
   ])
-  const [showDropdownOrg, setShowDropdownOrg] = useState<boolean>(false)
 
   const userData = useSelector((item: RootState) => item.common.user)
-  const { id, role, firstName, lastName, img_url } = useSelector(
+  const { id, role, img_url, churchName } = useSelector(
     (item: RootState) => item.common.user,
   )
   const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
+  const isQuickStartHide = useSelector(
+    (state: RootState) => state.common.isQuickStartHide,
+  )
 
   const reTriggerIsUserTokens = useSelector(
     (item: RootState) => item.common.reTriggerIsUserTokens,
@@ -274,7 +310,6 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
     },
     { staleTime: Infinity },
   )
-
   // useEffect(() => {
   //   setIsTrigger(() => isTabletOrMobile)
   // }, [isTabletOrMobile, setIsTrigger])
@@ -286,8 +321,17 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
   }
 
   const selectOrganizationHandler = async (val: string, churchName: string) => {
+    const filterData = data.find((a: any) => String(a.Client.email) === val)
     if (bookkeeper)
-      dispatch(setBookkeeper({ ...bookkeeper, clientEmail: val, churchName }))
+      dispatch(
+        setBookkeeper({
+          ...bookkeeper,
+          clientEmail: val,
+          role: 'bookkeeper',
+          churchName,
+          ...(filterData && { clientId: filterData.clientId }),
+        }),
+      )
   }
 
   useEffect(() => {
@@ -297,6 +341,8 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
           value: String(a.Client.email) || '',
           label: a.Client.churchName,
           clientId: a.Client.id,
+          bookkeeperIntegrationAccessEnabled:
+            a.bookkeeperIntegrationAccessEnabled,
         }
       })
 
@@ -308,6 +354,8 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
               clientEmail: temp[0].value,
               churchName: temp[0].label,
               clientId: temp[0].clientId,
+              bookkeeperIntegrationAccessEnabled:
+                temp[0].bookkeeperIntegrationAccessEnabled,
             }),
           )
         }
@@ -318,12 +366,18 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
   return (
     <>
       {isTabletOrMobile ? null : (
+        // <aside
+        //   className={`fixed h-full left-0 top-0 z-40 w-0 transform transition-width ease-in duration-300 overflow-y-auto ${
+        //     isTrigger ? 'w-24' : 'sm:w-64'
+        //   }`}
+        // >
         <aside
-          className={`fixed h-screen left-0 top-0 z-40 w-0 transform transition-width ease-in duration-300 ${
+          className={`fixed h-full bg-primary left-0 top-0 z-40 w-0 transform transition-width ease-in duration-300 overflow-y-auto ${
             isTrigger ? 'w-24' : 'sm:w-64'
           }`}
         >
-          <div className="h-full bg-primary shadow-md sm:flex flex-col gap-2">
+          <HideQuickGuideModal />
+          <div className="min-h-screen h-full bg-primary sm:flex flex-col gap-2">
             <div
               className={`hidden absolute -right-4 top-10 bg-[#FFC107] rounded-lg -z-10 h-8 w-8 items-center justify-center cursor-pointer transform transition hover:scale-125 sm:flex ${
                 !isTrigger ? '' : 'rotate-180'
@@ -351,9 +405,9 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
                   <HiOutlineUserCircle size={32} color="white" />
                 )}
                 <p className="text-white p-2">
-                  {capitalAtFirstLetter(firstName) +
-                    ' ' +
-                    capitalAtFirstLetter(lastName)}
+                  {role === 'bookkeeper'
+                    ? bookkeeper?.churchName
+                    : churchName?.toUpperCase() || 'Church Name'}
                 </p>
               </div>
             ) : (
@@ -364,9 +418,11 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
                   <HiOutlineUserCircle size={32} color="white" />
                 )}
                 <p className="text-white p-2">
-                  {getFirstCharCapital(firstName) +
-                    ' ' +
-                    getFirstCharCapital(lastName)}
+                  {getFirstCharCapital(
+                    role === 'bookkeeper'
+                      ? bookkeeper?.churchName
+                      : churchName?.toUpperCase() || 'Church Name',
+                  )}
                 </p>
               </div>
             )}
@@ -384,27 +440,6 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
 
             {!isEmpty(data) ? (
               <div className="flex flex-col items-center w-full gap-4 pb-8">
-                {/* <Button
-              className="bg-green-300 bg-opacity-50 w-full rounded-none text-start flex items-center gap-2 justify-between"
-              onClick={() => setShowDropdownOrg(!showDropdownOrg)}
-            >
-              {bookkeeper?.churchName}
-              {showDropdownOrg ? (
-                <BiChevronUp size={24} />
-              ) : (
-                <BiChevronDown size={24} />
-              )}
-            </Button>
-            {showDropdownOrg ? (
-              <div className="w-full ">
-                <div className="absolute h-80">
-                  {organizationList.map((a) => (
-                    <p key={a.value}>{a.label}</p>
-                  ))}
-                </div>
-              </div>
-            ) : null} */}
-
                 <Dropdown
                   options={organizationList}
                   components={{ Input }}
@@ -428,28 +463,6 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
                       : organizationList[0]
                   }
                 />
-
-                {/* {showDropdownOrg ? (
-              <Dropdown
-                options={organizationList}
-                components={{ Input }}
-                placeholder="Search...."
-                onChange={(val) => {
-                  if (typeof val === 'object' && val !== null) {
-                    selectOrganizationHandler(val.value || '', val.label || '')
-                  }
-                }}
-                defaultValue={
-                  bookkeeper?.clientEmail
-                    ? {
-                        value: bookkeeper?.clientEmail,
-                        label: bookkeeper?.churchName,
-                      }
-                    : organizationList[0]
-                }
-                className="w-11/12"
-              />
-            ) : null} */}
               </div>
             ) : null}
 
@@ -465,8 +478,11 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
                   pathName={location.pathname}
                   key={el.name}
                   isHide={
-                    el.name === 'Bookkeepers' && userData.role === 'bookkeeper'
+                    (el.name === 'Bookkeepers' &&
+                      userData.role === 'bookkeeper') ||
+                    (isQuickStartHide && el.link === '/quick-start-guide')
                   }
+                  role={role}
                 />
               ))}
             </div>
@@ -498,24 +514,7 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
                 </button>
               </div>
             ) : (
-              <div className="flex flex-col justify-end h-full ">
-                <Link
-                  to={mainRoute.QUICK_START_QUIDE}
-                  className={`group transition transform duration-100 hover:bg-[#FFC107] hover:text-primary text-white bg-[${
-                    location.pathname === '/quick-start-guide' ? '#FFC107' : ''
-                  }]`}
-                >
-                  <div className="flex justify-between gap-x-8  p-8 py-4 items-center">
-                    <p className="font-normal group-hover:text-white">
-                      Get Started
-                    </p>
-
-                    <BiChevronRightCircle
-                      size={30}
-                      className="group-hover:text-white"
-                    />
-                  </div>
-                </Link>
+              <div className="flex flex-col justify-end h-full">
                 <Link
                   to={mainRoute.ASK_US}
                   className={`group transition transform duration-100 hover:bg-[#FFC107] hover:text-primary text-white bg-[${

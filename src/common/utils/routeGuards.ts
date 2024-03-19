@@ -37,7 +37,7 @@ const authGuardHaveSettings = {
 const authProceedToTransaction = {
   failCondition: !!settings,
   requestDone: true,
-  onFail: mainRoute.TRANSACTION,
+  onFail: mainRoute.QUICK_START_QUIDE,
 }
 
 export {

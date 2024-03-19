@@ -44,14 +44,20 @@ interface BatchTableProps {
     dataBatch: any
     batchId: string
     batchName: string
+    donations: any
   }) => Promise<void>
   batchSyncing: any
+  amount?: number
 }
 
-const BatchTable: FC<BatchTableProps> = ({ triggerSync, batchSyncing }) => {
+const BatchTable: FC<BatchTableProps> = ({
+  triggerSync,
+  batchSyncing,
+  amount,
+}) => {
   const { user } = useSelector((state: RootState) => state.common)
   const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
-  const { data, synchedBatches, isLoading, isRefetching, refetch } =
+  const { data, synchedBatches, isLoading, isRefetching, refetch, setAmount } =
     usePagination()
 
   const email =
@@ -95,10 +101,20 @@ const BatchTable: FC<BatchTableProps> = ({ triggerSync, batchSyncing }) => {
       dataBatch: item.batch,
       batchId: item.batch.id,
       batchName: item.batch.attributes.description || '',
+      donations: item.donations.data,
     })
 
     refetch()
   }
+
+  useEffect(() => {
+    if (amount) {
+      setAmount(amount)
+    } else {
+      setAmount(0)
+      refetch()
+    }
+  }, [amount])
 
   return isLoading || isRefetching ? (
     <Loading />

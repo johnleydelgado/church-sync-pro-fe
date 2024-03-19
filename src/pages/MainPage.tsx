@@ -21,7 +21,7 @@ import {
   authProceedToTransaction,
   unAuthGuard,
 } from '@/common/utils/routeGuards'
-import { mainRoute, route } from '@/common/constant/route'
+import { mainRoute, route, routeSettings } from '@/common/constant/route'
 import {
   AccountTokensPage,
   AutomationMappingPage,
@@ -47,13 +47,18 @@ import {
   setIsShowTransaction,
   setUserData,
 } from '@/redux/common'
-import Bookkeeper from './Main/bookkeeper/Bookkeeper'
 import useLogoutHandler from '@/common/hooks/useLogoutHandler'
 import InviteLink from './Main/invite-link/InviteLink'
 import { useGetTokenList } from '@/common/hooks/useGetTokenList'
 import AskUs from './Main/ask-us/AskUs'
 import Home from './Main/home/Home'
 import QuickStartGuide from './Main/quick-start-guide/QuickStartGuide'
+import Account from './Main/settings/component/Account'
+import Billing from './Main/settings/component/Billing'
+import Profile from './Main/settings/component/Profile'
+import Bookkeeper from './Main/settings/component/Bookkeeper'
+import Projects from './Main/settings/component/Projects'
+import Email from './Main/settings/component/Email'
 
 interface indexProps {}
 
@@ -251,11 +256,35 @@ const MainPage: FC<indexProps> = () => {
             />
           }
         />
-        <Route
+        {/* <Route
           path={mainRoute.SETTINGS}
           element={
             <PrivateRoute Component={SettingsPage} guards={[authGuard]} />
           }
+        /> */}
+        <Route
+          path={routeSettings.ACCOUNT_DATA}
+          element={<PrivateRoute Component={Profile} guards={[authGuard]} />}
+        />
+        <Route
+          path={routeSettings.BILLING_INFO}
+          element={<PrivateRoute Component={Billing} guards={[authGuard]} />}
+        />
+        <Route
+          path={routeSettings.INTEGRATIONS}
+          element={<PrivateRoute Component={Account} guards={[authGuard]} />}
+        />
+        <Route
+          path={routeSettings.BOOKKEEPER}
+          element={<PrivateRoute Component={Bookkeeper} guards={[authGuard]} />}
+        />
+        <Route
+          path={routeSettings.PROJECTS}
+          element={<PrivateRoute Component={Projects} guards={[authGuard]} />}
+        />
+        <Route
+          path={routeSettings.SELECT_RECIPIENT_EMAILS}
+          element={<PrivateRoute Component={Email} guards={[authGuard]} />}
         />
         <Route
           path={mainRoute.ASK_US}
