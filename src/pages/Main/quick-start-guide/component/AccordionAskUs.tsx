@@ -18,7 +18,7 @@ const renderBoldLastWord = (text: string) => {
   const lastWord = words.pop()
   return (
     <>
-      {words.join(' ')} <strong className="pl-4">{lastWord}</strong>
+      {words.join(' ')} <strong className="pl-2">{lastWord}</strong>
     </>
   )
 }
