@@ -94,7 +94,7 @@ const Email: FC<AccountProps> = ({}) => {
         <div className="w-full  flex flex-col bg-white justify-center px-8 mt-2">
           <div className="flex items-center justify-between gap-2 px-4 pt-4 w-full">
             <p className="text-md text-[#27A1DB]">New Fund</p>
-            {data.find((item: ItemType) => item.type === 'new-fund')?.email ? (
+            {data?.find((item: ItemType) => item.type === 'new-fund')?.email ? (
               <Button
                 variant="text"
                 className="text-[#27A1DB] mr-32 italic font-normal"
@@ -113,13 +113,13 @@ const Email: FC<AccountProps> = ({}) => {
             )}
           </div>
 
-          {data.find((item: ItemType) => item.type === 'new-fund')?.email && (
+          {data?.find((item: ItemType) => item.type === 'new-fund')?.email && (
             <div className="grid grid-cols-3 px-4 gap-4 border-b-[1px] py-6 border-[#DDDDDD]">
               <div className="flex gap-3">
                 <p>Email To : </p>
                 <p className="text-md text-[#27A1DB]">
                   {
-                    data.find((item: ItemType) => item.type === 'new-fund')
+                    data?.find((item: ItemType) => item.type === 'new-fund')
                       ?.email
                   }
                 </p>
@@ -129,7 +129,7 @@ const Email: FC<AccountProps> = ({}) => {
 
           <div className="flex items-center justify-between gap-2 px-4 pt-4 w-full">
             <p className="text-md text-[#27A1DB]">New Registration</p>
-            {data.find((item: ItemType) => item.type === 'new-registration')
+            {data?.find((item: ItemType) => item.type === 'new-registration')
               ?.email ? (
               <Button
                 variant="text"
@@ -149,14 +149,14 @@ const Email: FC<AccountProps> = ({}) => {
             )}
           </div>
 
-          {data.find((item: ItemType) => item.type === 'new-registration')
+          {data?.find((item: ItemType) => item.type === 'new-registration')
             ?.email && (
             <div className="grid grid-cols-3 px-4 gap-4 border-b-[1px] py-6 border-[#DDDDDD]">
               <div className="flex gap-3">
                 <p>Email To : </p>
                 <p className="text-md text-[#27A1DB]">
                   {
-                    data.find(
+                    data?.find(
                       (item: ItemType) => item.type === 'new-registration',
                     )?.email
                   }

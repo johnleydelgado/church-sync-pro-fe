@@ -208,7 +208,7 @@ const ModalCreateUpdateProject: FC<ModalRegistrationProps> = ({ size }) => {
           <div className="fixed inset-0 bg-black bg-opacity-25" />
         </Transition.Child>
 
-        <div className="fixed inset-0 overflow-y-auto">
+        <div className="fixed inset-0 overflow-y-custom">
           <div className="flex min-h-screen justify-end">
             <Transition.Child
               as={Fragment}

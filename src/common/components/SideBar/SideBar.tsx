@@ -377,7 +377,7 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
           }`}
         >
           <HideQuickGuideModal />
-          <div className="min-h-screen h-full bg-primary sm:flex flex-col gap-2 sidebar">
+          <div className="min-h-screen h-full bg-primary sm:flex flex-col gap-2 overflow-y-custom">
             <div
               className={`hidden absolute top-10 right-0 bg-[#FFC107] rounded-lg h-8 w-8 items-center justify-center cursor-pointer transform transition translate-x-[50%] hover:scale-125 sm:flex ${
                 !isTrigger ? '' : 'rotate-180'
