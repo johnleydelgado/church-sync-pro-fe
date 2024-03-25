@@ -148,25 +148,24 @@ function Accordion({
   ) // auto expand if the route contains a hardware or software string
 
   const toggleExpanded = () => setExpanded((current) => !current)
-
   return (
     <div className="flex flex-wrap pl-4">
-      {isTrigger ? null : (
-        <div
-          className="flex flex-1 cursor-pointer items-center"
-          onClick={toggleExpanded}
-        >
-          {icon}
-          <p className="pl-8 text-slate-500">{title}</p>
-          <div className="flex flex-1 justify-end">
-            {expanded ? (
-              <FaChevronUp size={12} color="white" className="ml-2" />
-            ) : (
-              <FaChevronDown size={12} color="white" className="ml-2" />
-            )}
-          </div>
+      <div
+        className={`flex flex-1 cursor-pointer items-center ${
+          isTrigger ? 'px-8' : ''
+        }`}
+        onClick={toggleExpanded}
+      >
+        {icon}
+        {isTrigger ? null : <p className="pl-8 text-slate-500">{title}</p>}
+        <div className="flex flex-1 justify-end">
+          {expanded ? (
+            <FaChevronUp size={12} color="white" className="ml-2" />
+          ) : (
+            <FaChevronDown size={12} color="white" className="ml-2" />
+          )}
         </div>
-      )}
+      </div>
 
       <div
         className={`items-left flex w-full flex-col overflow-hidden pl-6 transition-[max-height] duration-300 ease-out ${
