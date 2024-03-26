@@ -74,7 +74,7 @@ export const dropdownArrLinkSettings: DropdownLink[] = [
 
 const pages: PageProps[] = [
   {
-    name: 'Guide',
+    name: 'Quick Start',
     link: mainRoute.QUICK_START_QUIDE,
     icon: <MdChecklist size={30} />,
   },
