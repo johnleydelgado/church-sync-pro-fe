@@ -62,7 +62,7 @@ const HideQuickGuideModal: FC<ModalProps> = () => {
             >
               <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
                 <Dialog.Title className="text-md font-semibold leading-6 text-gray-600 text-center">
-                  Are you sure you want to hide the Quick Guide?
+                  Are you sure you want to hide the Quick Start Guide?
                 </Dialog.Title>
                 <div className="text-xs text-gray-400 text-center px-5">
                   <p>

@@ -148,25 +148,24 @@ function Accordion({
   ) // auto expand if the route contains a hardware or software string
 
   const toggleExpanded = () => setExpanded((current) => !current)
-
   return (
     <div className="flex flex-wrap pl-4">
-      {isTrigger ? null : (
-        <div
-          className="flex flex-1 cursor-pointer items-center"
-          onClick={toggleExpanded}
-        >
-          {icon}
-          <p className="pl-8 text-slate-500">{title}</p>
-          <div className="flex flex-1 justify-end">
-            {expanded ? (
-              <FaChevronUp size={12} color="white" className="ml-2" />
-            ) : (
-              <FaChevronDown size={12} color="white" className="ml-2" />
-            )}
-          </div>
+      <div
+        className={`flex flex-1 cursor-pointer items-center ${
+          isTrigger ? 'px-8' : ''
+        }`}
+        onClick={toggleExpanded}
+      >
+        {icon}
+        {isTrigger ? null : <p className="pl-4 text-slate-500">{title}</p>}
+        <div className="flex flex-1 justify-end pr-3">
+          {expanded ? (
+            <FaChevronUp size={12} color="white" className="ml-2" />
+          ) : (
+            <FaChevronDown size={12} color="white" className="ml-2" />
+          )}
         </div>
-      )}
+      </div>
 
       <div
         className={`items-left flex w-full flex-col overflow-hidden pl-6 transition-[max-height] duration-300 ease-out ${
@@ -228,7 +227,7 @@ const ItemSideBar = ({
         />
       ) : isHide ? null : isTrigger ? (
         <a
-          className={`flex gap-x-8 items-center p-2 transition transform hover:text-primary
+          className={`flex gap-x-4 items-center p-2 transition transform hover:text-primary
        duration-100 hover:bg-[#FFC107] rounded-md ${
          pathName?.includes(link || '') ? 'bg-[#FFC107]' : ''
        }`}
@@ -238,9 +237,9 @@ const ItemSideBar = ({
         </a>
       ) : link === mainRoute.QUICK_START_QUIDE ? (
         <a
-          className={`flex gap-x-8 items-center px-4 py-2 transition transform hover:text-primary
+          className={`flex items-center px-4 py-2 transition transform hover:text-primary
    duration-100 hover:bg-[#FFC107] ${
-     pathName?.includes(link || '') ? 'bg-[#FFC107]' : ''
+     pathName?.includes(link || '') ? 'bg-[#FFC107] justify-between' : 'gap-x-4'
    } rounded-md`}
           href={link}
         >
@@ -255,13 +254,13 @@ const ItemSideBar = ({
                 dispatch(OPEN_MODAL(MODALS_NAME.hideQuickGuideModal))
               }}
             >
-              <FaTimes size={18} />
+              <FaTimes size={16} />
             </IconButton>
           )}
         </a>
       ) : (
         <a
-          className={`flex gap-x-8 items-center px-4 py-2 transition transform hover:text-primary
+          className={`flex gap-x-4 items-center px-4 py-2 transition transform hover:text-primary
        duration-100 hover:bg-[#FFC107] ${
          pathName?.includes(link || '') ? 'bg-[#FFC107]' : ''
        } rounded-md`}
@@ -468,7 +467,7 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
 
             <div
               className={` text-white transform transition-all delay-300 duration-200  ${
-                isTrigger ? 'px-4 items-center' : 'px-8'
+                isTrigger ? 'px-4 items-center' : 'px-6'
               } flex flex-col gap-8`}
             >
               {pages.map((el) => (
