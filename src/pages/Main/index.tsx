@@ -5,7 +5,9 @@ import SettingsPage from './settings'
 import AccountTokensPage from './accounts-token/AccountTokens'
 import DashboardPage from './dashboard/Dashboard'
 import InviteLinkPage from './invite-link/InviteLink'
-import AutomationMappingPage from './automation/mapping/Mapping'
+import AutomationMappingPage from './automation/mapping'
+import AutomationArchivePage from './automation/archive'
+import SubscriptionPlanPage from '../Subscription/plan'
 
 export {
   TransactionPage,
@@ -16,4 +18,6 @@ export {
   DashboardPage,
   InviteLinkPage,
   AutomationMappingPage,
+  AutomationArchivePage,
+  SubscriptionPlanPage,
 }

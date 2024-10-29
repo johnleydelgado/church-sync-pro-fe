@@ -61,7 +61,7 @@ const Bookkeeper: FC<AccountProps> = ({}) => {
           <div className="flex flex-col border-b-2 pb-2">
             <div className="flex items-center gap-2">
               <MdSettings size={28} className="text-blue-400" />
-              <span className="font-bold text-lg text-[#27A1DB]">Settings</span>
+              <span className="font-bold text-lg text-primary">Settings</span>
             </div>
           </div>
         </div>
@@ -76,7 +76,7 @@ const Bookkeeper: FC<AccountProps> = ({}) => {
               onClick={openModal}
               disabled={data ? (data?.length > 3 ? true : false) : false}
             >
-              <AiOutlineUserAdd size={18} className="text-[#FAB400]" />
+              <AiOutlineUserAdd size={18} className="text-yellow" />
               Add new bookkeeper
             </Button>
           </div>
@@ -85,7 +85,7 @@ const Bookkeeper: FC<AccountProps> = ({}) => {
               <div key={a.id}>
                 <div className="flex items-center justify-between gap-2 px-4 pt-4 w-full">
                   <div className="flex flex-col">
-                    <p className="text-md text-[#27A1DB]">{a.email}</p>
+                    <p className="text-md text-primary">{a.email}</p>
                     <p className="text-md text-gray-400">
                       Added last {format(new Date(a.createdAt), 'MM/dd/yyyy')}
                     </p>

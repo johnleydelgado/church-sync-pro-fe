@@ -3,7 +3,13 @@
 import axios from 'axios'
 import { qboRoutes } from '../constant/routes-api'
 import { CustomerProps } from '../constant/formik'
+import { BookkeeperInfo, UserInfo } from '@/redux/common'
+import { getStripeList } from './stripe'
 const { REACT_APP_API_PATH } = process.env
+
+interface Bookkeeper {
+  clientEmail?: string
+}
 
 const apiCall = axios.create({
   baseURL: REACT_APP_API_PATH,
@@ -125,10 +131,36 @@ const findCustomers = async (
   }
 }
 
+const getQboData = async (
+  user: UserInfo,
+  bookkeeper: BookkeeperInfo | null,
+) => {
+  const email =
+    user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
+  if (email) {
+    const res = await QboGetAllQboData({ email })
+    return res
+  }
+}
+
+const getActiveStripeList = async (
+  user: UserInfo,
+  bookkeeper: BookkeeperInfo | null,
+) => {
+  const email =
+    user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
+  if (email) {
+    const res = await getStripeList({ email })
+    return res.data
+  }
+}
+
 export {
   QboGetAllQboData,
+  getActiveStripeList,
   deleteQboDeposit,
   addProject,
   updateProject,
   findCustomers,
+  getQboData,
 }

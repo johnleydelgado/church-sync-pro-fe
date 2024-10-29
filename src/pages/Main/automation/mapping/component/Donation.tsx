@@ -1,24 +1,33 @@
 import { isEmpty } from 'lodash'
-import React, { FC, useEffect, useState } from 'react'
+import React, { FC, useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery } from 'react-query'
 import Dropdown, { components } from 'react-select'
-import { QboGetAllQboData } from '@/common/api/qbo'
+import { QboGetAllQboData, getQboData } from '@/common/api/qbo'
 import { RootState } from '@/redux/store'
 import { useSelector } from 'react-redux'
 import { SettingQBOProps, createSettings, qboSettings } from '@/common/api/user'
-import { Button, IconButton } from '@material-tailwind/react'
+import {
+  Button,
+  IconButton,
+  Popover,
+  PopoverContent,
+  PopoverHandler,
+  Typography,
+} from '@material-tailwind/react'
 import { failNotification, successNotification } from '@/common/utils/toast'
 import { useDispatch } from 'react-redux'
 import Loading from '@/common/components/loading/Loading'
 import { OPEN_MODAL, setReTriggerIsUserTokens } from '@/redux/common'
-import { BqoDataSelectProps } from '../Mapping'
+import { QboDataSelectProps } from '..'
 import { MODALS_NAME } from '@/common/constant/modal'
 import ModalCreateUpdateProject from '@/common/components/modal/ModalCreateUpdateProject'
-import { BiChevronRight } from 'react-icons/bi'
 import { BsPlus } from 'react-icons/bs'
+import { BiArchiveIn, BiDotsHorizontal } from 'react-icons/bi'
+import { FundAttProps } from '@/common/constant/interfaces'
+import colors from '@/common/constant/colors'
 
 interface DonationProps {
-  fundData: any
+  fundData: FundAttProps[]
   userData: any
 }
 
@@ -38,7 +47,6 @@ const Option = (props: any) => {
       ? 'font-bold text-green-400'
       : 'font-normal text-current'
 
-  console.log('isSelected', isSelected)
   return (
     <div
       ref={innerRef}
@@ -79,6 +87,7 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
   const reTriggerIsUserTokens = useSelector(
     (item: RootState) => item.common.reTriggerIsUserTokens,
   )
+
   // create user settings
   const { mutate, isLoading: isSavingSettings } = useMutation<
     unknown,
@@ -86,24 +95,19 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
     SettingQBOProps
   >(createSettings)
 
-  const { data: qboData, isLoading: isQboDataLoading } =
-    useQuery<BqoDataSelectProps>(
-      ['getAllQboData', bookkeeper],
-      async () => {
-        const email =
-          user.role === 'bookkeeper'
-            ? bookkeeper?.clientEmail || ''
-            : user.email
-        console.log('email is:', email)
-        if (email) return await QboGetAllQboData({ email })
-      },
-      { refetchOnWindowFocus: false },
-    )
+  const { data: qboData, isLoading: isQboDataLoading } = useQuery(
+    useMemo(() => ['getAllQboData', bookkeeper], [bookkeeper]), // Memoize the key
+    async () => await getQboData(user, bookkeeper),
+    { staleTime: Infinity, refetchOnWindowFocus: false },
+  )
 
   // Adding a new option at the top of the list
   const modifiedOptionsCustomer = qboData?.customers
     ? [{ value: 'Add Project', label: 'Add Project' }, ...qboData.customers]
     : []
+
+  const email =
+    user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
 
   const selectHandler = ({
     val,
@@ -157,10 +161,12 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
   const handleSubmit = async () => {
     const nonEmptySettingsData = settingsData.filter((item) => !isEmpty(item))
     const lengthOfNonEmptySettingsData = nonEmptySettingsData.length
+
     if (
       isAnyKeyMissing() ||
-      fundData?.length !== lengthOfNonEmptySettingsData ||
-      isEmpty(settingsData)
+      (settingsData.length !== 0 &&
+        (fundData?.length !== lengthOfNonEmptySettingsData ||
+          isEmpty(settingsData)))
     ) {
       failNotification({
         title: 'Please fill up all select',
@@ -168,10 +174,10 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
       })
       return
     }
+
     try {
       setOnGoingSaving(true)
-      const email =
-        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
+
       await mutate({
         email,
         settingsData,
@@ -219,14 +225,38 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
     }
   }
 
+  const deactivateFund = async (fundName: string) => {
+    if (isEmpty(settingsData)) {
+      failNotification({ title: 'Please save the settings first' })
+      return
+    }
+
+    setOnGoingSaving(true)
+    const updatedSettingsData = settingsData.map((item) => {
+      if (item.fundName === fundName) {
+        // If the registration matches, set `isActive` to `false`.
+        return { ...item, isActive: false }
+      }
+      return item // Otherwise, return the item as is.
+    })
+
+    await mutate({
+      email,
+      settingsData: updatedSettingsData,
+    })
+    await delay(2000)
+    dispatch(setReTriggerIsUserTokens(!reTriggerIsUserTokens))
+    successNotification({ title: 'Archived successfully' })
+    setOnGoingSaving(false)
+    return ''
+  }
+
   useEffect(() => {
     if (!isEmpty(userData?.UserSetting?.settingsData)) {
       const settingsData = userData.UserSetting.settingsData
       setSettingsData(settingsData)
     }
   }, [userData])
-
-  console.log('openStates', openStates)
 
   return (
     <div>
@@ -235,28 +265,54 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
       ) : (
         <>
           <ModalCreateUpdateProject />
-          {fundData?.map((item: any, index: number) => (
+          {fundData?.map((item, index: number) => (
             <div
               key={index}
-              className={`flex flex-col gap-2 py-4 ${
+              className={`flex flex-col gap-2 max-w-4xl py-4 ${
                 index === fundData.length - 1 ? '' : 'border-b-[1px]'
               } `}
             >
-              <div className="col-span-1 flex flex-col pr-6">
-                <p className="font-semibold text-[#27A1DB]">
-                  {item.attributes.name}
-                </p>
-                <p className="font-normal text-gray-400 text-sm">
-                  {item.attributes.description}
-                </p>
+              <div className="flex items-center  justify-between pb-2">
+                <div className="col-span-1 flex flex-col pr-6">
+                  <p className="font-semibold text-primary">
+                    {item.attributes.name}
+                  </p>
+                  <p className="font-normal text-gray-400 text-sm">
+                    {item.attributes.description}
+                  </p>
+                </div>
+
+                <Popover>
+                  <PopoverHandler>
+                    <button className="self-center">
+                      <BiDotsHorizontal
+                        size={22}
+                        color={colors.secondaryYellow}
+                      />
+                    </button>
+                  </PopoverHandler>
+                  <PopoverContent>
+                    <button
+                      className="flex gap-2 items-center"
+                      onClick={() => deactivateFund(item.attributes.name)}
+                    >
+                      <BiArchiveIn size={22} color={colors.secondaryYellow} />
+                      <Typography>Archive</Typography>
+                    </button>
+                  </PopoverContent>
+                </Popover>
               </div>
+
               {isEmpty(qboData) && isEmpty(item.attributes.name) ? null : (
                 <div className="flex items-center gap-4">
                   {/* Accounts */}
                   <div className="flex flex-col gap-2">
                     <p>Accounts</p>
                     <Dropdown
-                      options={qboData?.accounts}
+                      options={qboData?.accounts?.filter(
+                        (a: { type: string }) =>
+                          a.type !== 'Bank' && a.type !== 'Credit Card',
+                      )}
                       components={{ Input }}
                       onChange={(val) =>
                         selectHandler({

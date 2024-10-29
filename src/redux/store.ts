@@ -1,39 +1,81 @@
-import { configureStore, combineReducers } from '@reduxjs/toolkit'
+import {
+  configureStore,
+  combineReducers,
+  Middleware,
+  AnyAction,
+} from '@reduxjs/toolkit'
 import { useDispatch } from 'react-redux'
 import { persistStore, persistReducer } from 'redux-persist'
 import storage from 'redux-persist/lib/storage'
 
 import common from './common'
 import nonPersistState from './nonPersistState'
+import { qboDataSlice, resetReduxQboData } from './qbo'
+import { stripeDataSlice, resetReduxStripeData } from './stripe'
+
+// Middleware to check for state expiration
+const checkExpirationMiddleware: Middleware = (store) => {
+  let hasRun = false // Flag to prevent recursion
+
+  return (next) => (action: AnyAction) => {
+    if (hasRun) {
+      return next(action) // Prevents recursion
+    }
+
+    hasRun = true // Set the flag to prevent recursive calls
+
+    const state = store.getState().qboData
+    const stateStripe = store.getState().stripeData
+
+    const currentTime = Date.now()
+
+    const expirationTime = 60 * 60 * 24 * 1000 // 1 day in milliseconds
+
+    // If expired, clear the state
+    if (state.persistedAt && currentTime - state.persistedAt > expirationTime) {
+      store.dispatch(resetReduxQboData()) // Reset state
+    }
+
+    if (
+      stateStripe.persistedAt &&
+      currentTime - stateStripe.persistedAt > expirationTime
+    ) {
+      store.dispatch(resetReduxStripeData()) // Reset state
+    }
+
+    hasRun = false // Reset the flag after handling action
+
+    return next(action) // Continue with the action
+  }
+}
 
 const persistConfig = {
   key: 'root',
-  version: 1,
   storage,
-  whitelist: ['common'],
-  blacklist: ['nonPersistState'],
+  version: 1,
+  whitelist: ['common', 'qboData', 'stripeData'], // persist common and qboData
+  blacklist: ['nonPersistState'], // non-persisted reducer
 }
 
-const persistedReducer = persistReducer(
-  persistConfig,
-  combineReducers({
-    common,
-    nonPersistState,
-  }),
-)
+const rootReducer = combineReducers({
+  common,
+  nonPersistState,
+  qboData: qboDataSlice.reducer, // include qboData slice
+  stripeData: stripeDataSlice.reducer, // include qboData slice
+})
+
+const persistedReducer = persistReducer(persistConfig, rootReducer)
 
 export const store = configureStore({
   reducer: persistedReducer,
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: false,
-    }),
+    }).concat(checkExpirationMiddleware), // add expiration middleware
 })
 
 export const persistor = persistStore(store)
 
-// Infer the `RootState` and `AppDispatch` types from the store itself
 export type RootState = ReturnType<typeof store.getState>
-// Inferred type: {posts: PostsState, comments: CommentsState, users: UsersState}
 export type AppDispatch = typeof store.dispatch
 export const useAppDispatch = () => useDispatch<AppDispatch>()

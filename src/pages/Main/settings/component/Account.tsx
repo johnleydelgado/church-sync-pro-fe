@@ -122,8 +122,10 @@ const Account: FC<AccountProps> = ({}) => {
       if (accountState) {
         const { type, access_token, refresh_token, realm_id } = accountState
         try {
+          const emailLatest =
+            role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : email
           const tokenObject = {
-            email,
+            email: emailLatest,
             token_type: type,
             access_token,
             refresh_token,
@@ -172,7 +174,7 @@ const Account: FC<AccountProps> = ({}) => {
           <div className="flex flex-col border-b-2 pb-2">
             <div className="flex items-center gap-2">
               <MdSettings size={28} className="text-blue-400" />
-              <span className="font-bold text-lg text-[#27A1DB]">Settings</span>
+              <span className="font-bold text-lg text-primary">Settings</span>
             </div>
           </div>
         </div>
@@ -199,11 +201,11 @@ const Account: FC<AccountProps> = ({}) => {
               <div className="flex flex-col gap-2">
                 <div className="flex gap-2 items-center">
                   {hasTokenOfTypes(['qbo']) ? (
-                    <div className="border-2 rounded-lg border-[#25A1DA]">
-                      <BiSync className="text-[#25A1DA]" />
+                    <div className="border-2 rounded-lg border-btmColor">
+                      <BiSync className="text-btmColor" />
                     </div>
                   ) : null}
-                  <p className="text-[#33AB78]">
+                  <p className="text-greenText">
                     {hasTokenOfTypes(['qbo'])
                       ? 'Synced with Quick Books'
                       : 'Click to sync with Quick Books'}
@@ -213,7 +215,7 @@ const Account: FC<AccountProps> = ({}) => {
                 <p
                   className={`${
                     hasTokenOfTypes(['qbo'])
-                      ? 'underline italic font-normal text-[#25A1DA] cursor-pointer'
+                      ? 'underline italic font-normal text-btmColor cursor-pointer'
                       : 'text-gray-400 text-sm font-normal'
                   } `}
                   onClick={() =>
@@ -245,11 +247,11 @@ const Account: FC<AccountProps> = ({}) => {
               <div className="flex flex-col gap-2">
                 <div className="flex gap-2 items-center">
                   {hasTokenOfTypes(['pco']) ? (
-                    <div className="border-2 rounded-lg border-[#25A1DA]">
-                      <BiSync className="text-[#25A1DA]" />
+                    <div className="border-2 rounded-lg border-btmColor">
+                      <BiSync className="text-btmColor" />
                     </div>
                   ) : null}
-                  <p className="text-[#33AB78]">
+                  <p className="text-greenText">
                     {hasTokenOfTypes(['pco'])
                       ? 'Synced with Planning Center'
                       : 'Click to sync with Planning Center'}
@@ -259,7 +261,7 @@ const Account: FC<AccountProps> = ({}) => {
                 <p
                   className={`${
                     hasTokenOfTypes(['pco'])
-                      ? 'underline italic font-normal text-[#25A1DA] cursor-pointer'
+                      ? 'underline italic font-normal text-btmColor cursor-pointer'
                       : 'text-gray-400 text-sm font-normal'
                   } `}
                   onClick={() =>
@@ -291,12 +293,12 @@ const Account: FC<AccountProps> = ({}) => {
               <div className="flex flex-col gap-2">
                 <div className="flex gap-2 items-center">
                   {hasTokenOfTypes(['stripe']) ? (
-                    <div className="border-2 rounded-lg border-[#25A1DA]">
-                      <BiSync className="text-[#25A1DA]" />
+                    <div className="border-2 rounded-lg border-btmColor">
+                      <BiSync className="text-btmColor" />
                     </div>
                   ) : null}
 
-                  <p className="text-[#33AB78]">
+                  <p className="text-greenText">
                     {hasTokenOfTypes(['stripe'])
                       ? 'Synced with Stripe'
                       : 'Click to sync with Stripe'}
@@ -305,7 +307,7 @@ const Account: FC<AccountProps> = ({}) => {
                 <p
                   className={`${
                     hasTokenOfTypes(['stripe'])
-                      ? 'underline italic font-normal text-[#25A1DA] cursor-pointer'
+                      ? 'underline italic font-normal text-btmColor cursor-pointer'
                       : 'text-gray-400 text-sm font-normal'
                   } `}
                   onClick={() =>

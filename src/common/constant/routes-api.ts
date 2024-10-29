@@ -17,6 +17,8 @@ const stripeRoutes = {
   syncStripePayout: '/stripe/syncStripePayout',
   syncStripePayoutRegistration: '/stripe/syncStripePayoutRegistration',
   finalSyncStripe: '/stripe/finalSyncStripe',
+  getStripeList: '/stripe/getStripeList',
+  createPaymentIntent: '/stripe/create-payment-intent',
 }
 
 const userRoutes = {

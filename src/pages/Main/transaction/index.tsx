@@ -514,7 +514,7 @@ const Dashboard: FC<DashboardProps> = () => {
               <div className="flex flex-col border-b-2 pb-2">
                 <div className="flex items-center gap-2">
                   <BiSync size={28} className="text-blue-400" />
-                  <span className="font-bold text-lg text-[#27A1DB]">
+                  <span className="font-bold text-lg text-primary">
                     Transaction History
                   </span>
                 </div>
@@ -565,7 +565,7 @@ const Dashboard: FC<DashboardProps> = () => {
                     selectedStartDate ? new Date(selectedStartDate) : null
                   }
                   onChange={handleDateChange}
-                  className="rounded-xl border-yellow-300"
+                  className="rounded-xl border-yellow"
                 />
               </div>
 
@@ -578,7 +578,7 @@ const Dashboard: FC<DashboardProps> = () => {
                   placement="bottom"
                 >
                   <PopoverHandler>
-                    <Button className="flex items-center gap-4 bg-yellow-400 rounded-xl h-1/2 w-44">
+                    <Button className="flex items-center gap-4 bg-yellow rounded-xl h-1/2 w-44">
                       <FiFilter size={22} />
                       <p>Filters</p>
                     </Button>
@@ -592,7 +592,7 @@ const Dashboard: FC<DashboardProps> = () => {
                 </Popover>
                 <Input
                   placeholder="Search (e.g By Amount)"
-                  className="!border !border-gray-300 bg-white text-gray-500 shadow-lg shadow-gray-900/5 ring-4 ring-transparent placeholder:text-gray-500 focus:!border-yellow-400 focus:!border-t-yellow-400 focus:ring-gray-900/10"
+                  className="!border !border-gray-300 bg-white text-gray-500 shadow-lg shadow-gray-900/5 ring-4 ring-transparent placeholder:text-gray-500 focus:!border-yellow focus:!border-t-yellow focus:ring-gray-900/10"
                   labelProps={{
                     className: 'hidden',
                   }}
@@ -604,6 +604,7 @@ const Dashboard: FC<DashboardProps> = () => {
                   }
                   onKeyPress={handleKeyPressAmount}
                   icon={<FiSearch />}
+                  crossOrigin={undefined}
                 />
               </div>
             </div>

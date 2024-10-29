@@ -18,6 +18,7 @@ import { mainRoute } from '@/common/constant/route'
 import { BiHelpCircle, BiSortDown } from 'react-icons/bi'
 import { FaChevronDown, FaChevronUp, FaTimes } from 'react-icons/fa'
 import pages, { DropdownLink } from '../SideBar/constant'
+import colors from '@/common/constant/colors'
 interface NavBarProps {}
 
 const Input = (props: any) => (
@@ -81,7 +82,7 @@ function Accordion({
               <div
                 key={item.name}
                 className={`mt-4 gap-4 flex cursor-pointer rounded-md text-left text-slate-400 p-2 items-center ${
-                  route.pathname === item.link ? 'bg-[#FFC107]' : ''
+                  route.pathname === item.link ? 'bg-secondaryYellow' : ''
                 }`}
               >
                 {item.name === 'Mapping' ? (
@@ -114,8 +115,8 @@ const ItemSideBar = ({
     ) : isHide ? null : (
       <a
         className={`flex gap-x-8 items-center px-4 py-2 transition transform hover:text-primary
-       duration-100 hover:bg-[#FFC107] ${
-         pathName?.includes(link || '') ? 'bg-[#FFC107]' : ''
+       duration-100 hover:bg-secondaryYellow ${
+         pathName?.includes(link || '') ? 'bg-secondaryYellow' : ''
        } rounded-md`}
         href={link}
       >
@@ -306,8 +307,8 @@ const NavBar: FC<NavBarProps> = () => {
           <div className="flex flex-col justify-end h-full">
             <Link
               to={mainRoute.ASK_US}
-              className={`group transition transform duration-100 hover:bg-[#FFC107] hover:text-primary text-white bg-[${
-                location.pathname === '/ask-us' ? '#FFC107' : ''
+              className={`group transition transform duration-100 hover:bg-secondaryYellow hover:text-primary text-white bg-[${
+                location.pathname === '/ask-us' ? colors.secondaryYellow : ''
               }]`}
             >
               <div className="flex gap-x-8  p-8 items-center">
@@ -316,7 +317,7 @@ const NavBar: FC<NavBarProps> = () => {
               </div>
             </Link>
             <button
-              className="group transition transform duration-100 hover:bg-[#FFC107] hover:text-primary text-white"
+              className="group transition transform duration-100 hover:bg-secondaryYellow hover:text-primary text-white"
               onClick={handleLogout}
             >
               <div className="flex gap-x-8  p-8 items-center">

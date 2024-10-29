@@ -18,7 +18,10 @@ module.exports = withMT({
         cream: '#FCEFE9',
         grayBlue: '#EDEFFE',
         otherGray: '#fefefe',
-        btmColor: '#25A1DA'
+        btmColor: '#25A1DA',
+        yellow:'#FAB400',
+        secondaryYellow:'#FFC107',
+        greenText:'#33AB78'
       },
       transitionProperty: {
         width: 'width',

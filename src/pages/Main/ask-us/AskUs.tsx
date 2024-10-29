@@ -45,17 +45,12 @@ const AskUs: FC<BookkeeperProps> = ({}) => {
             <div className="flex flex-col border-b-2 pb-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <AiOutlineQuestionCircle
-                    size={48}
-                    className="text-[#FAB400]"
-                  />
-                  <span className="font-bold text-4xl text-[#FAB400]">
-                    Ask Us
-                  </span>
+                  <AiOutlineQuestionCircle size={48} className="text-yellow" />
+                  <span className="font-bold text-4xl text-yellow">Ask Us</span>
                 </div>
                 <span className="text-lg">
                   <span>email us at </span>
-                  <span className="text-[#27A1DB] underline">
+                  <span className="text-primary underline">
                     help@churchsyncpro.com
                   </span>
                 </span>

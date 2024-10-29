@@ -10,6 +10,7 @@ export const route = {
   RESET_PASSWORD: '/reset-password',
   NOMINATE_PASSWORD: '/nominate-password',
   INVITE_LINK: 'invite-bookkeeper',
+  SUBSCRIPTION_PLAN: 'subscription/plan',
 }
 
 export const mainRoute = {
@@ -25,6 +26,7 @@ export const mainRoute = {
   QUICK_START_QUIDE: '/quick-start-guide',
   AUTOMATION: '/automation',
   AUTOMATION_MAPPING: '/automation/mapping',
+  AUTOMATION_ARCHIVE: '/automation/archive',
 }
 
 export const routeSettings = {

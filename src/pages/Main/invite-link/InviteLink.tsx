@@ -250,7 +250,7 @@ const InviteLink: FC<SignUpProps> = () => {
                 </p>
                 <Link
                   to="/"
-                  className="bg-[#FAB400] rounded-full shadow-sm h-12 my-4 flex justify-center items-center hover:bg-slate-600 [&>*]:text-white mt-12 p-4"
+                  className="bg-yellow rounded-full shadow-sm h-12 my-4 flex justify-center items-center hover:bg-slate-600 [&>*]:text-white mt-12 p-4"
                 >
                   <p>Click to continue</p>
                 </Link>
@@ -333,7 +333,7 @@ const InviteLink: FC<SignUpProps> = () => {
                   />
 
                   <Button
-                    className="bg-[#FAB400] rounded-md shadow-sm h-12 my-4 hover:bg-slate-600 [&>*]:text-white"
+                    className="bg-yellow rounded-md shadow-sm h-12 my-4 hover:bg-slate-600 [&>*]:text-white"
                     type="submit"
                   >
                     {isLoading ? (

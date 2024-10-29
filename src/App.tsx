@@ -19,9 +19,21 @@ import { PaginationProvider } from './common/context/PaginationProvider'
 const { REACT_APP_HOST_BE, REACT_APP_GOOGLE_CALLBACK_URL } = process.env
 
 import 'react-toastify/dist/ReactToastify.css'
+import BackgroundDataFetcher from './common/components/background-caller-api/BackgroundDataFetcher'
+import { loadStripe } from '@stripe/stripe-js'
 
 function App() {
   const queryClient = new QueryClient()
+  const stripePromise = useMemo(
+    () => loadStripe('pk_test_6pRNASCoBOKtIshFeQd4XMUh'),
+    [],
+  )
+
+  const options = {
+    mode: 'payment',
+    amount: 1099,
+    currency: 'usd',
+  }
   SuperTokens.init({
     appInfo: {
       apiDomain: REACT_APP_HOST_BE as string,
@@ -73,6 +85,7 @@ function App() {
             <DndProvider backend={HTML5Backend}>
               <PaginationProvider>
                 <Router>
+                  <BackgroundDataFetcher />
                   <Routes>
                     <Route path="/*" element={<MainUnAuthPage />} />
                   </Routes>

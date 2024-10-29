@@ -47,7 +47,7 @@ const Bookkeeper: FC<BookkeeperProps> = ({}) => {
             <div className="flex flex-col border-b-2 pb-2">
               <div className="flex items-center gap-2">
                 <HiOutlineUsers size={28} className="text-blue-400" />
-                <span className="font-bold text-lg text-[#27A1DB]">
+                <span className="font-bold text-lg text-primary">
                   Bookkeepers
                 </span>
               </div>

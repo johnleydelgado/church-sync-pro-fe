@@ -19,6 +19,7 @@
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-unused-vars": "off",
       "@typescript-eslint/ban-ts-comment": "off",
+      "react/prop-types": "off",
       "react/jsx-filename-extension": [1, { "extensions": [".ts", ".tsx"] }]
       // Add your custom rules here
     },

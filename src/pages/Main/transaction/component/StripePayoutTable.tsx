@@ -89,7 +89,7 @@ const StripePayoutTable: FC<BatchTableProps> = ({
   ) : !isEmpty(currentPageData) ? (
     <div className="relative overflow-x-auto pt-8">
       <table className="w-full text-sm text-left text-gray-500">
-        <thead className="text-xs text-[#FAB400] uppercase bg-white dark:bg-gray-700 border-y-2 border-[#FAB400]">
+        <thead className="text-xs text-yellow uppercase bg-white dark:bg-gray-700 border-y-2 border-yellow">
           <tr className="[&>*]:px-6 [&>*]:py-3">
             <th scope="col" className="">
               Payout date
@@ -122,7 +122,7 @@ const StripePayoutTable: FC<BatchTableProps> = ({
                     index % 2 === 0
                       ? 'bg-gray-50 dark:bg-gray-800'
                       : 'bg-white dark:bg-gray-900'
-                  } border-b border-[#FAB400] dark:border-gray-700 [&>*]:px-6 [&>*]:py-4`}
+                  } border-b border-yellow dark:border-gray-700 [&>*]:px-6 [&>*]:py-4`}
                   key={item.payoutDate}
                 >
                   <td className="">
@@ -167,7 +167,7 @@ const StripePayoutTable: FC<BatchTableProps> = ({
                   <td className="">
                     <div className="flex h-10 justify-end">
                       {isSync(item.payoutDate) ? (
-                        <HiCheckCircle className="text-[#FAB400]" size={32} />
+                        <HiCheckCircle className="text-yellow" size={32} />
                       ) : (
                         <button
                           className="mr-2"
@@ -191,7 +191,7 @@ const StripePayoutTable: FC<BatchTableProps> = ({
                   <td className="">
                     <div className="h-10 lg:text-center xl:text-right">
                       <Link
-                        className="p-2 underline text-[#FAB400] font-semibold"
+                        className="p-2 underline text-yellow font-semibold"
                         to={`/transaction/view-page-stripe/${getUnixTime(
                           item.payoutDate
                             ? new Date(item.payoutDate)

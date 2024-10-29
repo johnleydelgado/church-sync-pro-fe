@@ -158,7 +158,7 @@ const DateRange: FC<DateRangeProps> = ({ type }) => {
       <div className="flex justify-between">
         <p className="font-medium text-lg">FILTERS</p>
         <p
-          className="text-yellow-500 underline cursor-pointer"
+          className="text-yellow underline cursor-pointer"
           onClick={handleClearAll}
         >
           Clear All
@@ -201,7 +201,7 @@ const DateRange: FC<DateRangeProps> = ({ type }) => {
                       : new Date()
                   }
                   onChange={(e: any) => handleDateChange(e, 'startDate')}
-                  className="rounded-xl border-yellow-300"
+                  className="rounded-xl border-yellow"
                 />
               </div>
               <div className="flex flex-col gap-2 ">
@@ -216,7 +216,7 @@ const DateRange: FC<DateRangeProps> = ({ type }) => {
                       : new Date()
                   }
                   onChange={(e: any) => handleDateChange(e, 'endDate')}
-                  className="rounded-xl border-yellow-300"
+                  className="rounded-xl border-yellow"
                 />
               </div>
             </div>

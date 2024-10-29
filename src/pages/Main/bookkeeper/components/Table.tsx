@@ -28,7 +28,7 @@ const BookkeeperTableList: FC<TableProps> = ({ data }) => {
   return (
     <div className="relative overflow-x-auto pt-8">
       <table className="w-full text-sm text-left text-gray-500">
-        <thead className="text-xs text-[#FAB400] uppercase bg-white dark:bg-gray-700 border-y-2 border-[#FAB400]">
+        <thead className="text-xs text-yellow uppercase bg-white dark:bg-gray-700 border-y-2 border-yellow">
           <tr className="[&>*]:px-6 [&>*]:py-3">
             <th scope="col" className="">
               Email
@@ -51,7 +51,7 @@ const BookkeeperTableList: FC<TableProps> = ({ data }) => {
                 index % 2 === 0
                   ? 'bg-gray-50 dark:bg-gray-800'
                   : 'bg-white dark:bg-gray-900'
-              } border-b border-[#FAB400] dark:border-gray-700 [&>*]:px-6 [&>*]:py-4`}
+              } border-b border-yellow dark:border-gray-700 [&>*]:px-6 [&>*]:py-4`}
               key={item.id}
             >
               <td className="">
@@ -72,7 +72,7 @@ const BookkeeperTableList: FC<TableProps> = ({ data }) => {
               <td className="">
                 <div className="flex justify-end">
                   <button
-                    className="group hover:bg-[#FAB400] rounded-2xl p-2"
+                    className="group hover:bg-yellow rounded-2xl p-2"
                     onClick={() => openDeleteModal(String(item.id), item.email)}
                   >
                     <AiOutlineDelete

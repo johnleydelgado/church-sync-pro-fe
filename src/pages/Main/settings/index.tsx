@@ -50,7 +50,7 @@ export interface FundProps {
   description: string | ''
 }
 
-export interface BqoDataSelectProps {
+export interface QboDataSelectProps {
   accounts: { value: string; label: string }[]
   classes: { value: string; label: string }[]
   customers: { value: string; label: string }[]
@@ -139,7 +139,7 @@ const Settings: FC<SettingsProps> = () => {
           <div className="flex flex-col border-b-2 pb-2">
             <div className="flex items-center gap-2">
               <MdSettings size={28} className="text-blue-400" />
-              <span className="font-bold text-lg text-[#27A1DB]">Settings</span>
+              <span className="font-bold text-lg text-primary">Settings</span>
             </div>
           </div>
         </div>
@@ -151,7 +151,7 @@ const Settings: FC<SettingsProps> = () => {
           <TabsHeader
             className="bg-transparent w-full md:w-1/2 lg:w-full xl:w-1/2"
             indicatorProps={{
-              className: 'bg-[#FAB400] shadow-none rounded-2xl',
+              className: 'bg-yellow shadow-none rounded-2xl',
             }}
           >
             {categories.map((category, index: number) => (
@@ -238,7 +238,7 @@ const Settings: FC<SettingsProps> = () => {
                       classNames(
                         'flex items-center w-36 justify-center rounded-lg p-2 text-sm font-medium leading-5 text-gray-400',
                         selected
-                          ? 'bg-[#FAB400] shadow text-white'
+                          ? 'bg-yellow shadow text-white'
                           : 'hover:bg-white/[0.12] hover:text-black',
                       )
                     }

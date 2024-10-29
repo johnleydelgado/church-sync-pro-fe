@@ -191,20 +191,18 @@ const Billing: FC<AccountProps> = ({}) => {
             <div className="flex flex-col border-b-2 pb-2">
               <div className="flex items-center gap-2">
                 <MdSettings size={28} className="text-blue-400" />
-                <span className="font-bold text-lg text-[#27A1DB]">
-                  Settings
-                </span>
+                <span className="font-bold text-lg text-primary">Settings</span>
               </div>
             </div>
           </div>
 
           <div className="w-full  flex flex-col bg-white justify-center px-8 mt-2">
             <div className="flex items-center justify-between gap-2 px-4 py-4 w-full ">
-              <p className="text-md text-[#27A1DB]">Billing Contact</p>
+              <p className="text-md text-primary">Billing Contact</p>
               {!billingData && (
                 <Button
                   variant="text"
-                  className="text-[#27A1DB] mr-32 italic font-normal"
+                  className="text-primary mr-32 italic font-normal"
                 >
                   Add
                 </Button>
@@ -216,7 +214,7 @@ const Billing: FC<AccountProps> = ({}) => {
                 <div className="col-span-1 flex justify-end">
                   <Button
                     variant="text"
-                    className="text-[#27A1DB] italic font-normal"
+                    className="text-primary italic font-normal"
                     onClick={() => setIsEdit(true)}
                   >
                     Edit
@@ -333,10 +331,10 @@ const Billing: FC<AccountProps> = ({}) => {
 
             {/* 
           <div className="flex items-center justify-between gap-2 px-4 pt-4 w-full">
-            <p className="text-md text-[#27A1DB]">Payment Information</p>
+            <p className="text-md text-primary">Payment Information</p>
             <Button
               variant="text"
-              className="text-[#27A1DB] mr-32 italic font-normal"
+              className="text-primary mr-32 italic font-normal"
             >
               Edit payment method
             </Button>
@@ -348,10 +346,10 @@ const Billing: FC<AccountProps> = ({}) => {
           </div>
 
           <div className="flex items-center justify-between gap-2 px-4 pt-4 w-full">
-            <p className="text-md text-[#27A1DB]">Subscription plan</p>
+            <p className="text-md text-primary">Subscription plan</p>
             <Button
               variant="text"
-              className="text-[#27A1DB] mr-32 italic font-normal"
+              className="text-primary mr-32 italic font-normal"
             >
               Change plan
             </Button>

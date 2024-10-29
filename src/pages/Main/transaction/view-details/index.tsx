@@ -233,7 +233,7 @@ const ViewDetails: FC<indexProps> = ({}) => {
           <div className="rounded-lg bg-white h-5/6">
             <div className="flex items-center gap-2">
               <BiSync size={28} className="text-blue-400" />
-              <span className="font-bold text-lg text-[#27A1DB]">
+              <span className="font-bold text-lg text-primary">
                 Transaction
               </span>
             </div>
@@ -289,7 +289,7 @@ const ViewDetails: FC<indexProps> = ({}) => {
                       <div className="flex gap-4">
                         <p className="text-[#1b1b1bcc]">Not Sync | </p>
                         <button
-                          className="text-[#27A1DB] flex items-center gap-1"
+                          className="text-primary flex items-center gap-1"
                           onClick={() =>
                             triggerSyncBatch({
                               dataBatch: finalData.batches?.batch,
@@ -315,10 +315,10 @@ const ViewDetails: FC<indexProps> = ({}) => {
 
               {/* Content Header */}
               <div className="">
-                <span className="font-normal text-2xl text-[#FAB400]">
+                <span className="font-normal text-2xl text-yellow">
                   Batch Summary
                 </span>
-                <div className="border-y-[1px] flex justify-between p-8 mt-2 border-[#FAB400] bg-[#D9D9D933]">
+                <div className="border-y-[1px] flex justify-between p-8 mt-2 border-yellow bg-[#D9D9D933]">
                   <div className="flex flex-col gap-2">
                     <p className="font-semibold text-gray-500">Total Amount</p>
                     <p className="font-light text-gray-500">
@@ -370,20 +370,14 @@ const ViewDetails: FC<indexProps> = ({}) => {
 
               {/* BODY */}
               <Table>
-                <Table.Head className="border-b-2 border-[#FAB400]">
-                  <Table.HeadCell className="text-[#FAB400]">
-                    Date
-                  </Table.HeadCell>
-                  <Table.HeadCell className="text-[#FAB400]">
+                <Table.Head className="border-b-2 border-yellow">
+                  <Table.HeadCell className="text-yellow">Date</Table.HeadCell>
+                  <Table.HeadCell className="text-yellow">
                     Amount
                   </Table.HeadCell>
-                  <Table.HeadCell className="text-[#FAB400]">
-                    Donor
-                  </Table.HeadCell>
-                  <Table.HeadCell className="text-[#FAB400]">
-                    Fund
-                  </Table.HeadCell>
-                  <Table.HeadCell className="text-[#FAB400]">
+                  <Table.HeadCell className="text-yellow">Donor</Table.HeadCell>
+                  <Table.HeadCell className="text-yellow">Fund</Table.HeadCell>
+                  <Table.HeadCell className="text-yellow">
                     Payment Method
                   </Table.HeadCell>
                 </Table.Head>
@@ -395,7 +389,7 @@ const ViewDetails: FC<indexProps> = ({}) => {
                           index % 2 === 0
                             ? 'bg-gray-50 dark:bg-gray-800'
                             : 'bg-white dark:bg-gray-900'
-                        } border-b border-[#FAB400] dark:border-gray-700 [&>*]:px-6 [&>*]:py-4`}
+                        } border-b border-yellow dark:border-gray-700 [&>*]:px-6 [&>*]:py-4`}
                         key={item.id}
                       >
                         <Table.Cell className="whitespace-nowrap font-medium dark:text-white">

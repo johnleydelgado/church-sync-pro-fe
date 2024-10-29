@@ -7,7 +7,13 @@ import {
   MdIntegrationInstructions,
   MdManageAccounts,
 } from 'react-icons/md'
-import { BiCreditCard, BiSortDown, BiSync, BiTransfer } from 'react-icons/bi'
+import {
+  BiArchive,
+  BiCreditCard,
+  BiSortDown,
+  BiSync,
+  BiTransfer,
+} from 'react-icons/bi'
 import { AiFillProject, AiOutlineCloudSync, AiFillMail } from 'react-icons/ai'
 import { FiSettings } from 'react-icons/fi'
 import {
@@ -36,6 +42,11 @@ export const dropdownArrLinkAutomation: DropdownLink[] = [
     name: 'Mapping',
     link: mainRoute.AUTOMATION_MAPPING,
     childrenIcon: <BiSortDown size={22} className="ml-2" />,
+  },
+  {
+    name: 'Archive',
+    link: mainRoute.AUTOMATION_ARCHIVE,
+    childrenIcon: <BiArchive size={22} className="ml-2" />,
   },
 ]
 

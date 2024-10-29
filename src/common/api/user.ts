@@ -5,7 +5,12 @@ import { faker } from '@faker-js/faker'
 import { userRoutes } from '../constant/routes-api'
 import { error } from 'console'
 import { resizeFile } from '../utils/image.optimizer'
-import { BankAccountExpensesProps, BankAccountProps } from '@/redux/common'
+import {
+  BankAccountExpensesProps,
+  BankAccountProps,
+  BookkeeperInfo,
+  UserInfo,
+} from '@/redux/common'
 import { BillingData } from '@/pages/Main/settings/component/Billing'
 const { REACT_APP_API_PATH } = process.env
 
@@ -534,6 +539,18 @@ const userUpdate = async ({
   }
 }
 
+const getUserRelatedSettings = async (
+  user: UserInfo,
+  bookkeeper: BookkeeperInfo | null,
+) => {
+  const email =
+    user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
+  if (email) {
+    return await getUserRelated(email)
+  }
+  return []
+}
+
 export {
   updateUser,
   createUser,
@@ -561,4 +578,5 @@ export {
   addUpdateBankCharges,
   crudUserEmailPreferences,
   setStartDataAutomation,
+  getUserRelatedSettings,
 }

@@ -45,11 +45,8 @@ const QuickStartGuide: FC<BookkeeperProps> = ({}) => {
             <div className="flex flex-col border-b-2 pb-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <AiOutlineQuestionCircle
-                    size={48}
-                    className="text-[#FAB400]"
-                  />
-                  <span className="font-bold text-4xl text-[#FAB400]">
+                  <AiOutlineQuestionCircle size={48} className="text-yellow" />
+                  <span className="font-bold text-4xl text-yellow">
                     Quick Start Guide
                   </span>
                 </div>

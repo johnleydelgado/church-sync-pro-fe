@@ -1,8 +1,13 @@
-import { QboGetAllQboData, addProject, updateProject } from '@/common/api/qbo'
+import {
+  QboGetAllQboData,
+  addProject,
+  getQboData,
+  updateProject,
+} from '@/common/api/qbo'
 import { customerInitialValues } from '@/common/constant/formik'
 import { MODALS_NAME } from '@/common/constant/modal'
 import { failNotification, successNotification } from '@/common/utils/toast'
-import { BqoDataSelectProps } from '@/pages/Main/settings'
+import { QboDataSelectProps } from '@/pages/Main/settings'
 import { CLOSE_MODAL } from '@/redux/common'
 import { setProjectFieldValues } from '@/redux/nonPersistState'
 import { RootState, useAppDispatch } from '@/redux/store'
@@ -15,9 +20,8 @@ import {
 } from '@material-tailwind/react'
 import { Spinner } from 'flowbite-react'
 import { useFormik } from 'formik'
-import { isEmpty } from 'lodash'
 
-import React, { FC, Fragment, useEffect, useState } from 'react'
+import { FC, Fragment, useEffect, useMemo, useState } from 'react'
 import { BiPhone } from 'react-icons/bi'
 import { FaTimes } from 'react-icons/fa'
 import { FcContacts } from 'react-icons/fc'
@@ -112,15 +116,10 @@ const ModalCreateUpdateProject: FC<ModalRegistrationProps> = ({ size }) => {
     data: qboData,
     isLoading: isQboDataLoading,
     refetch,
-  } = useQuery<BqoDataSelectProps>(
-    ['getAllQboData', bookkeeper],
-    async () => {
-      const email =
-        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-      console.log('email is:', email)
-      if (email) return await QboGetAllQboData({ email })
-    },
-    { refetchOnWindowFocus: false },
+  } = useQuery(
+    useMemo(() => ['getAllQboData', bookkeeper], [bookkeeper]), // Memoize the key
+    async () => await getQboData(user, bookkeeper),
+    { staleTime: Infinity, refetchOnWindowFocus: false },
   )
 
   const formik = useFormik({
@@ -398,6 +397,7 @@ const ModalCreateUpdateProject: FC<ModalRegistrationProps> = ({ size }) => {
                         ripple
                         checked={isSubCustomer}
                         onChange={(a) => setIsSubCustomer(!isSubCustomer)}
+                        crossOrigin={undefined}
                       />
                     </div>
                     {isSubCustomer ? (
@@ -408,7 +408,8 @@ const ModalCreateUpdateProject: FC<ModalRegistrationProps> = ({ size }) => {
                             value: formik.values.parentRef,
                             label:
                               qboData?.customers.find(
-                                (a) => a.value === formik.values.parentRef,
+                                (a: { value: string }) =>
+                                  a.value === formik.values.parentRef,
                               )?.label || '',
                           }}
                           onChange={(e) =>
@@ -431,6 +432,7 @@ const ModalCreateUpdateProject: FC<ModalRegistrationProps> = ({ size }) => {
                               !formik.values.billWithParent,
                             )
                           }
+                          crossOrigin={undefined}
                         />
                       </div>
                     ) : null}

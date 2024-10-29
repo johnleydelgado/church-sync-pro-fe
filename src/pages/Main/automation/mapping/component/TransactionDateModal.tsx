@@ -193,7 +193,7 @@ const TransactionDateModal: FC<ModalRegistrationProps> = ({
                       onChange={handleDateChange}
                       onCalendarOpen={() => setSelectDateIsFocus(true)}
                       placeholderText="Select date here..."
-                      className="rounded-xl border-yellow-300"
+                      className="rounded-xl border-yellow"
                       popperPlacement="bottom"
                       inline
                     />

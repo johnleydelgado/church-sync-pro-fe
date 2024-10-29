@@ -24,9 +24,11 @@ import {
 import { mainRoute, route, routeSettings } from '@/common/constant/route'
 import {
   AccountTokensPage,
+  AutomationArchivePage,
   AutomationMappingPage,
   DashboardPage,
   SettingsPage,
+  SubscriptionPlanPage,
   TransactionPage,
   TransactionStripeViewDetailsPage,
   TransactionViewDetailsPage,
@@ -59,6 +61,7 @@ import Profile from './Main/settings/component/Profile'
 import Bookkeeper from './Main/settings/component/Bookkeeper'
 import Projects from './Main/settings/component/Projects'
 import Email from './Main/settings/component/Email'
+import BackgroundDataFetcher from '@/common/components/background-caller-api/BackgroundDataFetcher'
 
 interface indexProps {}
 
@@ -173,6 +176,12 @@ const MainPage: FC<indexProps> = () => {
           element={<PrivateRoute Component={ResetPasswordPage} guards={[]} />}
         />
         <Route
+          path={route.SUBSCRIPTION_PLAN}
+          element={
+            <PrivateRoute Component={SubscriptionPlanPage} guards={[]} />
+          }
+        />
+        <Route
           path={route.SECONDARY_LOGIN}
           element={
             <PrivateRoute
@@ -216,6 +225,15 @@ const MainPage: FC<indexProps> = () => {
           element={
             <PrivateRoute
               Component={AutomationMappingPage}
+              guards={[authGuard]}
+            />
+          }
+        />
+        <Route
+          path={mainRoute.AUTOMATION_ARCHIVE}
+          element={
+            <PrivateRoute
+              Component={AutomationArchivePage}
               guards={[authGuard]}
             />
           }

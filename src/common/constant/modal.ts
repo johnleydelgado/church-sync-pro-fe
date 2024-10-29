@@ -11,6 +11,7 @@ const MODALS_NAME = {
   projectCU: 'modal-projectCU',
   addRecipientEmail: 'modal-add-receipt-email',
   hideQuickGuideModal: 'modal-hide-quick-guide',
+  subscriptionModal: 'subscription-modal',
 }
 
 export { MODALS_NAME }

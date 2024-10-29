@@ -195,6 +195,9 @@ export const common = createSlice({
           ? state.openModals.filter((x) => x !== action.payload)
           : state.openModals
     },
+    CLOSE_ALL_MODALS: (state) => {
+      state.openModals = []
+    },
     setThirdPartyTokens: (state, action) => {
       state.thirdPartyTokens = action.payload
     },
@@ -299,6 +302,7 @@ export const common = createSlice({
 export const {
   OPEN_MODAL,
   CLOSE_MODAL,
+  CLOSE_ALL_MODALS,
   setThirdPartyTokens,
   setUserData,
   setSelectedThirdPartyId,

@@ -84,7 +84,7 @@ const Email: FC<AccountProps> = ({}) => {
           <div className="flex flex-col border-b-2 pb-2">
             <div className="flex items-center gap-2">
               <MdSettings size={28} className="text-blue-400" />
-              <span className="font-bold text-lg text-[#27A1DB]">
+              <span className="font-bold text-lg text-primary">
                 Set Recipient Email Settings
               </span>
             </div>
@@ -93,11 +93,11 @@ const Email: FC<AccountProps> = ({}) => {
 
         <div className="w-full  flex flex-col bg-white justify-center px-8 mt-2">
           <div className="flex items-center justify-between gap-2 px-4 pt-4 w-full">
-            <p className="text-md text-[#27A1DB]">New Fund</p>
+            <p className="text-md text-primary">New Fund</p>
             {data?.find((item: ItemType) => item.type === 'new-fund')?.email ? (
               <Button
                 variant="text"
-                className="text-[#27A1DB] mr-32 italic font-normal"
+                className="text-primary mr-32 italic font-normal"
                 onClick={() => openModal('new-fund')}
               >
                 Edit Recipient Email
@@ -105,7 +105,7 @@ const Email: FC<AccountProps> = ({}) => {
             ) : (
               <Button
                 variant="text"
-                className="text-[#27A1DB] mr-32 italic font-normal"
+                className="text-primary mr-32 italic font-normal"
                 onClick={() => openModal('new-fund')}
               >
                 Add Recipient Email for New Fund
@@ -117,7 +117,7 @@ const Email: FC<AccountProps> = ({}) => {
             <div className="grid grid-cols-3 px-4 gap-4 border-b-[1px] py-6 border-[#DDDDDD]">
               <div className="flex gap-3">
                 <p>Email To : </p>
-                <p className="text-md text-[#27A1DB]">
+                <p className="text-md text-primary">
                   {
                     data?.find((item: ItemType) => item.type === 'new-fund')
                       ?.email
@@ -128,12 +128,12 @@ const Email: FC<AccountProps> = ({}) => {
           )}
 
           <div className="flex items-center justify-between gap-2 px-4 pt-4 w-full">
-            <p className="text-md text-[#27A1DB]">New Registration</p>
+            <p className="text-md text-primary">New Registration</p>
             {data?.find((item: ItemType) => item.type === 'new-registration')
               ?.email ? (
               <Button
                 variant="text"
-                className="text-[#27A1DB] mr-32 italic font-normal"
+                className="text-primary mr-32 italic font-normal"
                 onClick={() => openModal('new-registration')}
               >
                 Edit Recipient Email
@@ -141,7 +141,7 @@ const Email: FC<AccountProps> = ({}) => {
             ) : (
               <Button
                 variant="text"
-                className="text-[#27A1DB] mr-32 italic font-normal"
+                className="text-primary mr-32 italic font-normal"
                 onClick={() => openModal('new-registration')}
               >
                 Add Recipient Email for New Registration
@@ -154,7 +154,7 @@ const Email: FC<AccountProps> = ({}) => {
             <div className="grid grid-cols-3 px-4 gap-4 border-b-[1px] py-6 border-[#DDDDDD]">
               <div className="flex gap-3">
                 <p>Email To : </p>
-                <p className="text-md text-[#27A1DB]">
+                <p className="text-md text-primary">
                   {
                     data?.find(
                       (item: ItemType) => item.type === 'new-registration',

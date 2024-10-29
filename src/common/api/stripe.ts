@@ -3,6 +3,7 @@
 import axios from 'axios'
 import { stripeRoutes } from '../constant/routes-api'
 import { BankAccountProps } from '@/redux/common'
+import { StripeCardElement } from '@stripe/stripe-js'
 const { REACT_APP_API_PATH } = process.env
 
 const apiCall = axios.create({
@@ -113,9 +114,44 @@ const finalSyncStripe = async ({ ...rest }: { data: any }) => {
   }
 }
 
+const getStripeList = async ({ ...rest }: { email: string }) => {
+  // await axios.get
+  const url = stripeRoutes.getStripeList
+  const data = JSON.stringify({ ...rest })
+
+  try {
+    const response = await apiCall.post(url, data)
+    return response.data
+  } catch (e: any) {
+    return e.response.data
+  }
+}
+
+const createPaymentIntent = async ({
+  ...rest
+}: {
+  email: string
+  amount: string
+  paymentType: string
+  paymentMethodId: string
+}) => {
+  // await axios.get
+  const url = stripeRoutes.createPaymentIntent
+  const data = JSON.stringify({ ...rest })
+
+  try {
+    const response = await apiCall.post(url, data)
+    return response.data
+  } catch (e: any) {
+    return e.response.data
+  }
+}
+
 export {
   getStripePayouts,
   syncStripePayout,
   syncStripePayoutRegistration,
   finalSyncStripe,
+  getStripeList,
+  createPaymentIntent,
 }

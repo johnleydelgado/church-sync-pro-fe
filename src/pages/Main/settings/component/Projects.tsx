@@ -1,4 +1,4 @@
-import React, { FC, useEffect, useRef, useState } from 'react'
+import React, { FC, useEffect, useMemo, useRef, useState } from 'react'
 
 import { useSelector } from 'react-redux'
 import { RootState } from '@/redux/store'
@@ -28,13 +28,13 @@ import {
 } from '@/redux/nonPersistState'
 import MainLayout from '@/common/components/main-layout/MainLayout'
 import { MdSettings } from 'react-icons/md'
-import { BqoDataSelectProps } from '../../automation/mapping/Mapping'
-import { QboGetAllQboData, findCustomers } from '@/common/api/qbo'
+import { QboGetAllQboData, findCustomers, getQboData } from '@/common/api/qbo'
 import { BiChevronLeft, BiChevronRight } from 'react-icons/bi'
 import ModalCreateUpdateProject from '@/common/components/modal/ModalCreateUpdateProject'
 import Loading from '@/common/components/loading/Loading'
 import { CustomerProps } from '@/common/constant/formik'
 import DeleteModal from '../modal/DeleteModal'
+import { QboDataSelectProps } from '../../automation/mapping'
 
 interface AccountProps {}
 
@@ -108,17 +108,9 @@ const Projects: FC<AccountProps> = ({}) => {
     data: qboData,
     isLoading: isQboDataLoading,
     refetch: refetchQboData,
-  } = useQuery<BqoDataSelectProps>(
-    ['getAllQboData', bookkeeper],
-    async () => {
-      const email =
-        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-      console.log('aa', email)
-      if (email)
-        return await QboGetAllQboData({
-          email: email,
-        })
-    },
+  } = useQuery<QboDataSelectProps>(
+    useMemo(() => ['getAllQboData', bookkeeper], [bookkeeper]), // Memoize the key
+    async () => await getQboData(user, bookkeeper),
     { staleTime: Infinity, refetchOnWindowFocus: false },
   )
 
@@ -219,7 +211,7 @@ const Projects: FC<AccountProps> = ({}) => {
           <div className="flex flex-col border-b-2 pb-2">
             <div className="flex items-center gap-2">
               <MdSettings size={28} className="text-blue-400" />
-              <span className="font-bold text-lg text-[#27A1DB]">Settings</span>
+              <span className="font-bold text-lg text-primary">Settings</span>
             </div>
           </div>
         </div>
@@ -239,6 +231,7 @@ const Projects: FC<AccountProps> = ({}) => {
                     setSearchTerm(e.target.value) // Update search term
                     setCurrentPage(1) // Reset to first page on search change
                   }}
+                  crossOrigin={undefined}
                 />
               </div>
 
@@ -248,7 +241,7 @@ const Projects: FC<AccountProps> = ({}) => {
                 onClick={handleCreateProjectSelection}
                 disabled={data ? (data?.length > 3 ? true : false) : false}
               >
-                <AiOutlineUserAdd size={18} className="text-[#FAB400]" />
+                <AiOutlineUserAdd size={18} className="text-yellow" />
                 Add new project
               </Button>
             </div>
@@ -257,7 +250,7 @@ const Projects: FC<AccountProps> = ({}) => {
                 <div key={a.value}>
                   <div className="flex items-center justify-between gap-2 px-4 pt-4 w-full">
                     <div className="flex flex-col">
-                      <p className="text-md text-[#27A1DB]">{a.label}</p>
+                      <p className="text-md text-primary">{a.label}</p>
                       <p className="text-md text-gray-400">
                         {a.companyName || 'N/A'}
                       </p>

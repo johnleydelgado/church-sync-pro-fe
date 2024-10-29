@@ -40,6 +40,7 @@ import { mainRoute } from '@/common/constant/route'
 import { IoMdImages } from 'react-icons/io'
 import { MODALS_NAME } from '@/common/constant/modal'
 import HideQuickGuideModal from '../modal/HideQuickGuideModal'
+import colors from '@/common/constant/colors'
 
 interface SideBarProps {
   isTrigger: boolean
@@ -182,8 +183,8 @@ function Accordion({
               return (
                 <Link to={`${item.link}`} className="block" key={item.name}>
                   <div
-                    className={`mt-4 gap-4 flex hover:bg-[#FFC107]  cursor-pointer rounded-md text-left text-slate-400 p-2 items-center ${
-                      route.pathname === item.link ? 'bg-[#FFC107]' : ''
+                    className={`mt-4 gap-4 flex hover:bg-secondaryYellow  cursor-pointer rounded-md text-left text-slate-400 p-2 items-center ${
+                      route.pathname === item.link ? 'bg-secondaryYellow' : ''
                     } ${isTrigger ? 'mr-8' : ''}`}
                   >
                     {item.childrenIcon || null}
@@ -228,8 +229,8 @@ const ItemSideBar = ({
       ) : isHide ? null : isTrigger ? (
         <a
           className={`flex gap-x-4 items-center p-2 transition transform hover:text-primary
-       duration-100 hover:bg-[#FFC107] rounded-md ${
-         pathName?.includes(link || '') ? 'bg-[#FFC107]' : ''
+       duration-100 hover:bg-secondaryYellow rounded-md ${
+         pathName?.includes(link || '') ? 'bg-secondaryYellow' : ''
        }`}
           href={link}
         >
@@ -238,8 +239,10 @@ const ItemSideBar = ({
       ) : link === mainRoute.QUICK_START_QUIDE ? (
         <a
           className={`flex items-center px-4 py-2 transition transform hover:text-primary
-   duration-100 hover:bg-[#FFC107] ${
-     pathName?.includes(link || '') ? 'bg-[#FFC107] justify-between' : 'gap-x-4'
+   duration-100 hover:bg-secondaryYellow ${
+     pathName?.includes(link || '')
+       ? 'bg-secondaryYellow justify-between'
+       : 'gap-x-4'
    } rounded-md`}
           href={link}
         >
@@ -261,8 +264,8 @@ const ItemSideBar = ({
       ) : (
         <a
           className={`flex gap-x-4 items-center px-4 py-2 transition transform hover:text-primary
-       duration-100 hover:bg-[#FFC107] ${
-         pathName?.includes(link || '') ? 'bg-[#FFC107]' : ''
+       duration-100 hover:bg-secondaryYellow ${
+         pathName?.includes(link || '') ? 'bg-secondaryYellow' : ''
        } rounded-md`}
           href={link}
         >
@@ -378,7 +381,7 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
           <HideQuickGuideModal />
           <div className="min-h-screen h-full bg-primary sm:flex flex-col gap-2 overflow-y-custom">
             <div
-              className={`hidden absolute top-10 right-0 bg-[#FFC107] rounded-lg h-8 w-8 items-center justify-center cursor-pointer transform transition translate-x-[50%] hover:scale-125 sm:flex ${
+              className={`hidden absolute top-10 right-0 bg-secondaryYellow rounded-lg h-8 w-8 items-center justify-center cursor-pointer transform transition translate-x-[50%] hover:scale-125 sm:flex ${
                 !isTrigger ? '' : 'rotate-180'
               }`}
               onClick={() => setIsTrigger(!isTrigger)}
@@ -489,8 +492,10 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
               <div className="flex flex-col">
                 <Link
                   to={mainRoute.ASK_US}
-                  className={`mt-auto transition transform duration-100 hover:bg-[#FFC107] hover:text-primary text-white bg-[${
-                    location.pathname === '/ask-us' ? '#FFC107' : ''
+                  className={`mt-auto transition transform duration-100 hover:bg-secondaryYellow hover:text-primary text-white bg-[${
+                    location.pathname === '/ask-us'
+                      ? colors.secondaryYellow
+                      : ''
                   }]`}
                 >
                   <div className="flex gap-x-8  p-8 items-center">
@@ -501,7 +506,7 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
                   </div>
                 </Link>
                 <button
-                  className="mt-auto transition transform duration-100 hover:bg-[#FFC107] hover:text-primary text-white"
+                  className="mt-auto transition transform duration-100 hover:bg-secondaryYellow hover:text-primary text-white"
                   onClick={handleLogout}
                 >
                   <div className="flex gap-x-8  p-8 items-center">
@@ -516,8 +521,10 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
               <div className="flex flex-col justify-end h-full">
                 <Link
                   to={mainRoute.ASK_US}
-                  className={`group transition transform duration-100 hover:bg-[#FFC107] hover:text-primary text-white bg-[${
-                    location.pathname === '/ask-us' ? '#FFC107' : ''
+                  className={`group transition transform duration-100 hover:bg-secondaryYellow hover:text-primary text-white bg-[${
+                    location.pathname === '/ask-us'
+                      ? colors.secondaryYellow
+                      : ''
                   }]`}
                 >
                   <div className="flex gap-x-8  p-8 py-4 items-center">
@@ -529,7 +536,7 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
                   </div>
                 </Link>
                 <button
-                  className="group transition transform duration-100 hover:bg-[#FFC107] hover:text-primary text-white"
+                  className="group transition transform duration-100 hover:bg-secondaryYellow hover:text-primary text-white"
                   onClick={handleLogout}
                 >
                   <div className="flex gap-x-8  p-8 py-4 pb-8 items-center">

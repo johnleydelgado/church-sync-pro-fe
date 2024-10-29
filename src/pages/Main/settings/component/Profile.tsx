@@ -51,6 +51,7 @@ const TextInput = ({
         onChange={onChange}
         variant="outlined"
         label={title}
+        crossOrigin={undefined}
       />
       {error ? <p className="text-red-600">{error}</p> : null}
     </div>
@@ -139,25 +140,25 @@ const Profile: FC<AccountProps> = ({}) => {
           <div className="flex flex-col border-b-2 pb-2">
             <div className="flex items-center gap-2">
               <MdSettings size={28} className="text-blue-400" />
-              <span className="font-bold text-lg text-[#27A1DB]">Settings</span>
+              <span className="font-bold text-lg text-primary">Settings</span>
             </div>
           </div>
         </div>
         <div className="w-full  flex flex-col bg-white justify-center mt-2">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 md:p-4 sm:w-3/6 md:w-3/6 lg:w-full xl:w-1/2  w-full">
-            <p className="text-4xl font-bold text-[#27A1DB]">Profile</p>
+            <p className="text-4xl font-bold text-primary">Profile</p>
             <div>
               {isEditing ? (
                 <div className="flex gap-4">
                   <Button
                     variant="outlined"
-                    className="border-[#FAB400] text-[#FAB400] rounded-full"
+                    className="border-yellow text-yellow rounded-full"
                     onClick={() => setIsEditing(false)}
                   >
                     Cancel
                   </Button>
                   <Button
-                    className="bg-[#FAB400] rounded-full"
+                    className="bg-yellow rounded-full"
                     onClick={() => formik.handleSubmit()}
                   >
                     <div className="flex gap-4 items-center">
@@ -169,7 +170,7 @@ const Profile: FC<AccountProps> = ({}) => {
               ) : (
                 <Button
                   variant="text"
-                  className="text-[#27A1DB] italic"
+                  className="text-primary italic"
                   onClick={() => setIsEditing(true)}
                 >
                   Edit
@@ -209,7 +210,7 @@ const Profile: FC<AccountProps> = ({}) => {
 
                     <label
                       htmlFor="file"
-                      className="cursor-pointer text-[#27A1DB]"
+                      className="cursor-pointer text-primary"
                     >
                       <span id="upload-photo-text">Upload Photo</span>
                     </label>
@@ -227,7 +228,7 @@ const Profile: FC<AccountProps> = ({}) => {
           </div>
 
           <div className="flex flex-col gap-4 md:pl-10 border-b-[1px] pb-4">
-            <p className="text-[#27A1DB] text-lg">Personal Information</p>
+            <p className="text-primary text-lg">Personal Information</p>
 
             <TextInput
               title="First Name"
@@ -269,7 +270,7 @@ const Profile: FC<AccountProps> = ({}) => {
           </div>
 
           <div className="pl-6">
-            <p className="text-[#27A1DB] text-lg pt-6">Quick start settings</p>
+            <p className="text-primary text-lg pt-6">Quick start settings</p>
 
             <Checkbox
               id="1"
@@ -282,6 +283,7 @@ const Profile: FC<AccountProps> = ({}) => {
               ripple
               checked={isQuickStartHide}
               onChange={(a) => dispatch(setIsQuickStartHide(!isQuickStartHide))}
+              crossOrigin={undefined}
             />
           </div>
         </div>
