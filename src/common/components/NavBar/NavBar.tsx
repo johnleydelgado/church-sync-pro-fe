@@ -7,7 +7,7 @@ import { Drawer, IconButton, Navbar } from '@material-tailwind/react'
 import { isEmpty } from 'lodash'
 import React, { FC, ReactNode, useEffect, useState } from 'react'
 import { HiOutlineLogout, HiOutlineUserCircle } from 'react-icons/hi'
-import { useQuery } from 'react-query'
+import { useQueries, useQuery } from 'react-query'
 import { useDispatch } from 'react-redux'
 import { useSelector } from 'react-redux'
 import { useMediaQuery } from 'react-responsive'
@@ -19,6 +19,7 @@ import { BiHelpCircle, BiSortDown } from 'react-icons/bi'
 import { FaChevronDown, FaChevronUp, FaTimes } from 'react-icons/fa'
 import pages, { DropdownLink } from '../SideBar/constant'
 import colors from '@/common/constant/colors'
+import { useBookkeeperListSidebar } from '@/common/hooks/useQueries'
 interface NavBarProps {}
 
 const Input = (props: any) => (
@@ -138,16 +139,7 @@ const NavBar: FC<NavBarProps> = () => {
 
   const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
 
-  const { data } = useQuery(
-    ['bookkeeperListSidebar', role],
-    async () => {
-      if (id && role === 'bookkeeper') {
-        const res = await bookkeeperList({ bookkeeperId: id })
-        return res.data
-      }
-    },
-    { staleTime: Infinity },
-  )
+  const { data = [] } = useBookkeeperListSidebar(id, role)
   const [organizationList, setOrginazationList] = useState([
     { value: '', label: '' },
   ])
@@ -164,19 +156,20 @@ const NavBar: FC<NavBarProps> = () => {
 
   useEffect(() => {
     if (!isEmpty(data)) {
-      const temp = data?.map((a: any) => {
-        return {
-          value: String(a.Client.email) || '',
-          label: a.Client.churchName,
-          clientId: a.Client.id,
-          bookkeeperIntegrationAccessEnabled:
-            a.bookkeeperIntegrationAccessEnabled,
-        }
-      })
+      // Mapping data to `temp`
+      const temp = data.map((a) => ({
+        value: String(a.Client.email) || '',
+        label: a.Client.churchName,
+        clientId: a.Client.id,
+        bookkeeperIntegrationAccessEnabled:
+          a.bookkeeperIntegrationAccessEnabled,
+      }))
 
       if (!isEmpty(temp)) {
-        setOrginazationList(temp || [])
-        if (!bookkeeper?.churchName) {
+        setOrginazationList(temp)
+
+        // Check if temp[0] exists before accessing its properties
+        if (!bookkeeper?.churchName && temp[0]) {
           dispatch(
             setBookkeeper({
               clientEmail: temp[0].value,
@@ -189,7 +182,7 @@ const NavBar: FC<NavBarProps> = () => {
         }
       }
     }
-  }, [data])
+  }, [data, bookkeeper, dispatch, setOrginazationList])
 
   return (
     <React.Fragment>

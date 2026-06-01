@@ -27,6 +27,7 @@ export interface BookkeeperInfo {
   clientId?: number
   churchName: string
   bookkeeperIntegrationAccessEnabled?: boolean
+  role?: string
 }
 
 interface transactionDateProps {
@@ -49,6 +50,11 @@ export interface BankAccountExpensesProps {
     value: string
     label: string
   }
+}
+
+export interface SelectedClient {
+  clientEmail: string
+  clientId?: number
 }
 
 interface DateRangeTransactionProps {
@@ -108,6 +114,8 @@ interface CommonState {
   stripeCurrentData: any
   stripeCurrentPage: number
   dateRangeTransaction: DateRangeTransactionProps[]
+  integrationTo: 'client' | 'bookkeeper'
+  selectdClient: SelectedClient
 }
 
 const initialState: CommonState = {
@@ -167,6 +175,11 @@ const initialState: CommonState = {
       type: 'batch',
     },
   ],
+  integrationTo: 'client',
+  selectdClient: {
+    clientEmail: '',
+    clientId: 0,
+  },
 }
 
 export const common = createSlice({
@@ -295,6 +308,15 @@ export const common = createSlice({
     ) => {
       state.dateRangeTransaction = action.payload
     },
+    setIntegrationTo: (
+      state,
+      action: PayloadAction<'client' | 'bookkeeper'>,
+    ) => {
+      state.integrationTo = action.payload
+    },
+    setSelectedClient: (state, action: PayloadAction<SelectedClient>) => {
+      state.selectdClient = action.payload
+    },
   },
 })
 
@@ -325,6 +347,8 @@ export const {
   setStripeCurrentData,
   setStripeCurrentPage,
   setDateRangeTransaction,
+  setIntegrationTo,
+  setSelectedClient,
 } = common.actions
 
 export default common.reducer

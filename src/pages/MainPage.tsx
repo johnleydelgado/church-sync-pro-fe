@@ -26,6 +26,7 @@ import {
   AccountTokensPage,
   AutomationArchivePage,
   AutomationMappingPage,
+  ClientManagementPage,
   DashboardPage,
   SettingsPage,
   SubscriptionPlanPage,
@@ -270,6 +271,15 @@ const MainPage: FC<indexProps> = () => {
           element={
             <PrivateRoute
               Component={TransactionStripeViewDetailsPage}
+              guards={[authGuard]}
+            />
+          }
+        />
+        <Route
+          path={mainRoute.CLIENT_LIST}
+          element={
+            <PrivateRoute
+              Component={ClientManagementPage}
               guards={[authGuard]}
             />
           }

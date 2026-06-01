@@ -1,46 +1,78 @@
-# Getting Started with Create React App
+# Church Sync Pro — Web Client
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Frontend for **Church Sync Pro**, a SaaS tool that syncs church giving data between **Planning Center (PCO)**, **QuickBooks Online (QBO)**, and **Stripe**. Built with Create React App (via CRACO), TypeScript, Redux, and react-query.
 
-## Available Scripts
+> This is the frontend only. It talks to the **backend API** (`church-sync-pro-be`, the `quickplan-connect` repo) over REST at `REACT_APP_API_PATH`. Run the backend alongside this app for anything beyond static pages.
 
-In the project directory, you can run:
+## Tech stack
 
-### `npm start`
+- **React 18** + TypeScript, bootstrapped with CRA and customized via **CRACO** (`craco.config.js`)
+- **Redux Toolkit** + `redux-persist` for client/UI state, **react-query** for server data
+- **SuperTokens** (`supertokens-web-js`) for authentication/sessions
+- **Stripe** (`@stripe/react-stripe-js`) for subscription billing
+- **Tailwind CSS** + Material Tailwind + Flowbite + Headless UI; `react-toastify` for toasts
+- **react-dnd** for the automation mapping drag-and-drop UI
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+## Getting started
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+Requirements: Node (see the backend's `.nvmrc`, v18), npm.
 
-### `npm test`
+```bash
+npm install
+npm start          # or `npm run dev` — dev server on http://localhost:3000
+```
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+The dev server reads `.env.development`, which points at the backend on `http://localhost:8080`. Start the backend first (see its README).
 
-### `npm run build`
+### Scripts
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+```bash
+npm start          # run dev server (CRACO)
+npm run build      # production build to ./build
+npm test           # test runner (Jest watch mode)
+npm run lint:fix   # eslint --fix across the repo
+```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## Environment
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+CRA-style `REACT_APP_*` variables, one file per environment (`.env.development`, `.env.staging`, `.env.production`):
 
-### `npm run eject`
+| Variable | Purpose |
+| --- | --- |
+| `REACT_APP_NAME_PROJECT` | App name; also namespaces localStorage keys |
+| `REACT_APP_HOST_BE` | Backend host (e.g. `http://localhost:8080`) |
+| `REACT_APP_API_PATH` | API base URL (e.g. `http://localhost:8080/csp/`) |
+| `REACT_APP_GOOGLE_CALLBACK_URL` | Google OAuth callback |
+| `REACT_APP_STRIPE_PUB_KEY` | Stripe publishable key |
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+## Project structure
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+```
+src/
+  App.tsx                 # providers (Redux, react-query, SuperTokens, Stripe, DnD)
+  pages/
+    MainPage.tsx          # declares ALL routes (public + private)
+    Auth/                 # login, signup, password reset
+    Main/                 # transaction, automation, client, settings, dashboard, ...
+    Subscription/         # Stripe plan page
+  common/
+    api/                  # axios calls per domain (user, qbo, stripe, planning-center)
+    components/           # shared UI incl. PrivateRoute, BackgroundDataFetcher
+    constant/             # route + API-path + modal constants
+    hooks/                # react-query wrappers
+    utils/                # storage (localStorage tokens), route guards
+  redux/                  # store + slices (common, qboData, stripeData, nonPersistState)
+```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+Key conventions: imports use the `@/` → `src/` alias; Prettier is configured with **no semicolons** and single quotes; routes are added in `src/pages/MainPage.tsx` using the `PrivateRoute` + guard system. See `CLAUDE.md` for the detailed architecture notes.
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+## Deployment
 
-## Learn More
+Dockerized and deployed to Google Cloud Run via the `Makefile`:
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+```bash
+make deploy-stg    # staging  (service csp-fe)
+make deploy-prd    # production (service csp-fe-prd)
+```
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+Both target GCP project `church-sync-pro-385703` in `us-central1`; env vars are injected from `.env.staging` / `.env.production` at deploy time.

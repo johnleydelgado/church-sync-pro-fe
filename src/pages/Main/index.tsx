@@ -8,6 +8,7 @@ import InviteLinkPage from './invite-link/InviteLink'
 import AutomationMappingPage from './automation/mapping'
 import AutomationArchivePage from './automation/archive'
 import SubscriptionPlanPage from '../Subscription/plan'
+import ClientManagementPage from '../Main/client'
 
 export {
   TransactionPage,
@@ -20,4 +21,5 @@ export {
   AutomationMappingPage,
   AutomationArchivePage,
   SubscriptionPlanPage,
+  ClientManagementPage,
 }

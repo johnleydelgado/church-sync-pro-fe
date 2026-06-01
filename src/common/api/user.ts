@@ -14,6 +14,11 @@ import {
 import { BillingData } from '@/pages/Main/settings/component/Billing'
 const { REACT_APP_API_PATH } = process.env
 
+interface ToggleUserActiveStatusParams {
+  userId: number
+  isActive: boolean
+}
+
 export interface UserProps {
   churchName?: string
   firstName?: string
@@ -346,9 +351,19 @@ const sendEmailInvitation = async (
   name: string,
   email: string,
   clientId: number,
+  createdByBk = false,
+  bookkeeperId?: number | undefined,
 ) => {
   const url = userRoutes.sendEmailInvitation
-  const data = JSON.stringify({ name, emailTo: email, clientId })
+
+  // Conditionally include bookkeeperId if it exists
+  const data = JSON.stringify({
+    name,
+    emailTo: email,
+    clientId,
+    createdByBk,
+    ...(bookkeeperId ? { bookkeeperId } : {}), // Add bookkeeperId if it is defined
+  })
 
   try {
     const response = await apiCall.post(url, data)
@@ -551,6 +566,30 @@ const getUserRelatedSettings = async (
   return []
 }
 
+/**
+ * Calls the toggleUserActiveStatus API to update the isActive status of a user.
+ * @param {ToggleUserActiveStatusParams} params - The userId and isActive status.
+ * @returns {Promise<any>} - API response or null in case of error.
+ */
+const toggleUserActiveStatusApi = async ({
+  userId,
+  isActive,
+}: ToggleUserActiveStatusParams) => {
+  const url = userRoutes.toggleUserActiveStatus // Define the API endpoint in your route constants
+  const data = JSON.stringify({ userId, isActive })
+
+  try {
+    if (userId && typeof isActive === 'boolean') {
+      const response = await apiCall.post(url, data)
+      return response.data
+    }
+    return null
+  } catch (e: any) {
+    console.error('Error calling toggleUserActiveStatus API:', e.message)
+    return null
+  }
+}
+
 export {
   updateUser,
   createUser,
@@ -579,4 +618,5 @@ export {
   crudUserEmailPreferences,
   setStartDataAutomation,
   getUserRelatedSettings,
+  toggleUserActiveStatusApi,
 }

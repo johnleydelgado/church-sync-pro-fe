@@ -41,6 +41,7 @@ import { IoMdImages } from 'react-icons/io'
 import { MODALS_NAME } from '@/common/constant/modal'
 import HideQuickGuideModal from '../modal/HideQuickGuideModal'
 import colors from '@/common/constant/colors'
+import { useBookkeeperListSidebar } from '@/common/hooks/useQueries'
 
 interface SideBarProps {
   isTrigger: boolean
@@ -302,16 +303,9 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
   )
 
   const dispatch = useDispatch()
-  const { data, refetch } = useQuery(
-    ['bookkeeperListSidebar', role],
-    async () => {
-      if (id && role === 'bookkeeper') {
-        const res = await bookkeeperList({ bookkeeperId: id })
-        return res.data
-      }
-    },
-    { staleTime: Infinity },
-  )
+
+  const { data = [] } = useBookkeeperListSidebar(id, role)
+
   // useEffect(() => {
   //   setIsTrigger(() => isTabletOrMobile)
   // }, [isTabletOrMobile, setIsTrigger])
@@ -338,19 +332,20 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
 
   useEffect(() => {
     if (!isEmpty(data)) {
-      const temp = data?.map((a: any) => {
-        return {
-          value: String(a.Client.email) || '',
-          label: a.Client.churchName,
-          clientId: a.Client.id,
-          bookkeeperIntegrationAccessEnabled:
-            a.bookkeeperIntegrationAccessEnabled,
-        }
-      })
+      // Map over data to create the `temp` array with specific types
+      const temp = data.map((a) => ({
+        value: String(a.Client.email) || '',
+        label: a.Client.churchName || '',
+        clientId: a.Client.id,
+        bookkeeperIntegrationAccessEnabled:
+          a.bookkeeperIntegrationAccessEnabled,
+      }))
 
       if (!isEmpty(temp)) {
-        setOrginazationList(temp || [])
-        if (!bookkeeper?.churchName) {
+        setOrginazationList(temp)
+
+        // Check if `temp[0]` exists and if `bookkeeper?.churchName` is undefined
+        if (!bookkeeper?.churchName && temp[0]) {
           dispatch(
             setBookkeeper({
               clientEmail: temp[0].value,
@@ -363,7 +358,7 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
         }
       }
     }
-  }, [data])
+  }, [data, bookkeeper, dispatch, setOrginazationList])
 
   return (
     <>
@@ -482,6 +477,7 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
                   isHide={
                     (el.name === 'Bookkeepers' &&
                       userData.role === 'bookkeeper') ||
+                    (el.name === 'Clients' && userData.role === 'client') ||
                     (isQuickStartHide && el.link === '/quick-start-guide')
                   }
                   role={role}

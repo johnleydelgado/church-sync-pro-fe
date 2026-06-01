@@ -12,6 +12,8 @@ const MODALS_NAME = {
   addRecipientEmail: 'modal-add-receipt-email',
   hideQuickGuideModal: 'modal-hide-quick-guide',
   subscriptionModal: 'subscription-modal',
+  modalClientRegistration: 'modal-client-registration',
+  modalConfirmDeactivation: 'modal-confirm-deactivation',
 }
 
 export { MODALS_NAME }

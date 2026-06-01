@@ -62,6 +62,7 @@ export interface UserSettingsProps {
   role: string // User's role
   token: string | null // Nullable token
   img_url: string // Image URL
+  isActive: boolean // Boolean for activity status
   createdAt: string // Created at timestamp
   updatedAt: string // Updated at timestamp
   UserBookkeepers: any[] // Any type for an empty array

@@ -27,6 +27,7 @@ export const mainRoute = {
   AUTOMATION: '/automation',
   AUTOMATION_MAPPING: '/automation/mapping',
   AUTOMATION_ARCHIVE: '/automation/archive',
+  CLIENT_LIST: '/client-management/client-list',
 }
 
 export const routeSettings = {

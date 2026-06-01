@@ -41,6 +41,7 @@ const userRoutes = {
   updateInvitationStatus: '/user/updateInvitationStatus',
   bookkeeperList: '/user/bookkeeperList',
   userUpdate: '/user/userUpdate',
+  toggleUserActiveStatus: '/user/toggleUserActiveStatus',
   addUpdateBankSettings: '/user/addUpdateBankSettings',
   addUpdateBilling: '/user/addUpdateBilling',
   viewBilling: '/user/viewBilling',

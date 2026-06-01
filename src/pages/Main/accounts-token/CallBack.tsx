@@ -1,8 +1,11 @@
+import { updateUserToken } from '@/common/api/user'
 import Loading from '@/common/components/loading/Loading'
 import { mainRoute, routeSettings } from '@/common/constant/route'
 import { setAccountState } from '@/redux/common'
+import { RootState } from '@/redux/store'
 import axios from 'axios'
 import React, { FC, useCallback, useEffect, useRef, useState } from 'react'
+import { useSelector } from 'react-redux'
 import { useDispatch } from 'react-redux'
 import { useNavigate } from 'react-router'
 
@@ -14,6 +17,10 @@ const CallBack: FC<CallBackProps> = ({}) => {
   const navigate = useNavigate()
   const [loading, setLoading] = useState<boolean>(false)
   const dispatch = useDispatch()
+  const { role } = useSelector((state: RootState) => state.common.user)
+  const { clientEmail, clientId } = useSelector(
+    (state: RootState) => state.common.selectdClient,
+  )
 
   const loadQbo = useCallback(async () => {
     const url = window.location.href
@@ -26,7 +33,7 @@ const CallBack: FC<CallBackProps> = ({}) => {
           url,
         })
         const { access_token, refresh_token, tokenJwt } = res.data
-        if (access_token) {
+        if (access_token && role === 'client') {
           dispatch(
             setAccountState({
               type: 'qbo',
@@ -36,6 +43,26 @@ const CallBack: FC<CallBackProps> = ({}) => {
             }),
           )
           navigate(routeSettings.INTEGRATIONS)
+        } else {
+          const tokenObject = {
+            email: clientEmail,
+            token_type: 'qbo',
+            access_token,
+            refresh_token,
+            realm_id: realmId,
+            userId: clientId,
+          }
+
+          const res = await updateUserToken({
+            ...tokenObject,
+          })
+
+          if (res) {
+            //
+          } else {
+            // failNotification({ title: res.message })
+          }
+          navigate(mainRoute.CLIENT_LIST)
         }
       } catch (e: any) {
         console.log(e)
@@ -58,13 +85,31 @@ const CallBack: FC<CallBackProps> = ({}) => {
         const res = await axios.post(`${REACT_APP_API_PATH}callBackPC`, {
           code: hasCode,
         })
-
         const { access_token, refresh_token, tokenJwt } = res.data
-        if (access_token) {
+        if (access_token && role === 'client') {
           dispatch(
             setAccountState({ type: 'pco', access_token, refresh_token }),
           )
           navigate(routeSettings.INTEGRATIONS)
+        } else {
+          const tokenObject = {
+            email: clientEmail,
+            token_type: 'pco',
+            access_token,
+            refresh_token,
+            userId: clientId,
+          }
+
+          const res = await updateUserToken({
+            ...tokenObject,
+          })
+
+          if (res) {
+            //
+          } else {
+            // failNotification({ title: res.message })
+          }
+          navigate(mainRoute.CLIENT_LIST)
         }
       } catch (e: any) {
         console.log(e)
@@ -87,11 +132,30 @@ const CallBack: FC<CallBackProps> = ({}) => {
           code: hasCode,
         })
         const { access_token, refresh_token, tokenJwt } = res.data
-        if (access_token) {
+        if (access_token && role === 'client') {
           dispatch(
             setAccountState({ type: 'stripe', access_token, refresh_token }),
           )
           navigate(routeSettings.INTEGRATIONS)
+        } else {
+          const tokenObject = {
+            email: clientEmail,
+            token_type: 'stripe',
+            access_token,
+            refresh_token,
+            userId: clientId,
+          }
+
+          const res = await updateUserToken({
+            ...tokenObject,
+          })
+
+          if (res) {
+            //
+          } else {
+            // failNotification({ title: res.message })
+          }
+          navigate(mainRoute.CLIENT_LIST)
         }
       } catch (e: any) {
         console.log(e)

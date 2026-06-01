@@ -15,7 +15,7 @@ import {
   BiTransfer,
 } from 'react-icons/bi'
 import { AiFillProject, AiOutlineCloudSync, AiFillMail } from 'react-icons/ai'
-import { FiSettings } from 'react-icons/fi'
+import { FiSettings, FiUsers } from 'react-icons/fi'
 import {
   authGuardHaveToken,
   authGuardHaveSettings,
@@ -83,6 +83,24 @@ export const dropdownArrLinkSettings: DropdownLink[] = [
   },
 ]
 
+export const dropdownArrLinkClients: DropdownLink[] = [
+  {
+    name: 'Client List',
+    link: routeSettings.ACCOUNT_DATA,
+    childrenIcon: <MdAccountCircle size={22} className="ml-2" />,
+  },
+  {
+    name: 'Billing',
+    link: routeSettings.BILLING_INFO,
+    childrenIcon: <BiCreditCard size={22} className="ml-2" />,
+  },
+  {
+    name: 'Integrations',
+    link: routeSettings.INTEGRATIONS,
+    childrenIcon: <MdIntegrationInstructions size={22} className="ml-2" />,
+  },
+]
+
 const pages: PageProps[] = [
   {
     name: 'Quick Start',
@@ -100,6 +118,11 @@ const pages: PageProps[] = [
     icon: <AiOutlineCloudSync size={30} />,
     withDropdown: true,
     dropdownLinks: dropdownArrLinkAutomation,
+  },
+  {
+    name: 'Clients',
+    link: mainRoute.CLIENT_LIST,
+    icon: <FiUsers size={30} />,
   },
   {
     name: 'Settings',
