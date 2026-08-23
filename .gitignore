@@ -26,3 +26,6 @@ firebase-debug.log
 
 # build artifacts
 tsconfig.tsbuildinfo
+
+# env backups (contain real secrets)
+*.bak-[0-9]*
