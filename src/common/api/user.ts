@@ -492,9 +492,15 @@ const bookkeeperList = async ({
   }
 }
 
-const updateInvitationStatus = async (email: string, bookkeeperId?: number) => {
+const updateInvitationStatus = async (
+  email: string,
+  bookkeeperId?: number,
+  invitationToken?: string | null,
+) => {
   const url = userRoutes.updateInvitationStatus
-  const data = JSON.stringify({ email, bookkeeperId })
+  // The backend requires the token: it is the only credential the invitee has
+  // before their session exists.
+  const data = JSON.stringify({ email, bookkeeperId, invitationToken })
 
   try {
     if (email) {

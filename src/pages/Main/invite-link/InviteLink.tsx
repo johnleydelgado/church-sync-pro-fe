@@ -143,7 +143,7 @@ const InviteLink: FC<SignUpProps> = () => {
         const userData = await getUserRelated(email)
         const { id, role, firstName, lastName, churchName, img_url } =
           userData.data
-        await updateInvitationStatus(bookkeeperEmail as string, id)
+        await updateInvitationStatus(bookkeeperEmail as string, id, invitationToken)
 
         dispatch(
           setUserData({
@@ -206,7 +206,11 @@ const InviteLink: FC<SignUpProps> = () => {
 
   useEffect(() => {
     const update = async () => {
-      await updateInvitationStatus(bookkeeperEmail as string, userData.id)
+      await updateInvitationStatus(
+        bookkeeperEmail as string,
+        userData.id,
+        invitationToken,
+      )
     }
     if (userData) update()
   }, [userData])
