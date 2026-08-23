@@ -272,7 +272,7 @@ const NavBar: FC<NavBarProps> = () => {
           <div className="flex gap-2 items-center px-8 pb-8 pl-14">
             <div className="rounded-lg bg-green-400 p-2 w-2 h-2" />
             <p className="text-white text-xs">
-              {role === 'client' ? 'Client`s account' : 'Bookkeeper account'}
+              {role === 'client' ? "Client's account" : 'Bookkeeper account'}
             </p>
           </div>
 

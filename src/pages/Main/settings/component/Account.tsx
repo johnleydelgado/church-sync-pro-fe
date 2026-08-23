@@ -100,6 +100,40 @@ const Account: FC<AccountProps> = ({}) => {
     window.location.href = authUri
   }
 
+  // One definition per integration. The three cards were previously ~60 lines of
+  // near-identical JSX each, which is how the Stripe card drifted: it kept the
+  // fixed h-28 while carrying a longer description, so its Connect button
+  // rendered outside the card border.
+  const INTEGRATIONS = [
+    {
+      type: 'qbo',
+      name: 'QuickBooks',
+      icon: qboIcon,
+      loadingKey: 'qboLoading' as const,
+      onConnect: qboLoginHandler,
+      description:
+        'Where your journal entries are posted. Church Sync Pro writes your daily giving entry here.',
+    },
+    {
+      type: 'pco',
+      name: 'Planning Center',
+      icon: pcoIcon,
+      loadingKey: 'pcoLoading' as const,
+      onConnect: pcLoginHandler,
+      description:
+        'Where your donations come from. Online giving in Planning Center is the source for every entry.',
+    },
+    {
+      type: 'stripe',
+      name: 'Stripe',
+      icon: stripeIcon,
+      loadingKey: 'stripeLoading' as const,
+      onConnect: stripeLoginHandler,
+      description:
+        'Used to reconcile payouts against your clearing account once the deposit lands.',
+    },
+  ]
+
   const hasTokenOfTypes = (types: string[]): boolean => {
     if (tokenList && tokenList[0]) {
       return Boolean(
@@ -108,6 +142,8 @@ const Account: FC<AccountProps> = ({}) => {
     }
     return false
   }
+
+  const allConnected = INTEGRATIONS.every((it) => hasTokenOfTypes([it.type]))
 
   const deleteToken = async (id: number | undefined | null) => {
     try {
@@ -193,187 +229,80 @@ const Account: FC<AccountProps> = ({}) => {
         <div className="w-full  flex flex-col bg-white lg:px-8 py-4 justify-center mt-2">
           <div className="flex flex-col gap-2 lg:px-4">
             <p className="text-md font-thin">
-              Before we start, connect your accounts first
+              {allConnected
+                ? 'Your accounts are connected.'
+                : 'Before we start, connect your accounts first'}
             </p>
           </div>
 
           <div className="flex flex-col gap-4 pt-4 lg:p-4">
-            <div className="border-2 w-full lg:w-1/2 h-28 p-4 rounded-lg text-start flex gap-4">
-              <img
-                src={qboIcon}
-                alt="QuickBooks"
-                className="h-full w-2/5 shrink-0 object-contain object-left"
-              />
-              <div className="flex flex-col gap-2">
-                <div className="flex gap-2 items-center">
-                  {hasTokenOfTypes(['qbo']) ? (
-                    <div className="border-2 rounded-lg border-btmColor">
-                      <BiSync className="text-btmColor" />
+            {INTEGRATIONS.map((it) => {
+              const connected = hasTokenOfTypes([it.type])
+              const loading = isBtnLoading[it.loadingKey]
+              return (
+                <div
+                  key={it.type}
+                  className="flex w-full items-start gap-4 rounded-lg border-2 p-4 text-start lg:w-1/2"
+                >
+                  <img
+                    src={it.icon}
+                    alt={it.name}
+                    className="h-14 w-14 shrink-0 object-contain"
+                  />
+
+                  <div className="flex min-w-0 flex-1 flex-col gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-semibold text-primary">{it.name}</p>
+                      {connected ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-xs font-semibold text-green-700">
+                          <BiSync size={13} />
+                          Connected
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-500">
+                          Not connected
+                        </span>
+                      )}
                     </div>
-                  ) : null}
-                  <p className="text-greenText">
-                    {hasTokenOfTypes(['qbo'])
-                      ? 'Synced with Quick Books'
-                      : 'Click to sync with Quick Books'}
-                  </p>
-                </div>
 
-                {hasTokenOfTypes(['qbo']) ? (
-                  <button
-                    type="button"
-                    className="underline italic font-normal text-btmColor cursor-pointer text-start"
-                    onClick={() =>
-                      requestDisconnect(
-                        tokenList &&
-                          tokenList[0]?.tokens.find(
-                            (a) => a.token_type === 'qbo',
-                          )?.id,
-                        'QuickBooks',
-                      )
-                    }
-                  >
-                    Disconnect
-                  </button>
-                ) : (
-                  <>
-                    <p className="text-gray-400 text-sm font-normal">
-                      QuickBooks accounting software helps you manage your cash
-                      flow and gets you tax ready with expense tracking, custom
-                      invoices, financial reports and more.
+                    <p className="text-sm font-normal text-gray-400">
+                      {it.description}
                     </p>
-                    <button
-                      type="button"
-                      className="underline italic font-normal text-btmColor cursor-pointer text-start disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                      onClick={qboLoginHandler}
-                      disabled={isBtnLoading.qboLoading}
-                    >
-                      {isBtnLoading.qboLoading ? (
-                        <CgSync className="animate-spin" />
-                      ) : null}
-                      {isBtnLoading.qboLoading ? 'Connecting…' : 'Connect'}
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
 
-            <div className="border-2 w-full lg:w-1/2 h-28 p-4 rounded-lg text-start flex gap-4">
-              <img
-                src={pcoIcon}
-                alt="Planning Center"
-                className="h-full w-2/5 shrink-0 object-contain object-left"
-              />
-              <div className="flex flex-col gap-2">
-                <div className="flex gap-2 items-center">
-                  {hasTokenOfTypes(['pco']) ? (
-                    <div className="border-2 rounded-lg border-btmColor">
-                      <BiSync className="text-btmColor" />
+                    <div>
+                      {connected ? (
+                        <button
+                          type="button"
+                          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-600 transition hover:bg-gray-50"
+                          onClick={() =>
+                            requestDisconnect(
+                              tokenList &&
+                                tokenList[0]?.tokens.find(
+                                  (a) => a.token_type === it.type,
+                                )?.id,
+                              it.name,
+                            )
+                          }
+                        >
+                          Disconnect
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-2 rounded-md bg-btmColor px-4 py-1.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                          onClick={it.onConnect}
+                          disabled={loading}
+                        >
+                          {loading ? <CgSync className="animate-spin" /> : null}
+                          {loading ? 'Connecting…' : 'Connect'}
+                        </button>
+                      )}
                     </div>
-                  ) : null}
-                  <p className="text-greenText">
-                    {hasTokenOfTypes(['pco'])
-                      ? 'Synced with Planning Center'
-                      : 'Click to sync with Planning Center'}
-                  </p>
+                  </div>
                 </div>
+              )
+            })}
 
-                {hasTokenOfTypes(['pco']) ? (
-                  <button
-                    type="button"
-                    className="underline italic font-normal text-btmColor cursor-pointer text-start"
-                    onClick={() =>
-                      requestDisconnect(
-                        tokenList &&
-                          tokenList[0]?.tokens.find(
-                            (a) => a.token_type === 'pco',
-                          )?.id,
-                        'Planning Center',
-                      )
-                    }
-                  >
-                    Disconnect
-                  </button>
-                ) : (
-                  <>
-                    <p className="text-gray-400 text-sm font-normal">
-                      Planning Center is a set of software tools to help you
-                      organize information, coordinate events, communicate with
-                      your team, and connect with your congregation.
-                    </p>
-                    <button
-                      type="button"
-                      className="underline italic font-normal text-btmColor cursor-pointer text-start disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                      onClick={pcLoginHandler}
-                      disabled={isBtnLoading.pcoLoading}
-                    >
-                      {isBtnLoading.pcoLoading ? (
-                        <CgSync className="animate-spin" />
-                      ) : null}
-                      {isBtnLoading.pcoLoading ? 'Connecting…' : 'Connect'}
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-
-            <div className="border-2 w-full lg:w-1/2 h-28 p-4 rounded-lg text-start flex gap-4">
-              <img
-                src={stripeIcon}
-                alt="Stripe"
-                className="h-full w-2/5 shrink-0 object-contain object-left"
-              />
-              <div className="flex flex-col gap-2">
-                <div className="flex gap-2 items-center">
-                  {hasTokenOfTypes(['stripe']) ? (
-                    <div className="border-2 rounded-lg border-btmColor">
-                      <BiSync className="text-btmColor" />
-                    </div>
-                  ) : null}
-
-                  <p className="text-greenText">
-                    {hasTokenOfTypes(['stripe'])
-                      ? 'Synced with Stripe'
-                      : 'Click to sync with Stripe'}
-                  </p>
-                </div>
-
-                {hasTokenOfTypes(['stripe']) ? (
-                  <button
-                    type="button"
-                    className="underline italic font-normal text-btmColor cursor-pointer text-start"
-                    onClick={() =>
-                      requestDisconnect(
-                        tokenList &&
-                          tokenList[0]?.tokens.find(
-                            (a) => a.token_type === 'stripe',
-                          )?.id,
-                        'Stripe',
-                      )
-                    }
-                  >
-                    Disconnect
-                  </button>
-                ) : (
-                  <>
-                    <p className="text-gray-400 text-sm font-normal">
-                      Stripe’s software and APIs to accept payments, send
-                      payouts, and manage their businesses online.
-                    </p>
-                    <button
-                      type="button"
-                      className="underline italic font-normal text-btmColor cursor-pointer text-start disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                      onClick={stripeLoginHandler}
-                      disabled={isBtnLoading.stripeLoading}
-                    >
-                      {isBtnLoading.stripeLoading ? (
-                        <CgSync className="animate-spin" />
-                      ) : null}
-                      {isBtnLoading.stripeLoading ? 'Connecting…' : 'Connect'}
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
             {/* <LoginButton
           loginImage={qboLogin}
           onClick={qboLoginHandler}
