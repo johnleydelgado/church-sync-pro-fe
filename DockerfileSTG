@@ -5,9 +5,13 @@ FROM node:16-alpine
 WORKDIR /app
 # Copy app files
 COPY . .
+# `react-scripts build` forces NODE_ENV=production, so CRA reads .env.production and
+# ignores .env.staging entirely. Without this the staging image is built with
+# production values and points at the production backend.
+RUN cp .env.staging .env.production
 # ==== BUILD =====
 # Install dependencies (npm ci makes sure the exact versions in the lockfile gets installed)
-RUN npm ci 
+RUN npm ci --legacy-peer-deps
 # Build the app
 RUN PUBLIC_URL=/ npm run build
 # ==== RUN =======
