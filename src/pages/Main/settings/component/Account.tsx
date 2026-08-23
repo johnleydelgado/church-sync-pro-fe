@@ -199,7 +199,11 @@ const Account: FC<AccountProps> = ({}) => {
 
           <div className="flex flex-col gap-4 pt-4 lg:p-4">
             <div className="border-2 w-full lg:w-1/2 h-28 p-4 rounded-lg text-start flex gap-4">
-              <img src={qboIcon} alt="QuickBooks" className="h-full w-full" />
+              <img
+                src={qboIcon}
+                alt="QuickBooks"
+                className="h-full w-2/5 shrink-0 object-contain object-left"
+              />
               <div className="flex flex-col gap-2">
                 <div className="flex gap-2 items-center">
                   {hasTokenOfTypes(['qbo']) ? (
@@ -257,7 +261,7 @@ const Account: FC<AccountProps> = ({}) => {
               <img
                 src={pcoIcon}
                 alt="Planning Center"
-                className="h-full w-full"
+                className="h-full w-2/5 shrink-0 object-contain object-left"
               />
               <div className="flex flex-col gap-2">
                 <div className="flex gap-2 items-center">
@@ -313,7 +317,11 @@ const Account: FC<AccountProps> = ({}) => {
             </div>
 
             <div className="border-2 w-full lg:w-1/2 h-28 p-4 rounded-lg text-start flex gap-4">
-              <img src={stripeIcon} alt="Stripe" className="h-full w-full" />
+              <img
+                src={stripeIcon}
+                alt="Stripe"
+                className="h-full w-2/5 shrink-0 object-contain object-left"
+              />
               <div className="flex flex-col gap-2">
                 <div className="flex gap-2 items-center">
                   {hasTokenOfTypes(['stripe']) ? (

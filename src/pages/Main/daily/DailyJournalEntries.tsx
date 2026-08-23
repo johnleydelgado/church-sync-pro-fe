@@ -191,17 +191,22 @@ const DailyJournalEntries: FC<DailyJournalEntriesProps> = () => {
 
               {/* Entries */}
               {entries.length === 0 ? (
-                <Empty
-                  message="No journal entries yet. Once your accounts are connected and your funds are mapped, your daily entries will appear here."
-                  action={
-                    <Link
-                      to={mainRoute.AUTOMATION_MAPPING}
-                      className="text-base font-semibold text-blue-400 underline"
-                    >
-                      Set up mapping
-                    </Link>
-                  }
-                />
+                // Wrapped so the empty state sits just under the summary cards.
+                // Unwrapped it centres itself in the full-height page and leaves
+                // a large gap between the cards and the message.
+                <div className="py-8">
+                  <Empty
+                    message="No journal entries yet. Once your accounts are connected and your funds are mapped, your daily entries will appear here."
+                    action={
+                      <Link
+                        to={mainRoute.AUTOMATION_MAPPING}
+                        className="text-base font-semibold text-blue-400 underline"
+                      >
+                        Set up mapping
+                      </Link>
+                    }
+                  />
+                </div>
               ) : (
                 <div className="overflow-hidden rounded-xl border border-gray-100">
                   {/* Header row */}

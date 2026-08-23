@@ -9,7 +9,13 @@ interface EmptyProps {
 const Empty: FC<EmptyProps> = ({ message, action }) => {
   return (
     <div className="flex h-full w-full flex-col items-center justify-center gap-2 p-6">
-      <Lottie animationData={lottieAnimation} loop={true} />
+      {/* Unconstrained, the animation grows to fill the parent and pushes the
+          message far below the fold on tall, mostly-empty pages. */}
+      <Lottie
+        animationData={lottieAnimation}
+        loop={true}
+        className="max-h-72 w-full max-w-md"
+      />
       {message ? (
         <p className="text-center text-lg font-medium text-slate-500">
           {message}

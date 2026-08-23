@@ -430,7 +430,7 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
                 <div className="rounded-lg bg-green-400 p-2 w-2 h-2" />
                 <p className="text-white text-xs">
                   {role === 'client'
-                    ? 'Client`s account'
+                    ? "Client's account"
                     : 'Bookkeeper account'}
                 </p>
               </div>
