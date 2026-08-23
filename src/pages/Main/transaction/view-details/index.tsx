@@ -3,7 +3,7 @@ import MainLayout from '@/common/components/main-layout/MainLayout'
 import { RootState } from '@/redux/store'
 import React, { FC, useEffect, useState } from 'react'
 import { useQuery } from 'react-query'
-import { useSelector } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate, useParams } from 'react-router'
 import { AttributesProps, BatchesProps } from '..'
 import { isEmpty } from 'lodash'
@@ -22,6 +22,9 @@ import {
   batchDataProps,
   usePagination,
 } from '@/common/context/PaginationProvider'
+import ConfirmActionModal from '@/common/components/modal/ConfirmActionModal'
+import { MODALS_NAME } from '@/common/constant/modal'
+import { OPEN_MODAL } from '@/redux/common'
 interface indexProps {}
 
 interface dataDonationProps {
@@ -46,10 +49,21 @@ interface dataDonationProps {
     updated_at: string
   }
   relationships: {
-    person: any
+    person: { data: { type: string; id: string } | null }
     designations: { data: { type: string; id: string }[] }
   }
   fund: FundProps[]
+  donorName?: string
+}
+
+interface IncludedPersonProps {
+  id: string
+  type: string
+  attributes?: {
+    first_name?: string | null
+    last_name?: string | null
+    name?: string | null
+  }
 }
 
 interface DonationProps {
@@ -75,6 +89,7 @@ interface FinalDataProps {
 const ViewDetails: FC<indexProps> = ({}) => {
   const { batchId } = useParams()
   const navigation = useNavigate()
+  const dispatch = useDispatch()
   const { user, selectedBankAccount } = useSelector(
     (state: RootState) => state.common,
   )
@@ -135,8 +150,32 @@ const ViewDetails: FC<indexProps> = ({}) => {
         },
       )
 
+      const includedArr: IncludedPersonProps[] =
+        temp.batches?.donations.included || []
+
+      const resolveDonorName = (personData: {
+        type: string
+        id: string
+      } | null): string | undefined => {
+        if (!personData?.id) return undefined
+        const personRecord = includedArr.find(
+          (inc) =>
+            inc.id === personData.id &&
+            String(inc.type).toLowerCase() === 'person',
+        )
+        if (!personRecord?.attributes) return undefined
+        const { first_name, last_name, name } = personRecord.attributes
+        const fullName = [first_name, last_name].filter(Boolean).join(' ').trim()
+        return fullName || name?.trim() || undefined
+      }
+
       const newDataArr = temp.batches?.donations.data.map(
-        (a: { relationships: { designations: { data: { id: any }[] } } }) => {
+        (a: {
+          relationships: {
+            designations: { data: { id: any }[] }
+            person: { data: { type: string; id: string } | null }
+          }
+        }) => {
           const fundObj = newFundData.find(
             (x: { fundData: { designationId: any }[] }) =>
               x.fundData[0]?.designationId ===
@@ -145,6 +184,7 @@ const ViewDetails: FC<indexProps> = ({}) => {
           return {
             ...a,
             fund: fundObj ? fundObj.fundData : [],
+            donorName: resolveDonorName(a.relationships.person?.data),
           }
         },
       )
@@ -205,7 +245,7 @@ const ViewDetails: FC<indexProps> = ({}) => {
       const result = await deleteQboDeposit(email, finalData?.synchedBatches)
       if (result === 'success') {
         setIsSynching(false)
-        successNotification({ title: `Unsynched Successfully` })
+        successNotification({ title: `Unsynced Successfully` })
         refetch()
       } else {
         setIsSynching(false)
@@ -219,6 +259,14 @@ const ViewDetails: FC<indexProps> = ({}) => {
 
   return (
     <MainLayout>
+      <ConfirmActionModal
+        modalName={MODALS_NAME.modalConfirmRemoveSync}
+        title="Remove this sync?"
+        body="This will delete the deposit/journal entry in QuickBooks. This cannot be undone."
+        confirmLabel="Remove"
+        onConfirm={() => triggerUnSync()}
+      />
+
       {isLoading || isRefetching ? (
         <Loading />
       ) : isEmpty(finalData) ? null : (
@@ -266,7 +314,7 @@ const ViewDetails: FC<indexProps> = ({}) => {
                           finalData.synchedBatches &&
                           finalData.synchedBatches.length > 0 &&
                           finalData.synchedBatches[0]?.createdAt
-                            ? `Synched Planning Center to QuickBooks Online | Last synched at ${format(
+                            ? `Synced Planning Center to QuickBooks Online | Last synced at ${format(
                                 parseISO(finalData.synchedBatches[0].createdAt),
                                 "hh:mm aaaa 'on' EEEE MMMM d, yyyy",
                               )} | `
@@ -275,7 +323,11 @@ const ViewDetails: FC<indexProps> = ({}) => {
                         </span>
                         <button
                           className="text-orange-500 flex items-center gap-1"
-                          onClick={() => triggerUnSync()}
+                          onClick={() =>
+                            dispatch(
+                              OPEN_MODAL(MODALS_NAME.modalConfirmRemoveSync),
+                            )
+                          }
                         >
                           <BiSync
                             className={`${
@@ -401,16 +453,8 @@ const ViewDetails: FC<indexProps> = ({}) => {
                         <Table.Cell>
                           {formatUsd(String(item.attributes.amount_cents))}
                         </Table.Cell>
-                        {/* <Table.Cell>
-                          {item.person?.data.attributes.first_name &&
-                          item.person?.data.attributes.last_name
-                            ? item.person.data.attributes.first_name +
-                              ' ' +
-                              item.person.data.attributes.last_name
-                            : 'Anonymous'}
-                        </Table.Cell> */}
                         <Table.Cell>
-                          {item.relationships.person.data ? 'Anonymous' : 'TBH'}
+                          {item.donorName ? item.donorName : 'Anonymous'}
                         </Table.Cell>
                         <Table.Cell>
                           <p

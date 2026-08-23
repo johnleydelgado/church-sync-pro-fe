@@ -12,6 +12,7 @@ import {
   Popover,
   PopoverContent,
   PopoverHandler,
+  Tooltip,
   Typography,
 } from '@material-tailwind/react'
 import { failNotification, successNotification } from '@/common/utils/toast'
@@ -21,7 +22,7 @@ import { OPEN_MODAL, setReTriggerIsUserTokens } from '@/redux/common'
 import { QboDataSelectProps } from '..'
 import { MODALS_NAME } from '@/common/constant/modal'
 import ModalCreateUpdateProject from '@/common/components/modal/ModalCreateUpdateProject'
-import { BsPlus } from 'react-icons/bs'
+import { BsPlus, BsQuestionCircle } from 'react-icons/bs'
 import { BiArchiveIn, BiDotsHorizontal } from 'react-icons/bi'
 import { FundAttProps } from '@/common/constant/interfaces'
 import colors from '@/common/constant/colors'
@@ -73,6 +74,17 @@ const Option = (props: any) => {
 }
 
 const delay = (ms: any) => new Promise((res) => setTimeout(res, ms))
+
+const HelpTip: FC<{ text: string }> = ({ text }) => (
+  <Tooltip
+    content={<span className="block max-w-xs text-xs leading-snug">{text}</span>}
+    placement="top"
+  >
+    <span className="inline-flex cursor-help text-gray-400 hover:text-gray-600">
+      <BsQuestionCircle size={14} />
+    </span>
+  </Tooltip>
+)
 
 const Donation: FC<DonationProps> = ({ fundData, userData }) => {
   const { user, selectedStartDate } = useSelector(
@@ -190,7 +202,7 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
       }
       setOnGoingSaving(false)
     } catch (e) {
-      console.log('test')
+      // no-op
     }
 
     // dispatch(setReTriggerIsUserTokens(!reTriggerIsUserTokens))
@@ -307,7 +319,10 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
                 <div className="flex items-center gap-4">
                   {/* Accounts */}
                   <div className="flex flex-col gap-2">
-                    <p>Accounts</p>
+                    <div className="flex items-center gap-1">
+                      <p>Accounts</p>
+                      <HelpTip text="The QuickBooks income account this fund's gifts are credited to, e.g. 'Tithes & Offerings'." />
+                    </div>
                     <Dropdown
                       options={qboData?.accounts?.filter(
                         (a: { type: string }) =>
@@ -327,7 +342,10 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
                   </div>
                   {/* Classes */}
                   <div className="flex flex-col gap-2">
-                    <p>Classes</p>
+                    <div className="flex items-center gap-1">
+                      <p>Classes (optional)</p>
+                      <HelpTip text="Optional QuickBooks class for tracking. Leave blank if you don't use classes." />
+                    </div>
                     <Dropdown
                       options={qboData?.classes}
                       components={{ Input }}
@@ -345,7 +363,10 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
                   </div>
                   {/* Projects */}
                   <div className="flex flex-col gap-2">
-                    <p>Projects</p>
+                    <div className="flex items-center gap-1">
+                      <p>Customer / Project (optional)</p>
+                      <HelpTip text="Optional QuickBooks customer/project to tag this fund. Leave blank if unsure." />
+                    </div>
                     <Dropdown
                       key={index}
                       options={modifiedOptionsCustomer}

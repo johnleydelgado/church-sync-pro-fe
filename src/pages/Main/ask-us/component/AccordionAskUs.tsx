@@ -26,10 +26,10 @@ const AccordionAskUs: FC<AccordionProps> = ({
       open={isOpen}
       icon={isOpen ? <AiOutlineMinusCircle /> : <HiPlus />}
     >
-      <AccordionHeader onClick={handleOpen} className={`p-8 bg-[${bgColor}]`}>
+      <AccordionHeader onClick={handleOpen} className={`p-8 ${bgColor}`}>
         {headerTitle}
       </AccordionHeader>
-      <AccordionBody className={`p-8 bg-[${bgColor}] font-semibold`}>
+      <AccordionBody className={`p-8 ${bgColor} font-semibold`}>
         {bodyTitle}
       </AccordionBody>
     </Accordion>

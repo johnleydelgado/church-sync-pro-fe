@@ -140,7 +140,7 @@ const SignUp: FC<SignUpProps> = () => {
 
   const checkSession = useCallback(async () => {
     if ((await shouldLoadRoute({ email: user.email })) && signUpSuccess) {
-      window.location.href = route.TRANSACTION
+      window.location.href = route.DAILY
     }
   }, [signUpSuccess, user.email])
 
@@ -365,7 +365,7 @@ const SignUp: FC<SignUpProps> = () => {
                   onChange={formik.handleChange}
                   placeholder="*********"
                   title="Password"
-                  type="text"
+                  type="password"
                   value={formik.values.password}
                   isPassword
                 />

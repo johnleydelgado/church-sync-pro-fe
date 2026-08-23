@@ -21,7 +21,15 @@ const ArchiveTable: FC<ArchiveTableProps> = ({
   activateRegistrationHandler,
 }) => {
   if (!archives.some((item) => item.category === type)) {
-    return <Empty />
+    return (
+      <Empty
+        message={
+          type === 'stripe'
+            ? 'No archived registrations yet.'
+            : 'No archived donation categories yet.'
+        }
+      />
+    )
   }
 
   return (
@@ -31,9 +39,6 @@ const ArchiveTable: FC<ArchiveTableProps> = ({
           <tr className="[&>*]:px-6 [&>*]:py-3">
             <th scope="col" className="">
               Name
-            </th>
-            <th scope="col" className="">
-              Date
             </th>
             <th scope="col" className="text-right">
               Action
@@ -48,10 +53,6 @@ const ArchiveTable: FC<ArchiveTableProps> = ({
                 className={`bg-white dark:bg-gray-900 border-b border-yellow dark:border-gray-700`}
                 key={index}
               >
-                <td className="">
-                  <Typography className="p-2 text-left">{item.name}</Typography>
-                </td>
-
                 <td className="">
                   <Typography className="p-2 text-left">{item.name}</Typography>
                 </td>

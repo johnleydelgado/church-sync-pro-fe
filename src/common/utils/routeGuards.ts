@@ -13,7 +13,7 @@ const settings = storage.getToken(storageKey.SETTINGS)
 const unAuthGuard = {
   failCondition: !!personalToken,
   requestDone: true,
-  onFail: route.TRANSACTION,
+  onFail: mainRoute.DAILY,
 }
 
 const authGuard = {

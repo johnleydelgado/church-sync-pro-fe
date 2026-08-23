@@ -1,40 +1,75 @@
 import MainLayout from '@/common/components/main-layout/MainLayout'
 import React, { FC } from 'react'
-import Lottie from 'lottie-react'
-import empty from '@/common/assets/empty.json'
-import { useDispatch } from 'react-redux'
-import { OPEN_MODAL } from '@/redux/common'
-import { MODALS_NAME } from '@/common/constant/modal'
-import { useQuery } from 'react-query'
 import { useSelector } from 'react-redux'
 import { RootState } from '@/redux/store'
-import { bookkeeperList } from '@/common/api/user'
+import { getUserRelated } from '@/common/api/user'
+import { useQuery } from 'react-query'
 import { isEmpty } from 'lodash'
-import Loading from '@/common/components/loading/Loading'
-import { HiOutlineUsers, HiPlus } from 'react-icons/hi'
-import { BsPersonAdd } from 'react-icons/bs'
 import { AiOutlineQuestionCircle } from 'react-icons/ai'
-import {
-  Accordion,
-  AccordionBody,
-  AccordionHeader,
-} from '@material-tailwind/react'
+import { useGetTokenList } from '@/common/hooks/useGetTokenList'
 import { ASK_US_DATA, INSTRUCTIONS } from './contant/AskUsData'
 import AccordionAskUs from './component/AccordionAskUs'
-import { Link } from 'react-router-dom'
 
 interface BookkeeperProps {}
 
+// Number of required (non-optional) onboarding steps shown first.
+const CORE_STEP_COUNT = 4
+
 const QuickStartGuide: FC<BookkeeperProps> = ({}) => {
-  const dispatch = useDispatch()
-  const openModal = () => {
-    dispatch(OPEN_MODAL(MODALS_NAME.invitation))
-  }
   const user = useSelector((state: RootState) => state.common.user)
+  const bookkeeper = useSelector((state: RootState) => state.common.bookkeeper)
 
-  const [open, setOpen] = React.useState(null)
+  const [open, setOpen] = React.useState<number | null>(null)
+  const handleOpen = (value: number) =>
+    setOpen(open === value ? null : value)
 
-  const handleOpen = (value: any) => setOpen(open === value ? null : value)
+  const { tokenList } = useGetTokenList()
+
+  const { data: userData } = useQuery(
+    ['quickStartUserRelated', user, bookkeeper],
+    async () => {
+      const email =
+        user.role === 'bookkeeper'
+          ? bookkeeper?.clientEmail || ''
+          : user.email
+      if (email) {
+        const res = await getUserRelated(email)
+        return res.data
+      }
+    },
+    {
+      refetchOnWindowFocus: false,
+      enabled: !!user,
+    },
+  )
+
+  const tokens = tokenList?.[0]?.tokens || []
+  const userSetting = userData?.UserSetting
+
+  // Step 1 — Planning Center + QuickBooks both connected.
+  const isAccountsConnected =
+    !!tokens.find((t) => t.token_type === 'pco') &&
+    !!tokens.find((t) => t.token_type === 'qbo')
+
+  // Step 2 — at least one fund mapping saved.
+  const isFundsMapped = !isEmpty(userSetting?.settingsData)
+
+  // Step 3 — both clearing/bank account and fee account configured.
+  const isBankConfigured =
+    !isEmpty(userSetting?.settingBankData) &&
+    !isEmpty(userSetting?.settingBankCharges)
+
+  // Step 4 — daily auto-sync turned on.
+  const isAutoSyncOn = !!userSetting?.isAutomationEnable
+
+  const doneStates = [
+    isAccountsConnected,
+    isFundsMapped,
+    isBankConfigured,
+    isAutoSyncOn,
+  ]
+
+  const completedCount = doneStates.filter(Boolean).length
 
   return (
     <MainLayout removePadding>
@@ -50,99 +85,51 @@ const QuickStartGuide: FC<BookkeeperProps> = ({}) => {
                     Quick Start Guide
                   </span>
                 </div>
+                <span className="text-sm font-semibold text-gray-500">
+                  {completedCount} of {CORE_STEP_COUNT} complete
+                </span>
               </div>
             </div>
           </div>
 
-          {/* BODY */}
-
-          {ASK_US_DATA.map((a, index) => (
+          {/* BODY — required steps */}
+          {ASK_US_DATA.slice(0, CORE_STEP_COUNT).map((a, index) => (
             <AccordionAskUs
               isOpen={open === index}
               index={index}
               handleOpen={() => handleOpen(index)}
               key={index}
-              bgColor={index % 2 === 0 ? '#E5F2F8' : 'white'}
+              bgColor={index % 2 === 0 ? 'bg-[#E5F2F8]' : 'bg-white'}
               bodyTitleArr={INSTRUCTIONS[index]}
+              done={doneStates[index]}
               {...a}
             />
           ))}
 
-          {/* <Accordion open={open === 1} icon={<HiPlus />}>
-            <AccordionHeader
-              onClick={() => handleOpen(1)}
-              className="p-8 bg-[#E5F2F8]"
-            >
-              What does your accounting software do?
-            </AccordionHeader>
-            <AccordionBody>
-              We&apos;re not always in the position that we want to be at.
-              We&apos;re constantly growing. We&apos;re constantly making
-              mistakes. We&apos;re constantly trying to express ourselves and
-              actualize our dreams.
-            </AccordionBody>
-          </Accordion>
-          <Accordion open={open === 2}>
-            <AccordionHeader onClick={() => handleOpen(2)}>
-              Is your software cloud-based or on-premises?
-            </AccordionHeader>
-            <AccordionBody>
-              We&apos;re not always in the position that we want to be at.
-              We&apos;re constantly growing. We&apos;re constantly making
-              mistakes. We&apos;re constantly trying to express ourselves and
-              actualize our dreams.
-            </AccordionBody>
-          </Accordion>
-          <Accordion open={open === 3}>
-            <AccordionHeader onClick={() => handleOpen(3)}>
-              Does your software support multiple currencies and international
-              transactions?
-            </AccordionHeader>
-            <AccordionBody>
-              We&apos;re not always in the position that we want to be at.
-              We&apos;re constantly growing. We&apos;re constantly making
-              mistakes. We&apos;re constantly trying to express ourselves and
-              actualize our dreams.
-            </AccordionBody>
-          </Accordion>
-
-          <Accordion open={open === 4}>
-            <AccordionHeader onClick={() => handleOpen(3)}>
-              What kind of customer support and training do you provide for new
-              users?
-            </AccordionHeader>
-            <AccordionBody>
-              We&apos;re not always in the position that we want to be at.
-              We&apos;re constantly growing. We&apos;re constantly making
-              mistakes. We&apos;re constantly trying to express ourselves and
-              actualize our dreams.
-            </AccordionBody>
-          </Accordion>
-
-          <Accordion open={open === 5}>
-            <AccordionHeader onClick={() => handleOpen(3)}>
-              What kind of data backup and disaster recovery options are
-              available?
-            </AccordionHeader>
-            <AccordionBody>
-              We&apos;re not always in the position that we want to be at.
-              We&apos;re constantly growing. We&apos;re constantly making
-              mistakes. We&apos;re constantly trying to express ourselves and
-              actualize our dreams.
-            </AccordionBody>
-          </Accordion>
-
-          <Accordion open={open === 5}>
-            <AccordionHeader onClick={() => handleOpen(3)}>
-              How do you handle software bugs and customer feedback?
-            </AccordionHeader>
-            <AccordionBody>
-              We&apos;re not always in the position that we want to be at.
-              We&apos;re constantly growing. We&apos;re constantly making
-              mistakes. We&apos;re constantly trying to express ourselves and
-              actualize our dreams.
-            </AccordionBody>
-          </Accordion> */}
+          {/* Optional steps */}
+          {ASK_US_DATA.length > CORE_STEP_COUNT && (
+            <>
+              <div className="pt-6 pb-2">
+                <span className="font-bold text-lg text-gray-500">
+                  Optional
+                </span>
+              </div>
+              {ASK_US_DATA.slice(CORE_STEP_COUNT).map((a, i) => {
+                const index = CORE_STEP_COUNT + i
+                return (
+                  <AccordionAskUs
+                    isOpen={open === index}
+                    index={index}
+                    handleOpen={() => handleOpen(index)}
+                    key={index}
+                    bgColor={index % 2 === 0 ? 'bg-[#E5F2F8]' : 'bg-white'}
+                    bodyTitleArr={INSTRUCTIONS[index]}
+                    {...a}
+                  />
+                )
+              })}
+            </>
+          )}
         </div>
       </div>
     </MainLayout>

@@ -9,6 +9,7 @@ import {
 } from 'react-icons/md'
 import {
   BiArchive,
+  BiCalendarCheck,
   BiCreditCard,
   BiSortDown,
   BiSync,
@@ -16,6 +17,7 @@ import {
 } from 'react-icons/bi'
 import { AiFillProject, AiOutlineCloudSync, AiFillMail } from 'react-icons/ai'
 import { FiSettings, FiUsers } from 'react-icons/fi'
+import { HiOutlineDocumentText } from 'react-icons/hi'
 import {
   authGuardHaveToken,
   authGuardHaveSettings,
@@ -83,34 +85,21 @@ export const dropdownArrLinkSettings: DropdownLink[] = [
   },
 ]
 
-export const dropdownArrLinkClients: DropdownLink[] = [
-  {
-    name: 'Client List',
-    link: routeSettings.ACCOUNT_DATA,
-    childrenIcon: <MdAccountCircle size={22} className="ml-2" />,
-  },
-  {
-    name: 'Billing',
-    link: routeSettings.BILLING_INFO,
-    childrenIcon: <BiCreditCard size={22} className="ml-2" />,
-  },
-  {
-    name: 'Integrations',
-    link: routeSettings.INTEGRATIONS,
-    childrenIcon: <MdIntegrationInstructions size={22} className="ml-2" />,
-  },
-]
-
 const pages: PageProps[] = [
+  {
+    name: 'Daily Sync',
+    link: mainRoute.DAILY,
+    icon: <BiCalendarCheck size={30} />,
+  },
+  {
+    name: 'Batches',
+    link: '/transaction',
+    icon: <HiOutlineDocumentText size={30} />,
+  },
   {
     name: 'Quick Start',
     link: mainRoute.QUICK_START_QUIDE,
     icon: <MdChecklist size={30} />,
-  },
-  {
-    name: 'Transaction',
-    link: '/transaction',
-    icon: <BiSync size={30} />,
   },
   {
     name: 'Automation',

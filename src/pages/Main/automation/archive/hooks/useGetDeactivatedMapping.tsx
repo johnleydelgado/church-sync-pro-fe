@@ -87,7 +87,6 @@ const useGetDeactivatedMapping = () => {
     },
     {
       refetchOnWindowFocus: false,
-      onSuccess: (data) => console.log('Query succeeded:', data),
       onError: (error) => console.error('Query failed:', error),
     },
   )

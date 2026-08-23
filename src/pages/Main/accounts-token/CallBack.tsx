@@ -1,6 +1,6 @@
 import { updateUserToken } from '@/common/api/user'
 import Loading from '@/common/components/loading/Loading'
-import { mainRoute, routeSettings } from '@/common/constant/route'
+import { mainRoute, route, routeSettings } from '@/common/constant/route'
 import { setAccountState } from '@/redux/common'
 import { RootState } from '@/redux/store'
 import axios from 'axios'
@@ -8,6 +8,7 @@ import React, { FC, useCallback, useEffect, useRef, useState } from 'react'
 import { useSelector } from 'react-redux'
 import { useDispatch } from 'react-redux'
 import { useNavigate } from 'react-router'
+import { Link } from 'react-router-dom'
 
 interface CallBackProps {}
 const { REACT_APP_API_PATH } = process.env
@@ -16,6 +17,7 @@ const CallBack: FC<CallBackProps> = ({}) => {
   const subscribed = useRef(false)
   const navigate = useNavigate()
   const [loading, setLoading] = useState<boolean>(false)
+  const [hasError, setHasError] = useState<boolean>(false)
   const dispatch = useDispatch()
   const { role } = useSelector((state: RootState) => state.common.user)
   const { clientEmail, clientId } = useSelector(
@@ -66,6 +68,7 @@ const CallBack: FC<CallBackProps> = ({}) => {
         }
       } catch (e: any) {
         console.log(e)
+        setHasError(true)
         // NOTE: create a redirect or history here
       } finally {
         setLoading(false)
@@ -113,6 +116,7 @@ const CallBack: FC<CallBackProps> = ({}) => {
         }
       } catch (e: any) {
         console.log(e)
+        setHasError(true)
         // NOTE: create a redirect or history here
       } finally {
         setLoading(false)
@@ -159,6 +163,7 @@ const CallBack: FC<CallBackProps> = ({}) => {
         }
       } catch (e: any) {
         console.log(e)
+        setHasError(true)
         // NOTE: create a redirect or history here
       } finally {
         setLoading(false)
@@ -179,9 +184,34 @@ const CallBack: FC<CallBackProps> = ({}) => {
     }
   }, [])
 
-  if (loading) return <Loading />
+  if (hasError) {
+    return (
+      <div className="h-screen flex flex-col items-center justify-center bg-slate-50 font-lato px-6">
+        <div className="w-full max-w-md flex flex-col items-center text-center gap-4 bg-white shadow-xl rounded-2xl p-10">
+          <h1 className="font-medium text-2xl text-gray-800">
+            We couldn&apos;t finish connecting
+          </h1>
+          <p className="text-gray-500">
+            Something went wrong while finishing the connection. Please go back
+            and try connecting your account again.
+          </p>
+          <Link
+            to={role === 'client' ? routeSettings.INTEGRATIONS : route.SECONDARY_LOGIN}
+            className="bg-yellow rounded-full shadow-sm h-12 mt-4 flex justify-center items-center hover:bg-slate-600 [&>*]:text-white px-8"
+          >
+            <p>Back to connect</p>
+          </Link>
+        </div>
+      </div>
+    )
+  }
 
-  return <div />
+  return (
+    <div className="h-screen flex flex-col items-center justify-center gap-4">
+      <Loading />
+      <p className="font-lato text-gray-500">Finishing connection…</p>
+    </div>
+  )
 }
 
 export default CallBack

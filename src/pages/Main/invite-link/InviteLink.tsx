@@ -159,6 +159,9 @@ const InviteLink: FC<SignUpProps> = () => {
         // dispatch(setReTriggerIsUserTokens(!reTriggerIsUserTokens))
         setSignUpSuccess(true)
         localStorage.setItem(storageKey.PERSONAL_TOKEN, role)
+        // Only reload on a successful signup so the success state can render.
+        // Reloading on error would wipe the form and the error toast.
+        window.location.reload()
       }
     } catch (err: any) {
       console.log('err', err)
@@ -171,7 +174,6 @@ const InviteLink: FC<SignUpProps> = () => {
       }
     } finally {
       setIsLoading(false)
-      window.location.reload()
     }
   }
 
@@ -226,7 +228,28 @@ const InviteLink: FC<SignUpProps> = () => {
       {isInvitationLoading ? (
         <Loading />
       ) : !isValid ? (
-        <p>Error page</p>
+        <div className="h-screen flex flex-col items-center justify-center bg-[#FBFBFB] font-lato px-6">
+          <div className="w-full max-w-md flex flex-col items-center text-center gap-4 bg-white shadow-2xl rounded-3xl p-10">
+            <img src={logo} alt="Church Sync Pro" width={200} />
+            <h1 className="font-medium text-2xl text-gray-800">
+              This invitation link is invalid or has expired
+            </h1>
+            <p className="text-gray-500">
+              The bookkeeper invitation you followed is no longer valid. It may
+              have already been used, been cancelled, or expired. Please ask
+              whoever invited you to send a new invitation link.
+            </p>
+            <Link
+              to="/"
+              className="bg-yellow rounded-full shadow-sm h-12 mt-4 flex justify-center items-center hover:bg-slate-600 [&>*]:text-white px-8"
+            >
+              <p>Back to login</p>
+            </Link>
+            <p className="text-sm text-gray-400">
+              Still having trouble? Contact your bookkeeper or our support team.
+            </p>
+          </div>
+        </div>
       ) : userData ? (
         <div className="h-screen flex flex-col lg:flex-row lg:bg-white">
           <div
@@ -327,7 +350,7 @@ const InviteLink: FC<SignUpProps> = () => {
                     onChange={formik.handleChange}
                     placeholder="*********"
                     title="Password"
-                    type="text"
+                    type="password"
                     value={formik.values.password}
                     isPassword
                   />

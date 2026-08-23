@@ -16,6 +16,7 @@ import {
   Popover,
   PopoverContent,
   PopoverHandler,
+  Tooltip,
   Typography,
 } from '@material-tailwind/react'
 import { failNotification, successNotification } from '@/common/utils/toast'
@@ -25,7 +26,7 @@ import { OPEN_MODAL, setReTriggerIsUserTokens } from '@/redux/common'
 import { MODALS_NAME } from '@/common/constant/modal'
 import ModalCreateUpdateProject from '@/common/components/modal/ModalCreateUpdateProject'
 import { BiArchive, BiDotsHorizontal } from 'react-icons/bi'
-import { BsPlus } from 'react-icons/bs'
+import { BsPlus, BsQuestionCircle } from 'react-icons/bs'
 import { setReduxQboData } from '@/redux/qbo'
 import { setReduxStripeData } from '@/redux/stripe'
 import colors from '@/common/constant/colors'
@@ -51,7 +52,6 @@ const Option = (props: any) => {
       ? 'font-bold text-green-400'
       : 'font-normal text-current'
 
-  console.log('isSelected', isSelected)
   return (
     <div
       ref={innerRef}
@@ -81,6 +81,17 @@ const Option = (props: any) => {
 }
 
 const delay = (ms: any) => new Promise((res) => setTimeout(res, ms))
+
+const HelpTip: FC<{ text: string }> = ({ text }) => (
+  <Tooltip
+    content={<span className="block max-w-xs text-xs leading-snug">{text}</span>}
+    placement="top"
+  >
+    <span className="inline-flex cursor-help text-gray-400 hover:text-gray-600">
+      <BsQuestionCircle size={14} />
+    </span>
+  </Tooltip>
+)
 
 const Registration: FC<DonationProps> = ({ stripeEvents, userData }) => {
   const { user, selectedStartDate } = useSelector(
@@ -118,15 +129,12 @@ const Registration: FC<DonationProps> = ({ stripeEvents, userData }) => {
       //   return reduxQboData
       // }
 
-      console.log('Fetching data from API22...')
       const fetchedData = await getQboData(user, bookkeeper) // Fetch only if needed
       dispatch(setReduxQboData(fetchedData))
-      console.log('Fetched data22:', fetchedData)
       return fetchedData
     },
     {
       refetchOnWindowFocus: false,
-      onSuccess: (data) => console.log('Query succeeded:', data),
       onError: (error) => console.error('Query failed:', error),
     },
   )
@@ -207,7 +215,6 @@ const Registration: FC<DonationProps> = ({ stripeEvents, userData }) => {
 
       tempData.push(newObject)
     }
-    console.log('tempData', tempData)
     // Update the registrationSettingsData state with the modified tempData
     setSettingsData(tempData)
   }
@@ -251,7 +258,7 @@ const Registration: FC<DonationProps> = ({ stripeEvents, userData }) => {
       }
       setOnGoingSaving(false)
     } catch (e) {
-      console.log('test')
+      // no-op
     }
   }
 
@@ -362,7 +369,10 @@ const Registration: FC<DonationProps> = ({ stripeEvents, userData }) => {
                   <div className="flex items-center gap-4">
                     {/* Accounts */}
                     <div className="flex flex-col gap-2">
-                      <p>Accounts</p>
+                      <div className="flex items-center gap-1">
+                        <p>Accounts</p>
+                        <HelpTip text="The QuickBooks income account this fund's gifts are credited to, e.g. 'Tithes & Offerings'." />
+                      </div>
                       <Dropdown
                         options={qboData?.accounts?.filter(
                           (a: { type: string }) =>

@@ -21,7 +21,9 @@ module.exports = withMT({
         btmColor: '#25A1DA',
         yellow:'#FAB400',
         secondaryYellow:'#FFC107',
-        greenText:'#33AB78'
+        greenText:'#33AB78',
+        success:'#16a34a',
+        danger:'#dc2626'
       },
       transitionProperty: {
         width: 'width',

@@ -27,8 +27,9 @@ import { BiSortDown } from 'react-icons/bi'
 import { AiOutlineCloudSync, AiOutlineUserAdd } from 'react-icons/ai'
 import { Link, useSearchParams } from 'react-router-dom'
 import { mainRoute, routeSettings } from '@/common/constant/route'
-import { Button } from '@material-tailwind/react'
+import { Button, Tooltip } from '@material-tailwind/react'
 import { MdAppRegistration } from 'react-icons/md'
+import { BsQuestionCircle } from 'react-icons/bs'
 import { useDispatch } from 'react-redux'
 import {
   BankAccountExpensesProps,
@@ -47,7 +48,6 @@ import Dropdown, { components } from 'react-select'
 import DatePicker from 'react-datepicker'
 import Registration from './component/Registration'
 import { getStripeList } from '@/common/api/stripe'
-import Empty from '@/common/components/empty/Empty'
 import { setReduxStripeData } from '@/redux/stripe'
 import { FundAttProps, UserSettingsProps } from '@/common/constant/interfaces'
 
@@ -99,6 +99,23 @@ interface SettingsProps {}
 function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(' ')
 }
+
+const tabSubtitles: Record<string, string> = {
+  Donation: 'Giving funds from Planning Center',
+  Registration: 'Event / registration payments from Stripe',
+  Bank: 'Your clearing & fee accounts',
+}
+
+const HelpTip: FC<{ text: string }> = ({ text }) => (
+  <Tooltip
+    content={<span className="block max-w-xs text-xs leading-snug">{text}</span>}
+    placement="top"
+  >
+    <span className="inline-flex cursor-help text-gray-400 hover:text-gray-600">
+      <BsQuestionCircle size={14} />
+    </span>
+  </Tooltip>
+)
 
 const Mapping: FC<SettingsProps> = () => {
   const dispatch = useDispatch()
@@ -165,7 +182,6 @@ const Mapping: FC<SettingsProps> = () => {
             : user.email
         if (emailF) {
           const res = await getUserRelated(emailF)
-          console.log('go here????', res.data)
           return res.data
         }
       },
@@ -232,7 +248,6 @@ const Mapping: FC<SettingsProps> = () => {
       const email =
         user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
       if (email) {
-        console.log('Fetching data from API...')
         const fetchedData = await getStripeList({ email }) // Fetch only if needed
         dispatch(setReduxStripeData(fetchedData.data))
         return !isEmpty(fetchedData)
@@ -242,7 +257,6 @@ const Mapping: FC<SettingsProps> = () => {
     },
     {
       refetchOnWindowFocus: false,
-      onSuccess: (data) => console.log('Query succeeded:', data),
       onError: (error) => console.error('Query failed:', error),
     },
   )
@@ -282,7 +296,6 @@ const Mapping: FC<SettingsProps> = () => {
       user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
 
     if (type === 'donation') {
-      console.log('test', { email, isAutomationEnable: !isAutomationEnable })
       await mutate({ email, isAutomationEnable: !isAutomationEnable })
       setIsAutomationEnable(!isAutomationEnable)
     } else {
@@ -427,28 +440,35 @@ const Mapping: FC<SettingsProps> = () => {
             }
             onChange={(index) => dispatch(setMappingNumber(index))}
           >
-            <div className="flex">
+            <div className="flex flex-col">
               <Tab.List className="flex space-x-1 rounded-xl bg-transparent px-4 py-2 w-96">
                 {Object.keys(categories).map((category, index: number) => (
-                  <div className="flex items-center" key={category}>
-                    <Tab
-                      className={({ selected }) =>
-                        classNames(
-                          'flex items-center w-full rounded-lg p-2.5 text-sm font-medium leading-5 text-gray-400',
-                          selected
-                            ? 'bg-yellow shadow text-white'
-                            : 'hover:bg-white/[0.12] hover:text-black',
-                        )
-                      }
-                    >
-                      {category}
-                    </Tab>
-                    {index === Object.keys(categories).length - 1 ? null : (
-                      <p className="text-gray-400 pl-2"> | </p>
-                    )}
+                  <div className="flex flex-col" key={category}>
+                    <div className="flex items-center">
+                      <Tab
+                        className={({ selected }) =>
+                          classNames(
+                            'flex items-center w-full rounded-lg p-2.5 text-sm font-medium leading-5 text-gray-400',
+                            selected
+                              ? 'bg-yellow shadow text-white'
+                              : 'hover:bg-white/[0.12] hover:text-black',
+                          )
+                        }
+                      >
+                        {category}
+                      </Tab>
+                      {index === Object.keys(categories).length - 1 ? null : (
+                        <p className="text-gray-400 pl-2"> | </p>
+                      )}
+                    </div>
                   </div>
                 ))}
               </Tab.List>
+              <p className="px-4 pb-2 text-xs font-light text-gray-400">
+                {tabSubtitles[
+                  Object.keys(categories)[mappingNumber ?? 0] || ''
+                ] || ''}
+              </p>
             </div>
 
             <Tab.Panels className="mt-2">
@@ -596,7 +616,13 @@ const Mapping: FC<SettingsProps> = () => {
                     />
                   </div>
                 ) : (
-                  <Empty />
+                  <div className="flex flex-col items-center justify-center h-96">
+                    <p className="max-w-lg text-center text-xl font-thin text-gray-500">
+                      No event/registration payments found. This tab is only
+                      needed if you collect event or registration payments
+                      through Stripe.
+                    </p>
+                  </div>
                 )}
               </Tab.Panel>
 
@@ -619,23 +645,46 @@ const Mapping: FC<SettingsProps> = () => {
                   </div>
                 ) : (
                   <div>
+                    <div className="mb-4 rounded-lg border border-blue-100 bg-blue-50 p-4 text-sm leading-relaxed text-gray-600">
+                      <p>
+                        <span className="font-semibold text-primary">
+                          How the daily entry works:
+                        </span>{' '}
+                        Each day we post one journal entry — we{' '}
+                        <span className="font-semibold">credit</span> your
+                        revenue accounts (the gross gifts),{' '}
+                        <span className="font-semibold">debit</span> the Stripe
+                        fees account (Stripe&apos;s processing cut), and{' '}
+                        <span className="font-semibold">debit</span> the clearing
+                        account for the net amount Stripe will deposit.
+                      </p>
+                      <p className="pt-2">
+                        Example: $699.20 in gifts − $10.58 in fees = $688.62 to
+                        the clearing account.
+                      </p>
+                    </div>
                     <div>
                       <div className={`flex py-4  border-b-[1px] gap-8`}>
                         <div>
                           <p className="font-semibold text-primary pb-4">
                             Donations
                           </p>
-                          <p className="pb-2">Select Bank Account</p>
+                          <div className="flex items-center gap-1 pb-2">
+                            <p>Select Clearing Account</p>
+                            <HelpTip text="A holding account for money that has left Stripe but hasn't reached your bank yet. Pick (or create in QuickBooks) an account like 'Stripe Clearing' — usually an Other Current Asset." />
+                          </div>
                           <Dropdown<{ value: string; label: string } | null>
                             options={qboData?.accounts
-                              ?.filter(
-                                (a: { type: string }) => a.type === 'Bank',
+                              ?.filter((a: { type: string }) =>
+                                ['Bank', 'Other Current Asset', 'Fixed Asset', 'Other Asset'].includes(
+                                  a.type,
+                                ),
                               )
                               .map((a: { value: any; label: any }) => ({
                                 value: a.value,
                                 label: a.label,
                               }))}
-                            placeholder="Select Bank Account"
+                            placeholder="Select Clearing Account"
                             components={{ Input }}
                             onChange={(val) => {
                               const updatedBankAccounts = (
@@ -659,17 +708,22 @@ const Mapping: FC<SettingsProps> = () => {
                           <p className="font-semibold text-primary pb-4">
                             Registration
                           </p>
-                          <p className="pb-2">Select Bank Account</p>
+                          <div className="flex items-center gap-1 pb-2">
+                            <p>Select Clearing Account</p>
+                            <HelpTip text="A holding account for money that has left Stripe but hasn't reached your bank yet. Pick (or create in QuickBooks) an account like 'Stripe Clearing' — usually an Other Current Asset." />
+                          </div>
                           <Dropdown<{ value: string; label: string } | null>
                             options={qboData?.accounts
-                              ?.filter(
-                                (a: { type: string }) => a.type === 'Bank',
+                              ?.filter((a: { type: string }) =>
+                                ['Bank', 'Other Current Asset', 'Fixed Asset', 'Other Asset'].includes(
+                                  a.type,
+                                ),
                               )
                               .map((a: { value: any; label: any }) => ({
                                 value: a.value,
                                 label: a.label,
                               }))}
-                            placeholder="Select Bank Account"
+                            placeholder="Select Clearing Account"
                             components={{ Input }}
                             onChange={(val) => {
                               const updatedBankAccounts = (
@@ -699,7 +753,10 @@ const Mapping: FC<SettingsProps> = () => {
                           </p>
                           <div className="flex gap-8">
                             <div>
-                              <p className="pb-2">Select Account</p>
+                              <div className="flex items-center gap-1 pb-2">
+                                <p>Select Account</p>
+                                <HelpTip text="Where Stripe's processing fees are recorded as an expense, e.g. 'Merchant Fees' or 'Bank Charges'." />
+                              </div>
                               <Dropdown<{ value: string; label: string } | null>
                                 options={qboData?.accounts
                                   ?.filter(

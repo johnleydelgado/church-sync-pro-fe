@@ -76,42 +76,19 @@ const CardItem: React.FC<CardItemProps> = ({
     </CardHeader>
     <CardBody className="transition-all duration-300 ease-in-out p-0">
       <ul className="flex flex-col gap-2 lg:gap-4">
-        {/* List items with transitions */}
-        <li className="transition-all duration-300 ease-in-out flex items-center gap-2 lg:gap-4">
-          <span className="transition-all duration-300 ease-in-out rounded-full border border-white/20 bg-white/20 p-1">
-            <CheckIcon />
-          </span>
-          <Typography className="transition-all duration-300 ease-in-out font-normal">
-            5 team members
-          </Typography>
-        </li>
-        <li className="flex items-center gap-4">
-          <span className="rounded-full border border-white/20 bg-white/20 p-1">
-            <CheckIcon />
-          </span>
-          <Typography className="font-normal">200+ components</Typography>
-        </li>
-        <li className="flex items-center gap-4">
-          <span className="rounded-full border border-white/20 bg-white/20 p-1">
-            <CheckIcon />
-          </span>
-          <Typography className="font-normal">40+ built-in pages</Typography>
-        </li>
-        <li className="flex items-center gap-4">
-          <span className="rounded-full border border-white/20 bg-white/20 p-1">
-            <CheckIcon />
-          </span>
-          <Typography className="font-normal">1 year free updates</Typography>
-        </li>
-        <li className="flex items-center gap-4">
-          <span className="rounded-full border border-white/20 bg-white/20 p-1">
-            <CheckIcon />
-          </span>
-          <Typography className="font-normal">
-            Life time technical support
-          </Typography>
-        </li>
-        {/* Add other list items with similar transition classes */}
+        {item.features.map((feature, featureIndex) => (
+          <li
+            key={`${feature}-${featureIndex}`}
+            className="transition-all duration-300 ease-in-out flex items-center gap-2 lg:gap-4"
+          >
+            <span className="transition-all duration-300 ease-in-out rounded-full border border-white/20 bg-white/20 p-1">
+              <CheckIcon />
+            </span>
+            <Typography className="transition-all duration-300 ease-in-out font-normal">
+              {feature}
+            </Typography>
+          </li>
+        ))}
       </ul>
     </CardBody>
     <CardFooter className="transition-all duration-300 ease-in-out mt-8 lg:mt-12 p-0">

@@ -204,7 +204,7 @@ const Dashboard: FC<DashboardProps> = () => {
   }): Promise<void> => {
     const checkifExist = batchSyncing.find((el) => el.batchId === batchId)
     if (!isEmpty(checkifExist)) {
-      failNotification({ title: 'Already Synched !' })
+      failNotification({ title: 'Already Synced !' })
       return
     }
 
@@ -268,9 +268,6 @@ const Dashboard: FC<DashboardProps> = () => {
       const filterFundName = fundData?.length
         ? fundData.map((item) => item.attributes.name)
         : []
-
-      console.log('stripeData', stripeData)
-      console.log('payoutDate', payoutDate)
 
       await Promise.all(
         stripeData.map(
@@ -437,7 +434,9 @@ const Dashboard: FC<DashboardProps> = () => {
             return prevBatchSyncing
           })
         } else {
-          // failNotification({ title: response.message })
+          failNotification({
+            title: response?.message || 'Stripe payout sync failed',
+          })
           setBatchSynching((prev) =>
             prev.filter((item) => item.batchId !== payoutDate),
           )
@@ -457,7 +456,6 @@ const Dashboard: FC<DashboardProps> = () => {
   // }, 300)
 
   const debouncedSearch = debounce(async (criteria) => {
-    console.log('criteria', criteria)
     setOffset(0)
     setCurrentPage(1)
     dispatch(setStripeCurrentPage(1))
@@ -493,20 +491,18 @@ const Dashboard: FC<DashboardProps> = () => {
   const handleKeyPressAmount = (event: any) => {
     if (event.key === 'Enter') {
       // Perform your action here
-      console.log('Enter key pressed')
     }
   }
   // useEffect(() => {
   //   persistor.purge()
   // }, [])
 
+  const isTableLoading =
+    isLoadingStripePayoutData || isRefetchingStripePayoutData || isLoadingUser
+
   return (
     <MainLayout>
-      {isLoadingStripePayoutData ||
-      isRefetchingStripePayoutData ||
-      isLoadingUser ? (
-        <Loading />
-      ) : (
+      {
         <div className="flex h-full gap-4">
           <div className="rounded-lg p-8 bg-white w-screen">
             {/* Header */}
@@ -557,9 +553,7 @@ const Dashboard: FC<DashboardProps> = () => {
 
             <div className="flex justify-between">
               <div className="flex flex-col w-full gap-2">
-                <p className="font-bold text-lg text-gray-400">
-                  Select start date
-                </p>
+                <p className="font-bold text-lg text-gray-400">Showing from</p>
                 <DatePicker
                   selected={
                     selectedStartDate ? new Date(selectedStartDate) : null
@@ -567,9 +561,12 @@ const Dashboard: FC<DashboardProps> = () => {
                   onChange={handleDateChange}
                   className="rounded-xl border-yellow"
                 />
+                <p className="text-xs text-gray-400">
+                  Start date for the transactions loaded below.
+                </p>
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2">
                 <Popover
                   animate={{
                     mount: { scale: 1, y: 0 },
@@ -578,9 +575,9 @@ const Dashboard: FC<DashboardProps> = () => {
                   placement="bottom"
                 >
                   <PopoverHandler>
-                    <Button className="flex items-center gap-4 bg-yellow rounded-xl h-1/2 w-44">
-                      <FiFilter size={22} />
-                      <p>Filters</p>
+                    <Button className="flex items-center gap-2 bg-yellow rounded-xl normal-case whitespace-nowrap px-4 py-2.5 text-sm font-medium">
+                      <FiFilter size={18} />
+                      <span>Quick date filter</span>
                     </Button>
                   </PopoverHandler>
                   <PopoverContent>
@@ -610,7 +607,11 @@ const Dashboard: FC<DashboardProps> = () => {
             </div>
 
             {/* Table */}
-            {tabTransaction?.batch && userData?.data?.UserSetting ? (
+            {isTableLoading ? (
+              <div className="flex h-96 items-center justify-center">
+                <Loading />
+              </div>
+            ) : tabTransaction?.batch && userData?.data?.UserSetting ? (
               <BatchTable
                 batchSyncing={batchSyncing}
                 triggerSync={triggerSyncBatch}
@@ -628,32 +629,32 @@ const Dashboard: FC<DashboardProps> = () => {
               !tabTransaction?.batch ? (
               <div className="flex flex-col items-center justify-center h-96">
                 <p className="text-2xl text-center font-thin">
-                  Kindly configure your registration mapping within the mapping.
+                  You haven&apos;t set up your giving categories yet.
                 </p>
                 <Link
                   to={mainRoute.AUTOMATION_MAPPING + '?tab=1'}
                   className="text-xl pt-4 underline text-blue-400"
                 >
-                  Click Here !
+                  Set up mapping
                 </Link>
               </div>
             ) : isEmpty(userData?.data?.UserSetting?.settingsData) &&
               tabTransaction?.batch ? (
               <div className="flex flex-col items-center justify-center h-96">
                 <p className="text-2xl text-center font-thin">
-                  Kindly configure your donation mapping within the mapping.
+                  You haven&apos;t set up your donation categories yet.
                 </p>
                 <Link
                   to={mainRoute.AUTOMATION_MAPPING + '?tab=0'}
                   className="text-xl pt-4 underline text-blue-400"
                 >
-                  Click Here !
+                  Set up mapping
                 </Link>
               </div>
             ) : null}
           </div>
         </div>
-      )}
+      }
     </MainLayout>
   )
 }

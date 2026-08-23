@@ -440,7 +440,7 @@ const ModalCreateUpdateProject: FC<ModalRegistrationProps> = ({ size }) => {
 
                   <div className="flex gap-4 self-end">
                     <Button
-                      className="bg-red-600"
+                      className="bg-gray-400"
                       onClick={() => handleCloseModals()}
                     >
                       Cancel

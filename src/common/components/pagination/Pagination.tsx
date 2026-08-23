@@ -30,19 +30,27 @@ const Pagination = () => {
     setOffset(newOffset)
   }
 
-  console.log('totalCount', totalCount, totalPages)
+  const isFirstPage = currentPage <= 1
+  const isLastPage = currentPage >= totalPages
 
   return (
     <nav aria-label="Page navigation" className="">
       <ul className="inline-flex items-center -space-x-px">
         {totalPages > 0 && (
           <li className="pr-4">
-            <div
-              className="cursor-pointer rounded-2xl p-2 text-gray-500 hover:bg-blue-600 hover:text-white"
-              onClick={goToPrevPage}
+            <button
+              type="button"
+              aria-label="Previous page"
+              disabled={isFirstPage}
+              className={`rounded-2xl p-2 text-gray-500 ${
+                isFirstPage
+                  ? 'cursor-not-allowed opacity-40'
+                  : 'cursor-pointer hover:bg-blue-600 hover:text-white'
+              }`}
+              onClick={isFirstPage ? undefined : goToPrevPage}
             >
               <MdChevronLeft />
-            </div>
+            </button>
           </li>
         )}
         {pageNumbers.map((page) => (
@@ -59,12 +67,19 @@ const Pagination = () => {
         ))}
         {totalPages > 0 && (
           <li className="pl-4">
-            <div
-              className="cursor-pointer rounded-2xl p-2 text-gray-500 hover:bg-blue-600 hover:text-white"
-              onClick={goToNextPage}
+            <button
+              type="button"
+              aria-label="Next page"
+              disabled={isLastPage}
+              className={`rounded-2xl p-2 text-gray-500 ${
+                isLastPage
+                  ? 'cursor-not-allowed opacity-40'
+                  : 'cursor-pointer hover:bg-blue-600 hover:text-white'
+              }`}
+              onClick={isLastPage ? undefined : goToNextPage}
             >
               <MdChevronRight />
-            </div>
+            </button>
           </li>
         )}
       </ul>

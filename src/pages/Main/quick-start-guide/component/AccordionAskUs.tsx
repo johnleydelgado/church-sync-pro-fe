@@ -1,6 +1,7 @@
 import { Accordion, AccordionHeader } from '@material-tailwind/react'
 import { FC } from 'react'
 import { AiOutlineMinusCircle } from 'react-icons/ai'
+import { BsCheckCircleFill, BsCircle } from 'react-icons/bs'
 import { HiPlus } from 'react-icons/hi'
 import SetupInstructions from './SetupInstructions'
 
@@ -11,6 +12,7 @@ interface AccordionProps {
   bodyTitleArr: any
   bgColor: string
   index: number
+  done?: boolean
 }
 
 const renderBoldLastWord = (text: string) => {
@@ -30,14 +32,28 @@ const AccordionAskUs: FC<AccordionProps> = ({
   bodyTitleArr,
   bgColor,
   index,
+  done = false,
 }) => {
   return (
     <Accordion open={isOpen}>
       <div
-        className={`flex justify-between px-8 py-6 bg-[${bgColor}] items-center cursor-pointer`}
+        className={`flex justify-between px-8 py-6 ${bgColor} items-center cursor-pointer`}
         onClick={() => handleOpen(index)}
       >
         <div className="flex gap-4 items-center">
+          {done ? (
+            <BsCheckCircleFill
+              size={22}
+              className="text-green-500 shrink-0"
+              title="Completed"
+            />
+          ) : (
+            <BsCircle
+              size={22}
+              className="text-gray-300 shrink-0"
+              title="Not yet complete"
+            />
+          )}
           <p className="w-20 text-gray-400">STEP {index + 1}</p>
           <AccordionHeader
             onClick={() => handleOpen(index)}

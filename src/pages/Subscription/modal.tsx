@@ -50,13 +50,17 @@ const SubscriptionModal: FC<
   const [errorMessage, setErrorMessage] = useState<string | null | undefined>(
     null,
   )
+  const [submitting, setSubmitting] = useState(false)
 
   const handleSubmit = async (event: any) => {
     event.preventDefault()
 
-    if (elements == null || stripe == null) {
+    if (elements == null || stripe == null || submitting) {
       return
     }
+
+    setSubmitting(true)
+    try {
 
     // Trigger form validation and wallet collection
     const isSubscription =
@@ -126,6 +130,9 @@ const SubscriptionModal: FC<
           // Handle success for one-time payments, e.g., redirect or update UI
         }
       }
+    }
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -198,8 +205,15 @@ const SubscriptionModal: FC<
                     Pay
                   </button> */}
                   <div className="flex items-center justify-end pt-8">
-                    <Button type="submit" className="bg-greenText">
-                      Pay
+                    <Button
+                      type="submit"
+                      className="bg-greenText flex items-center gap-2"
+                      disabled={submitting || !stripe || !elements}
+                    >
+                      {submitting ? (
+                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      ) : null}
+                      {submitting ? 'Processing...' : 'Pay'}
                     </Button>
                   </div>
                   {/* Show error message to your customers */}

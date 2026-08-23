@@ -20,8 +20,9 @@ import stripeIcon from '@/common/assets/stripe.png'
 import { CgSync } from 'react-icons/cg'
 import { BiSync } from 'react-icons/bi'
 import { useGetTokenList } from '@/common/hooks/useGetTokenList'
-import MainLayout from '@/common/components/main-layout/MainLayout'
-import { MdSettings } from 'react-icons/md'
+import ConfirmActionModal from '@/common/components/modal/ConfirmActionModal'
+import { MODALS_NAME } from '@/common/constant/modal'
+import { OPEN_MODAL } from '@/redux/common'
 
 interface AccountProps {}
 
@@ -69,6 +70,19 @@ const Account: FC<AccountProps> = ({}) => {
 
   const { tokenList, refetch } = useGetTokenList()
 
+  const [disconnectTarget, setDisconnectTarget] = useState<{
+    id: number | undefined | null
+    label: string
+  } | null>(null)
+
+  const requestDisconnect = (
+    id: number | undefined | null,
+    label: string,
+  ) => {
+    setDisconnectTarget({ id, label })
+    dispatch(OPEN_MODAL(MODALS_NAME.modalConfirmDisconnect))
+  }
+
   const qboLoginHandler = async () => {
     setIsBtnLoading({ ...isBtnLoading, qboLoading: true })
     const authUri = await authApi('authQB')
@@ -97,7 +111,6 @@ const Account: FC<AccountProps> = ({}) => {
 
   const deleteToken = async (id: number | undefined | null) => {
     try {
-      console.log('test', id)
       if (id) {
         const res = await deleteUserToken(id)
 
@@ -167,18 +180,16 @@ const Account: FC<AccountProps> = ({}) => {
   }, [])
 
   return (
-    <MainLayout>
-      <div className="-m-6 p-6 h-full">
-        {/* Header */}
-        <div className="pb-2">
-          <div className="flex flex-col border-b-2 pb-2">
-            <div className="flex items-center gap-2">
-              <MdSettings size={28} className="text-blue-400" />
-              <span className="font-bold text-lg text-primary">Settings</span>
-            </div>
-          </div>
-        </div>
+    <div className="h-full">
+      <ConfirmActionModal
+        modalName={MODALS_NAME.modalConfirmDisconnect}
+        title={`Disconnect ${disconnectTarget?.label || ''}?`}
+        body="Your syncs will stop until you reconnect."
+        confirmLabel="Disconnect"
+        onConfirm={() => deleteToken(disconnectTarget?.id)}
+      />
 
+      <div className="h-full">
         <div className="w-full  flex flex-col bg-white lg:px-8 py-4 justify-center mt-2">
           <div className="flex flex-col gap-2 lg:px-4">
             <p className="text-md font-thin">
@@ -187,17 +198,8 @@ const Account: FC<AccountProps> = ({}) => {
           </div>
 
           <div className="flex flex-col gap-4 pt-4 lg:p-4">
-            <button
-              className="border-2 w-full lg:w-1/2 h-28 p-4 rounded-lg text-start flex gap-4"
-              onClick={(e) => {
-                if (!hasTokenOfTypes(['qbo'])) {
-                  qboLoginHandler()
-                } else {
-                  e.stopPropagation()
-                }
-              }}
-            >
-              <img src={qboIcon} className="h-full w=full" />
+            <div className="border-2 w-full lg:w-1/2 h-28 p-4 rounded-lg text-start flex gap-4">
+              <img src={qboIcon} alt="QuickBooks" className="h-full w-full" />
               <div className="flex flex-col gap-2">
                 <div className="flex gap-2 items-center">
                   {hasTokenOfTypes(['qbo']) ? (
@@ -212,38 +214,51 @@ const Account: FC<AccountProps> = ({}) => {
                   </p>
                 </div>
 
-                <p
-                  className={`${
-                    hasTokenOfTypes(['qbo'])
-                      ? 'underline italic font-normal text-btmColor cursor-pointer'
-                      : 'text-gray-400 text-sm font-normal'
-                  } `}
-                  onClick={() =>
-                    deleteToken(
-                      tokenList &&
-                        tokenList[0]?.tokens.find((a) => a.token_type === 'qbo')
-                          ?.id,
-                    )
-                  }
-                >
-                  {hasTokenOfTypes(['qbo'])
-                    ? 'Click to log-out'
-                    : 'QuickBooks accounting software helps you manage your cash flow and gets you tax ready with expense tracking, custom invoices, financial reports and more.'}
-                </p>
+                {hasTokenOfTypes(['qbo']) ? (
+                  <button
+                    type="button"
+                    className="underline italic font-normal text-btmColor cursor-pointer text-start"
+                    onClick={() =>
+                      requestDisconnect(
+                        tokenList &&
+                          tokenList[0]?.tokens.find(
+                            (a) => a.token_type === 'qbo',
+                          )?.id,
+                        'QuickBooks',
+                      )
+                    }
+                  >
+                    Disconnect
+                  </button>
+                ) : (
+                  <>
+                    <p className="text-gray-400 text-sm font-normal">
+                      QuickBooks accounting software helps you manage your cash
+                      flow and gets you tax ready with expense tracking, custom
+                      invoices, financial reports and more.
+                    </p>
+                    <button
+                      type="button"
+                      className="underline italic font-normal text-btmColor cursor-pointer text-start disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                      onClick={qboLoginHandler}
+                      disabled={isBtnLoading.qboLoading}
+                    >
+                      {isBtnLoading.qboLoading ? (
+                        <CgSync className="animate-spin" />
+                      ) : null}
+                      {isBtnLoading.qboLoading ? 'Connecting…' : 'Connect'}
+                    </button>
+                  </>
+                )}
               </div>
-            </button>
+            </div>
 
-            <button
-              className="border-2 w-full lg:w-1/2 h-28 p-4 rounded-lg text-start flex gap-4"
-              onClick={(e) => {
-                if (!hasTokenOfTypes(['pco'])) {
-                  pcLoginHandler()
-                } else {
-                  e.stopPropagation()
-                }
-              }}
-            >
-              <img src={pcoIcon} className="h-full w=full" />
+            <div className="border-2 w-full lg:w-1/2 h-28 p-4 rounded-lg text-start flex gap-4">
+              <img
+                src={pcoIcon}
+                alt="Planning Center"
+                className="h-full w-full"
+              />
               <div className="flex flex-col gap-2">
                 <div className="flex gap-2 items-center">
                   {hasTokenOfTypes(['pco']) ? (
@@ -258,38 +273,47 @@ const Account: FC<AccountProps> = ({}) => {
                   </p>
                 </div>
 
-                <p
-                  className={`${
-                    hasTokenOfTypes(['pco'])
-                      ? 'underline italic font-normal text-btmColor cursor-pointer'
-                      : 'text-gray-400 text-sm font-normal'
-                  } `}
-                  onClick={() =>
-                    deleteToken(
-                      tokenList &&
-                        tokenList[0]?.tokens.find((a) => a.token_type === 'pco')
-                          ?.id,
-                    )
-                  }
-                >
-                  {hasTokenOfTypes(['pco'])
-                    ? 'Click to log-out'
-                    : ' Planning Center is a set of software tools to help you organize information, coordinate events, communicate with your team, and connect with your congregation.'}
-                </p>
+                {hasTokenOfTypes(['pco']) ? (
+                  <button
+                    type="button"
+                    className="underline italic font-normal text-btmColor cursor-pointer text-start"
+                    onClick={() =>
+                      requestDisconnect(
+                        tokenList &&
+                          tokenList[0]?.tokens.find(
+                            (a) => a.token_type === 'pco',
+                          )?.id,
+                        'Planning Center',
+                      )
+                    }
+                  >
+                    Disconnect
+                  </button>
+                ) : (
+                  <>
+                    <p className="text-gray-400 text-sm font-normal">
+                      Planning Center is a set of software tools to help you
+                      organize information, coordinate events, communicate with
+                      your team, and connect with your congregation.
+                    </p>
+                    <button
+                      type="button"
+                      className="underline italic font-normal text-btmColor cursor-pointer text-start disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                      onClick={pcLoginHandler}
+                      disabled={isBtnLoading.pcoLoading}
+                    >
+                      {isBtnLoading.pcoLoading ? (
+                        <CgSync className="animate-spin" />
+                      ) : null}
+                      {isBtnLoading.pcoLoading ? 'Connecting…' : 'Connect'}
+                    </button>
+                  </>
+                )}
               </div>
-            </button>
+            </div>
 
-            <button
-              className="border-2 w-full lg:w-1/2 h-28 p-4 rounded-lg text-start flex gap-4"
-              onClick={(e) => {
-                if (!hasTokenOfTypes(['stripe'])) {
-                  stripeLoginHandler()
-                } else {
-                  e.stopPropagation()
-                }
-              }}
-            >
-              <img src={stripeIcon} className="h-full w=full" />
+            <div className="border-2 w-full lg:w-1/2 h-28 p-4 rounded-lg text-start flex gap-4">
+              <img src={stripeIcon} alt="Stripe" className="h-full w-full" />
               <div className="flex flex-col gap-2">
                 <div className="flex gap-2 items-center">
                   {hasTokenOfTypes(['stripe']) ? (
@@ -304,27 +328,44 @@ const Account: FC<AccountProps> = ({}) => {
                       : 'Click to sync with Stripe'}
                   </p>
                 </div>
-                <p
-                  className={`${
-                    hasTokenOfTypes(['stripe'])
-                      ? 'underline italic font-normal text-btmColor cursor-pointer'
-                      : 'text-gray-400 text-sm font-normal'
-                  } `}
-                  onClick={() =>
-                    deleteToken(
-                      tokenList &&
-                        tokenList[0]?.tokens.find(
-                          (a) => a.token_type === 'stripe',
-                        )?.id,
-                    )
-                  }
-                >
-                  {hasTokenOfTypes(['stripe'])
-                    ? 'Click to log-out'
-                    : 'Stripe’s software and APIs to accept payments, send payouts, and anage their businesses online.'}
-                </p>
+
+                {hasTokenOfTypes(['stripe']) ? (
+                  <button
+                    type="button"
+                    className="underline italic font-normal text-btmColor cursor-pointer text-start"
+                    onClick={() =>
+                      requestDisconnect(
+                        tokenList &&
+                          tokenList[0]?.tokens.find(
+                            (a) => a.token_type === 'stripe',
+                          )?.id,
+                        'Stripe',
+                      )
+                    }
+                  >
+                    Disconnect
+                  </button>
+                ) : (
+                  <>
+                    <p className="text-gray-400 text-sm font-normal">
+                      Stripe’s software and APIs to accept payments, send
+                      payouts, and manage their businesses online.
+                    </p>
+                    <button
+                      type="button"
+                      className="underline italic font-normal text-btmColor cursor-pointer text-start disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                      onClick={stripeLoginHandler}
+                      disabled={isBtnLoading.stripeLoading}
+                    >
+                      {isBtnLoading.stripeLoading ? (
+                        <CgSync className="animate-spin" />
+                      ) : null}
+                      {isBtnLoading.stripeLoading ? 'Connecting…' : 'Connect'}
+                    </button>
+                  </>
+                )}
               </div>
-            </button>
+            </div>
             {/* <LoginButton
           loginImage={qboLogin}
           onClick={qboLoginHandler}
@@ -364,7 +405,7 @@ const Account: FC<AccountProps> = ({}) => {
           </div>
         </div>
       </div>
-    </MainLayout>
+    </div>
   )
 }
 

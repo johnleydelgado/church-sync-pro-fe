@@ -268,6 +268,40 @@ const getUserRelated = async (email: string) => {
   }
 }
 
+export interface DailyJournalEntryCredit {
+  accountRef: string
+  amount: number
+}
+
+export interface DailyJournalEntry {
+  date: string
+  status: 'posted' | 'pending' | 'failed' | string
+  gross: number
+  fees: number
+  net: number
+  credits: DailyJournalEntryCredit[]
+  memo: string
+  batchId: string
+}
+
+export interface DailyJournalEntriesData {
+  automation: {
+    isEnabled: boolean
+    lastRunAt: string | null
+    lastRunStatus: string | null
+  }
+  clearingBalance: number
+  entries: DailyJournalEntry[]
+}
+
+const getDailyJournalEntries = async (
+  email: string,
+): Promise<DailyJournalEntriesData> => {
+  const url = userRoutes.getDailyJournalEntries
+  const res = await apiCall.get(url + `?email=${email}`)
+  return res.data.data
+}
+
 const deleteBookeeper = async (id: string) => {
   const url = '/deleteBookeeper'
   const data = JSON.stringify({ id })
@@ -619,4 +653,5 @@ export {
   setStartDataAutomation,
   getUserRelatedSettings,
   toggleUserActiveStatusApi,
+  getDailyJournalEntries,
 }

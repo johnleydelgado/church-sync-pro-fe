@@ -82,8 +82,6 @@ const TransactionDateModal: FC<ModalRegistrationProps> = ({
     }
   }
 
-  console.log('fagasdas', isOpen)
-
   return (
     <Transition appear show={isOpen} as={Fragment}>
       <Dialog

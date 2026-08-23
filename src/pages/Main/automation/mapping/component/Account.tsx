@@ -189,12 +189,8 @@ const Account: FC<AccountProps> = ({}) => {
             )
           }
         /> */}
-        <button
-          className="border-2 w-1/2 h-28 p-4 rounded-lg text-start flex gap-4"
-          disabled={hasTokenOfTypes(['qbo'])}
-          onClick={qboLoginHandler}
-        >
-          <img src={qboIcon} className="h-full w=full" />
+        <div className="border-2 w-1/2 h-28 p-4 rounded-lg text-start flex gap-4">
+          <img src={qboIcon} alt="QuickBooks" className="h-full w-full" />
           <div className="flex flex-col gap-2">
             <div className="flex gap-2 items-center">
               {hasTokenOfTypes(['qbo']) ? (
@@ -209,33 +205,45 @@ const Account: FC<AccountProps> = ({}) => {
               </p>
             </div>
 
-            <p
-              className={`${
-                hasTokenOfTypes(['qbo'])
-                  ? 'underline italic font-normal text-btmColor cursor-pointer'
-                  : 'text-gray-400 text-sm font-normal'
-              } `}
-              onClick={() =>
-                deleteToken(
-                  tokenList &&
-                    tokenList[0]?.tokens.find((a) => a.token_type === 'qbo')
-                      ?.id,
-                )
-              }
-            >
-              {hasTokenOfTypes(['qbo'])
-                ? 'Click to log-out'
-                : 'QuickBooks accounting software helps you manage your cash flow and gets you tax ready with expense tracking, custom invoices, financial reports and more.'}
-            </p>
+            {hasTokenOfTypes(['qbo']) ? (
+              <button
+                type="button"
+                className="underline italic font-normal text-btmColor cursor-pointer text-start"
+                onClick={() =>
+                  deleteToken(
+                    tokenList &&
+                      tokenList[0]?.tokens.find((a) => a.token_type === 'qbo')
+                        ?.id,
+                  )
+                }
+              >
+                Disconnect
+              </button>
+            ) : (
+              <>
+                <p className="text-gray-400 text-sm font-normal">
+                  QuickBooks accounting software helps you manage your cash flow
+                  and gets you tax ready with expense tracking, custom invoices,
+                  financial reports and more.
+                </p>
+                <button
+                  type="button"
+                  className="underline italic font-normal text-btmColor cursor-pointer text-start disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  onClick={qboLoginHandler}
+                  disabled={isBtnLoading.qboLoading}
+                >
+                  {isBtnLoading.qboLoading ? (
+                    <CgSync className="animate-spin" />
+                  ) : null}
+                  {isBtnLoading.qboLoading ? 'Connecting…' : 'Connect'}
+                </button>
+              </>
+            )}
           </div>
-        </button>
+        </div>
 
-        <button
-          className="border-2 w-1/2 h-28 p-4 rounded-lg text-start flex gap-4"
-          disabled={hasTokenOfTypes(['pco'])}
-          onClick={pcLoginHandler}
-        >
-          <img src={pcoIcon} className="h-full w=full" />
+        <div className="border-2 w-1/2 h-28 p-4 rounded-lg text-start flex gap-4">
+          <img src={pcoIcon} alt="Planning Center" className="h-full w-full" />
           <div className="flex flex-col gap-2">
             <div className="flex gap-2 items-center">
               {hasTokenOfTypes(['pco']) ? (
@@ -250,33 +258,45 @@ const Account: FC<AccountProps> = ({}) => {
               </p>
             </div>
 
-            <p
-              className={`${
-                hasTokenOfTypes(['pco'])
-                  ? 'underline italic font-normal text-btmColor cursor-pointer'
-                  : 'text-gray-400 text-sm font-normal'
-              } `}
-              onClick={() =>
-                deleteToken(
-                  tokenList &&
-                    tokenList[0]?.tokens.find((a) => a.token_type === 'pco')
-                      ?.id,
-                )
-              }
-            >
-              {hasTokenOfTypes(['pco'])
-                ? 'Click to log-out'
-                : ' Planning Center is a set of software tools to help you organize information, coordinate events, communicate with your team, and connect with your congregation.'}
-            </p>
+            {hasTokenOfTypes(['pco']) ? (
+              <button
+                type="button"
+                className="underline italic font-normal text-btmColor cursor-pointer text-start"
+                onClick={() =>
+                  deleteToken(
+                    tokenList &&
+                      tokenList[0]?.tokens.find((a) => a.token_type === 'pco')
+                        ?.id,
+                  )
+                }
+              >
+                Disconnect
+              </button>
+            ) : (
+              <>
+                <p className="text-gray-400 text-sm font-normal">
+                  Planning Center is a set of software tools to help you organize
+                  information, coordinate events, communicate with your team, and
+                  connect with your congregation.
+                </p>
+                <button
+                  type="button"
+                  className="underline italic font-normal text-btmColor cursor-pointer text-start disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  onClick={pcLoginHandler}
+                  disabled={isBtnLoading.pcoLoading}
+                >
+                  {isBtnLoading.pcoLoading ? (
+                    <CgSync className="animate-spin" />
+                  ) : null}
+                  {isBtnLoading.pcoLoading ? 'Connecting…' : 'Connect'}
+                </button>
+              </>
+            )}
           </div>
-        </button>
+        </div>
 
-        <button
-          className="border-2 w-1/2 h-28 p-4 rounded-lg text-start flex gap-4"
-          disabled={hasTokenOfTypes(['stripe'])}
-          onClick={stripeLoginHandler}
-        >
-          <img src={stripeIcon} className="h-16 w-20" />
+        <div className="border-2 w-1/2 h-28 p-4 rounded-lg text-start flex gap-4">
+          <img src={stripeIcon} alt="Stripe" className="h-16 w-20" />
           <div className="flex flex-col gap-2">
             <div className="flex gap-2 items-center">
               {hasTokenOfTypes(['stripe']) ? (
@@ -292,26 +312,41 @@ const Account: FC<AccountProps> = ({}) => {
               </p>
             </div>
 
-            <p
-              className={`${
-                hasTokenOfTypes(['stripe'])
-                  ? 'underline italic font-normal text-btmColor cursor-pointer'
-                  : 'text-gray-400 text-sm font-normal'
-              } `}
-              onClick={() =>
-                deleteToken(
-                  tokenList &&
-                    tokenList[0]?.tokens.find((a) => a.token_type === 'stripe')
-                      ?.id,
-                )
-              }
-            >
-              {hasTokenOfTypes(['stripe'])
-                ? 'Click to log-out'
-                : 'Stripe’s software and APIs to accept payments, send payouts, and anage their businesses online.'}
-            </p>
+            {hasTokenOfTypes(['stripe']) ? (
+              <button
+                type="button"
+                className="underline italic font-normal text-btmColor cursor-pointer text-start"
+                onClick={() =>
+                  deleteToken(
+                    tokenList &&
+                      tokenList[0]?.tokens.find((a) => a.token_type === 'stripe')
+                        ?.id,
+                  )
+                }
+              >
+                Disconnect
+              </button>
+            ) : (
+              <>
+                <p className="text-gray-400 text-sm font-normal">
+                  Stripe’s software and APIs to accept payments, send payouts,
+                  and manage their businesses online.
+                </p>
+                <button
+                  type="button"
+                  className="underline italic font-normal text-btmColor cursor-pointer text-start disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  onClick={stripeLoginHandler}
+                  disabled={isBtnLoading.stripeLoading}
+                >
+                  {isBtnLoading.stripeLoading ? (
+                    <CgSync className="animate-spin" />
+                  ) : null}
+                  {isBtnLoading.stripeLoading ? 'Connecting…' : 'Connect'}
+                </button>
+              </>
+            )}
           </div>
-        </button>
+        </div>
         {/* <LoginButton
           loginImage={qboLogin}
           onClick={qboLoginHandler}

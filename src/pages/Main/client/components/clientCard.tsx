@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react'
-import { FiEdit, FiXCircle } from 'react-icons/fi'
+import { FiXCircle } from 'react-icons/fi'
 import { FaChurch } from 'react-icons/fa'
 import { format } from 'date-fns'
 import { ClientBookkeeper } from '@/common/constant/global-interfaces'
@@ -46,7 +46,15 @@ const ClientCard: React.FC<ClientCardProps> = ({ client, onDelete }) => {
       </div>
       <p className={`text-sm mb-2 ${isDisabled ? 'text-gray-400' : ''}`}>
         <span className="font-semibold">Status:</span>{' '}
-        {client.isActive ? 'Active' : 'Inactive'}
+        <span
+          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+            client.isActive
+              ? 'bg-green-100 text-green-700'
+              : 'bg-gray-100 text-gray-500'
+          }`}
+        >
+          {client.isActive ? 'Active' : 'Inactive'}
+        </span>
       </p>
       <p className={`text-sm mb-2 ${isDisabled ? 'text-gray-400' : ''}`}>
         <span className="font-semibold">Date Created:</span>{' '}
@@ -55,17 +63,6 @@ const ClientCard: React.FC<ClientCardProps> = ({ client, onDelete }) => {
           : 'N/A'}
       </p>
       <div className="flex space-x-4 mt-2">
-        <button
-          className={`text-primary ${
-            isDisabled
-              ? 'cursor-not-allowed opacity-50'
-              : 'hover:text-secondary'
-          }`}
-          aria-label="Edit"
-          disabled={isDisabled}
-        >
-          <FiEdit size={20} />
-        </button>
         <button
           className={`text-red-500 ${
             isDisabled ? 'cursor-not-allowed opacity-50' : 'hover:text-red-700'

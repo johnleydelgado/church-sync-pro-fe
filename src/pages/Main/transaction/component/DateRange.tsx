@@ -68,6 +68,11 @@ const DateRange: FC<DateRangeProps> = ({ type }) => {
   )
 
   const { setOffset, setCurrentPage } = usePagination()
+  const currentYear = new Date().getFullYear()
+  const yearOptions = Array.from({ length: 6 }, (_, i) => {
+    const year = String(currentYear - i)
+    return { value: year, label: year }
+  })
   const options = [
     { value: 'This Month', label: 'This Month' },
     { value: 'Last Month', label: 'Last Month' },
@@ -75,13 +80,7 @@ const DateRange: FC<DateRangeProps> = ({ type }) => {
     { value: 'Last 30 Days', label: 'Last 30 Days' },
     { value: 'Last 3 Months', label: 'Last 3 Months' },
     { value: 'Last 6 Months', label: 'Last 6 Months' },
-    { value: '2024', label: '2024' },
-    { value: '2023', label: '2023' },
-    { value: '2022', label: '2022' },
-    { value: '2021', label: '2021' },
-    { value: '2020', label: '2020' },
-    { value: '2019', label: '2019' },
-    { value: '2018', label: '2018' },
+    ...yearOptions,
     { value: 'Custom', label: 'Custom' },
   ]
 
@@ -156,7 +155,7 @@ const DateRange: FC<DateRangeProps> = ({ type }) => {
   return (
     <div className="">
       <div className="flex justify-between">
-        <p className="font-medium text-lg">FILTERS</p>
+        <p className="font-medium text-lg">Quick date filter</p>
         <p
           className="text-yellow underline cursor-pointer"
           onClick={handleClearAll}

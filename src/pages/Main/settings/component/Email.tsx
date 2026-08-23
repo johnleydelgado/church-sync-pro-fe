@@ -4,9 +4,7 @@ import { useSelector } from 'react-redux'
 import { RootState } from '@/redux/store'
 
 import { useDispatch } from 'react-redux'
-import { Button } from '@material-tailwind/react'
-import { MdSettings } from 'react-icons/md'
-import MainLayout from '@/common/components/main-layout/MainLayout'
+import { Button, Spinner } from '@material-tailwind/react'
 import { crudUserEmailPreferences } from '@/common/api/user'
 import { useQuery, useMutation, useQueryClient } from 'react-query'
 import { isEmpty } from 'lodash'
@@ -46,8 +44,6 @@ const Email: FC<AccountProps> = ({}) => {
     },
   )
 
-  console.log('userId', userId, bookkeeper)
-
   const mutation = useMutation(
     (newData: { email: string }) =>
       crudUserEmailPreferences(Number(userId), newData.email, emailType),
@@ -73,27 +69,33 @@ const Email: FC<AccountProps> = ({}) => {
   }
 
   return (
-    <MainLayout>
-      <div className="-m-6 p-6 h-full">
+    <div className="h-full">
+      <div className="h-full">
         <AddRecipientEmailModal
           sendHandler={handleUpdate}
           handleCloseModals={handleCloseModals}
         />
-        {/* Header */}
-        <div className="pb-2">
-          <div className="flex flex-col border-b-2 pb-2">
-            <div className="flex items-center gap-2">
-              <MdSettings size={28} className="text-blue-400" />
-              <span className="font-bold text-lg text-primary">
-                Set Recipient Email Settings
-              </span>
-            </div>
-          </div>
-        </div>
 
         <div className="w-full  flex flex-col bg-white justify-center px-8 mt-2">
+          {isLoading ? (
+            <div className="flex justify-center items-center py-16">
+              <Spinner color="green" className="h-10 w-10" />
+            </div>
+          ) : error ? (
+            <div className="flex justify-center items-center py-16">
+              <p className="text-md text-red-500">
+                Failed to load email preferences. Please try again.
+              </p>
+            </div>
+          ) : (
+            <>
           <div className="flex items-center justify-between gap-2 px-4 pt-4 w-full">
-            <p className="text-md text-primary">New Fund</p>
+            <div className="flex flex-col">
+              <p className="text-md text-primary">New Fund</p>
+              <p className="text-sm text-gray-400">
+                Recipient that receives New Fund alert notifications.
+              </p>
+            </div>
             {data?.find((item: ItemType) => item.type === 'new-fund')?.email ? (
               <Button
                 variant="text"
@@ -128,7 +130,12 @@ const Email: FC<AccountProps> = ({}) => {
           )}
 
           <div className="flex items-center justify-between gap-2 px-4 pt-4 w-full">
-            <p className="text-md text-primary">New Registration</p>
+            <div className="flex flex-col">
+              <p className="text-md text-primary">New Registration</p>
+              <p className="text-sm text-gray-400">
+                Recipient that receives New Registration alert notifications.
+              </p>
+            </div>
             {data?.find((item: ItemType) => item.type === 'new-registration')
               ?.email ? (
               <Button
@@ -164,9 +171,11 @@ const Email: FC<AccountProps> = ({}) => {
               </div>
             </div>
           )}
+            </>
+          )}
         </div>
       </div>
-    </MainLayout>
+    </div>
   )
 }
 

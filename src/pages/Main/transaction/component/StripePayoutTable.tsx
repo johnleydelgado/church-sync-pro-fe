@@ -5,6 +5,8 @@ import { isEmpty } from 'lodash'
 import { AiOutlineSync } from 'react-icons/ai'
 import { HiCheckCircle } from 'react-icons/hi'
 import { Link } from 'react-router-dom'
+import { Button, Tooltip } from '@material-tailwind/react'
+import { Spinner } from 'flowbite-react'
 import Stripe from 'stripe'
 import { useQuery } from 'react-query'
 import { RootState } from '@/redux/store'
@@ -17,7 +19,7 @@ import usePaginationStripe from '@/common/hooks/usePaginationStripe'
 import PaginationStripe from '@/common/components/pagination/PaginationStripe'
 import Loading from '@/common/components/loading/Loading'
 import { useDispatch } from 'react-redux'
-import { setStripeCurrentPage } from '@/redux/common'
+import { setStripeCurrentPage, setDateRangeTransaction } from '@/redux/common'
 
 interface BatchTableProps {
   triggerSync: (params: {
@@ -71,7 +73,7 @@ const StripePayoutTable: FC<BatchTableProps> = ({
       stripeData: item.data,
       payoutDate: item?.payoutDate,
     })
-    // refetch()
+    refetch()
   }
 
   useEffect(() => {
@@ -81,8 +83,6 @@ const StripePayoutTable: FC<BatchTableProps> = ({
       setAmount(0)
     }
   }, [amount])
-
-  console.log('totalItems', totalItems)
 
   return isLoading || isRefetching ? (
     <Loading />
@@ -165,26 +165,50 @@ const StripePayoutTable: FC<BatchTableProps> = ({
                   </td>
 
                   <td className="">
-                    <div className="flex h-10 justify-end">
+                    <div className="flex h-10 items-center justify-end">
                       {isSync(item.payoutDate) ? (
-                        <HiCheckCircle className="text-yellow" size={32} />
+                        <div className="flex items-center gap-1.5 text-success font-semibold">
+                          <HiCheckCircle className="text-success" size={24} />
+                          Synced
+                        </div>
                       ) : (
-                        <button
-                          className="mr-2"
-                          onClick={() => syncHandler(item)}
-                        >
-                          <AiOutlineSync
-                            className={`text-slate-400 cursor-pointer ${
-                              batchSyncing.find(
-                                (bc: { batchId: string }) =>
-                                  bc.batchId === item.payoutDate,
-                              )?.trigger
-                                ? 'animate-spin'
-                                : 'animate-none'
-                            }`}
-                            size={28}
-                          />
-                        </button>
+                        (() => {
+                          const isSyncing = batchSyncing.find(
+                            (bc: { batchId: string }) =>
+                              bc.batchId === item.payoutDate,
+                          )?.trigger
+                            ? true
+                            : false
+                          return (
+                            <Tooltip
+                              content={
+                                <span className="block max-w-xs text-xs leading-snug">
+                                  Create the journal entry in QuickBooks
+                                </span>
+                              }
+                              placement="top"
+                            >
+                              <Button
+                                size="sm"
+                                onClick={() => syncHandler(item)}
+                                disabled={isSyncing}
+                                className="flex items-center gap-2 normal-case bg-yellow"
+                              >
+                                {isSyncing ? (
+                                  <>
+                                    <Spinner size="sm" />
+                                    Syncing…
+                                  </>
+                                ) : (
+                                  <>
+                                    <AiOutlineSync size={16} />
+                                    Sync to QuickBooks
+                                  </>
+                                )}
+                              </Button>
+                            </Tooltip>
+                          )
+                        })()
                       )}
                     </div>
                   </td>
@@ -227,7 +251,18 @@ const StripePayoutTable: FC<BatchTableProps> = ({
       ) : null}*/}
     </div>
   ) : (
-    <Empty />
+    <Empty
+      message="No payouts found for this date range."
+      action={
+        <Button
+          size="sm"
+          onClick={() => dispatch(setDateRangeTransaction([]))}
+          className="normal-case bg-yellow"
+        >
+          Clear date filter
+        </Button>
+      }
+    />
   )
 }
 

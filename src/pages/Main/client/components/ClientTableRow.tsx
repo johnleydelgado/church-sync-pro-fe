@@ -1,5 +1,5 @@
 import React, { FC, useMemo, useState } from 'react'
-import { FiEdit, FiXCircle } from 'react-icons/fi'
+import { FiXCircle } from 'react-icons/fi'
 import { FaChurch, FaCheckCircle } from 'react-icons/fa' // Checkmark icon
 import { format } from 'date-fns'
 import qboIcon from '@/common/assets/qbo-icon.png'
@@ -89,9 +89,15 @@ const ClientTableRow: FC<ClientTableRowProps> = ({ client, onDelete }) => {
         </div>
       </td>
       <td className="px-6 py-4 text-right">
-        <p className={isDisabled ? 'text-gray-400' : ''}>
+        <span
+          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+            client.isActive
+              ? 'bg-green-100 text-green-700'
+              : 'bg-gray-100 text-gray-500'
+          }`}
+        >
           {client.isActive ? 'Active' : 'Inactive'}
-        </p>
+        </span>
       </td>
       <td className="px-6 py-4 text-right">
         <p className={isDisabled ? 'text-gray-400' : ''}>
@@ -107,6 +113,9 @@ const ClientTableRow: FC<ClientTableRowProps> = ({ client, onDelete }) => {
             onClick={hasQboToken ? undefined : qboLoginHandler}
             disabled={isDisabled}
             className={isDisabled ? 'cursor-not-allowed opacity-50' : ''}
+            aria-label={
+              hasQboToken ? 'QuickBooks connected' : 'Connect QuickBooks'
+            }
           >
             {hasQboToken ? (
               <FaCheckCircle size={24} className="text-green-500" />
@@ -120,6 +129,11 @@ const ClientTableRow: FC<ClientTableRowProps> = ({ client, onDelete }) => {
             onClick={hasPcoToken ? undefined : pcLoginHandler}
             disabled={isDisabled}
             className={isDisabled ? 'cursor-not-allowed opacity-50' : ''}
+            aria-label={
+              hasPcoToken
+                ? 'Planning Center connected'
+                : 'Connect Planning Center'
+            }
           >
             {hasPcoToken ? (
               <FaCheckCircle size={24} className="text-green-500" />
@@ -133,6 +147,7 @@ const ClientTableRow: FC<ClientTableRowProps> = ({ client, onDelete }) => {
             onClick={hasStripeToken ? undefined : stripeLoginHandler}
             disabled={isDisabled}
             className={isDisabled ? 'cursor-not-allowed opacity-50' : ''}
+            aria-label={hasStripeToken ? 'Stripe connected' : 'Connect Stripe'}
           >
             {hasStripeToken ? (
               <FaCheckCircle size={24} className="text-green-500" />
@@ -143,17 +158,6 @@ const ClientTableRow: FC<ClientTableRowProps> = ({ client, onDelete }) => {
         </div>
       </td>
       <td className="px-6 py-4 text-right space-x-3">
-        <button
-          className={`text-primary ${
-            isDisabled
-              ? 'cursor-not-allowed opacity-50'
-              : 'hover:text-secondary'
-          }`}
-          aria-label="Edit"
-          disabled={isDisabled}
-        >
-          <FiEdit size={20} />
-        </button>
         <button
           className={`text-red-500 ${
             isDisabled ? 'cursor-not-allowed opacity-50' : 'hover:text-red-700'

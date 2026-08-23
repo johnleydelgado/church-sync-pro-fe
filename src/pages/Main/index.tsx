@@ -9,8 +9,10 @@ import AutomationMappingPage from './automation/mapping'
 import AutomationArchivePage from './automation/archive'
 import SubscriptionPlanPage from '../Subscription/plan'
 import ClientManagementPage from '../Main/client'
+import DailyJournalEntriesPage from './daily/DailyJournalEntries'
 
 export {
+  DailyJournalEntriesPage,
   TransactionPage,
   SettingsPage,
   TransactionViewDetailsPage,

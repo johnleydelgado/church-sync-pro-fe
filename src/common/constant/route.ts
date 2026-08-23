@@ -6,6 +6,7 @@ export const route = {
   SIGNUP_GOOGLE: '/signup-google',
   SUBSCRIPTION: '/subscription',
   TRANSACTION: '/transaction',
+  DAILY: '/daily',
   FORGOT_PASSWORD: '/forgot-password',
   RESET_PASSWORD: '/reset-password',
   NOMINATE_PASSWORD: '/nominate-password',
@@ -15,6 +16,7 @@ export const route = {
 
 export const mainRoute = {
   TRANSACTION: '/transaction',
+  DAILY: '/daily',
   HOME: '/home',
   DASHBOARD: '/dashboard',
   TRANSACTION_VIEWPAGE: '/transaction/view-page/:batchId',

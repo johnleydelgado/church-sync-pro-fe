@@ -1,5 +1,5 @@
 import React, { FC, useEffect } from 'react'
-import { Route, Routes, useLocation } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 
 import {
   ForgotPasswordPage,
@@ -27,6 +27,7 @@ import {
   AutomationArchivePage,
   AutomationMappingPage,
   ClientManagementPage,
+  DailyJournalEntriesPage,
   DashboardPage,
   SettingsPage,
   SubscriptionPlanPage,
@@ -56,12 +57,6 @@ import { useGetTokenList } from '@/common/hooks/useGetTokenList'
 import AskUs from './Main/ask-us/AskUs'
 import Home from './Main/home/Home'
 import QuickStartGuide from './Main/quick-start-guide/QuickStartGuide'
-import Account from './Main/settings/component/Account'
-import Billing from './Main/settings/component/Billing'
-import Profile from './Main/settings/component/Profile'
-import Bookkeeper from './Main/settings/component/Bookkeeper'
-import Projects from './Main/settings/component/Projects'
-import Email from './Main/settings/component/Email'
 import BackgroundDataFetcher from '@/common/components/background-caller-api/BackgroundDataFetcher'
 
 interface indexProps {}
@@ -119,11 +114,9 @@ const MainPage: FC<indexProps> = () => {
 
   const sessionCheck = async () => {
     if (await Session.doesSessionExist()) {
-      console.log('a')
+      // session exists
     } else {
       handleLogout()
-      console.log('yyyy')
-      // handleLogout()
     }
   }
 
@@ -244,6 +237,15 @@ const MainPage: FC<indexProps> = () => {
           element={<PrivateRoute Component={CallBack} guards={[authGuard]} />}
         />
         <Route
+          path={mainRoute.DAILY}
+          element={
+            <PrivateRoute
+              Component={DailyJournalEntriesPage}
+              guards={[authGuard]}
+            />
+          }
+        />
+        <Route
           path={mainRoute.TRANSACTION}
           element={
             <PrivateRoute
@@ -284,35 +286,42 @@ const MainPage: FC<indexProps> = () => {
             />
           }
         />
-        {/* <Route
+        <Route
           path={mainRoute.SETTINGS}
           element={
             <PrivateRoute Component={SettingsPage} guards={[authGuard]} />
           }
-        /> */}
+        />
+        {/* Legacy standalone settings routes redirect into the tabbed Settings page */}
         <Route
           path={routeSettings.ACCOUNT_DATA}
-          element={<PrivateRoute Component={Profile} guards={[authGuard]} />}
+          element={<Navigate to={`${mainRoute.SETTINGS}?tab=profile`} replace />}
         />
         <Route
           path={routeSettings.BILLING_INFO}
-          element={<PrivateRoute Component={Billing} guards={[authGuard]} />}
+          element={<Navigate to={`${mainRoute.SETTINGS}?tab=billing`} replace />}
         />
         <Route
           path={routeSettings.INTEGRATIONS}
-          element={<PrivateRoute Component={Account} guards={[authGuard]} />}
+          element={
+            <Navigate to={`${mainRoute.SETTINGS}?tab=integrations`} replace />
+          }
         />
         <Route
           path={routeSettings.BOOKKEEPER}
-          element={<PrivateRoute Component={Bookkeeper} guards={[authGuard]} />}
+          element={
+            <Navigate to={`${mainRoute.SETTINGS}?tab=bookkeeper`} replace />
+          }
         />
         <Route
           path={routeSettings.PROJECTS}
-          element={<PrivateRoute Component={Projects} guards={[authGuard]} />}
+          element={
+            <Navigate to={`${mainRoute.SETTINGS}?tab=projects`} replace />
+          }
         />
         <Route
           path={routeSettings.SELECT_RECIPIENT_EMAILS}
-          element={<PrivateRoute Component={Email} guards={[authGuard]} />}
+          element={<Navigate to={`${mainRoute.SETTINGS}?tab=email`} replace />}
         />
         <Route
           path={mainRoute.ASK_US}

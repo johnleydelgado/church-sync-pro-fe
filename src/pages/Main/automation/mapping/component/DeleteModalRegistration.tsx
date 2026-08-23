@@ -81,12 +81,6 @@ const DeleteModalRegistration: FC<ModalRegistrationProps> = ({
           (registration: any) => registration.registration !== name,
         )
 
-      console.log(
-        'filteredRegistrations',
-        userData?.UserSetting?.settingRegistrationData,
-        filteredRegistrations,
-        name,
-      )
       await mutate({
         email,
         settingRegistrationData: filteredRegistrations,

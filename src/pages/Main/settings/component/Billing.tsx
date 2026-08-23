@@ -7,8 +7,6 @@ import { useDispatch } from 'react-redux'
 import { Avatar, Button } from '@material-tailwind/react'
 import qboIcon from '@/common/assets/qbo-icon.png'
 import { capitalAtFirstLetter } from '@/common/utils/helper'
-import { MdSettings } from 'react-icons/md'
-import MainLayout from '@/common/components/main-layout/MainLayout'
 import * as yup from 'yup'
 import { useFormik } from 'formik'
 import { addUpdateBilling, viewBilling } from '@/common/api/user'
@@ -100,7 +98,6 @@ const Billing: FC<AccountProps> = ({}) => {
     onSuccess: (data: any) => {
       // Handle success
       // For example, you can update the form values:
-      console.log('data', data.data)
       formik.setValues({
         name: data?.data?.name ?? '',
         phone: data?.data?.phone ?? '',
@@ -125,7 +122,6 @@ const Billing: FC<AccountProps> = ({}) => {
         user.role === 'bookkeeper' ? bookkeeper?.clientId || '' : id
       if (userId) {
         const res = await viewBilling({ userId })
-        console.log('go here????', res.data)
         return res.data
       }
     },
@@ -175,38 +171,20 @@ const Billing: FC<AccountProps> = ({}) => {
   }, [billingData])
 
   useEffect(() => {
-    if (formik.isSubmitting && formik.errors) {
+    if (formik.isSubmitting && Object.keys(formik.errors).length > 0) {
       failNotification({ title: 'Please check and fill up all fields .' })
     }
   }, [formik.isSubmitting])
 
   return (
-    <MainLayout>
+    <div className="h-full">
       {isRefetching || isLoadingBilling ? (
         <Loading />
       ) : (
-        <div className="-m-6 p-6 h-full">
-          {/* Header */}
-          <div className="pb-2">
-            <div className="flex flex-col border-b-2 pb-2">
-              <div className="flex items-center gap-2">
-                <MdSettings size={28} className="text-blue-400" />
-                <span className="font-bold text-lg text-primary">Settings</span>
-              </div>
-            </div>
-          </div>
-
+        <div className="h-full">
           <div className="w-full  flex flex-col bg-white justify-center px-8 mt-2">
             <div className="flex items-center justify-between gap-2 px-4 py-4 w-full ">
               <p className="text-md text-primary">Billing Contact</p>
-              {!billingData && (
-                <Button
-                  variant="text"
-                  className="text-primary mr-32 italic font-normal"
-                >
-                  Add
-                </Button>
-              )}
             </div>
 
             {billingData && !isEdit ? (
@@ -316,12 +294,17 @@ const Billing: FC<AccountProps> = ({}) => {
 
                 <div className="col-span-3 flex justify-end space-x-4">
                   <Button
-                    className="bg-red-600"
+                    type="button"
+                    className="bg-gray-400"
                     onClick={() => setIsEdit(false)}
                   >
                     Cancel
                   </Button>
-                  <Button className="bg-green-500" type="submit">
+                  <Button
+                    className="bg-green-500"
+                    type="submit"
+                    disabled={isLoading}
+                  >
                     {isLoading ? <Spinner className="mr-8" /> : null}
                     Save
                   </Button>
@@ -362,7 +345,7 @@ const Billing: FC<AccountProps> = ({}) => {
           </div>
         </div>
       )}
-    </MainLayout>
+    </div>
   )
 }
 

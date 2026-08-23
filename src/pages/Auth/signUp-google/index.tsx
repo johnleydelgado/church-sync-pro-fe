@@ -133,7 +133,7 @@ const SignUpGoogle: FC<SignUpProps> = () => {
 
   const checkSession = useCallback(async () => {
     if ((await shouldLoadRoute({ email: user.email })) && signUpSuccess) {
-      window.location.href = route.TRANSACTION
+      window.location.href = route.DAILY
     }
   }, [signUpSuccess, user.email])
 

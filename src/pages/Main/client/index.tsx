@@ -32,8 +32,12 @@ const ClientManagement: FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('') // For filtering by status
   const [sortOrder, setSortOrder] = useState<string>('asc') // For sorting by Church Name
   const [currentPage, setCurrentPage] = useState<number>(1)
+  const [search, setSearch] = useState<string>('') // For searching by name/email
 
-  const { data: finalData } = useBookkeeperListSidebar(id, 'bookkeeper')
+  const { data: finalData, isLoading } = useBookkeeperListSidebar(
+    id,
+    'bookkeeper',
+  )
   const clients = finalData ? finalData.map((a) => a.Client) : []
 
   // Apply Filters and Sorting
@@ -44,6 +48,16 @@ const ClientManagement: FC = () => {
     if (statusFilter) {
       filteredClients = filteredClients.filter((client) =>
         statusFilter === 'active' ? client.isActive : !client.isActive,
+      )
+    }
+
+    // Apply search filter (church name or email, case-insensitive)
+    if (search.trim()) {
+      const term = search.trim().toLowerCase()
+      filteredClients = filteredClients.filter(
+        (client) =>
+          client.churchName?.toLowerCase().includes(term) ||
+          client.email?.toLowerCase().includes(term),
       )
     }
 
@@ -59,7 +73,7 @@ const ClientManagement: FC = () => {
     })
 
     return filteredClients
-  }, [clients, statusFilter, sortOrder])
+  }, [clients, statusFilter, sortOrder, search])
 
   // Pagination Logic
   const itemsPerPage = 10
@@ -86,7 +100,6 @@ const ClientManagement: FC = () => {
         { userId, isActive },
         {
           onSuccess: () => {
-            console.log('Mutation successful!')
             queryClient.refetchQueries(['bookkeeperListSidebar', 'bookkeeper'])
           },
           onError: (error) => {
@@ -138,7 +151,13 @@ const ClientManagement: FC = () => {
             }}
           />
 
-          <SearchInput />
+          <SearchInput
+            value={search}
+            onChange={(value) => {
+              setSearch(value)
+              setCurrentPage(1) // Reset to the first page
+            }}
+          />
         </div>
 
         <div className="relative overflow-x-auto pt-8 hidden md:block">
@@ -155,25 +174,59 @@ const ClientManagement: FC = () => {
               </tr>
             </thead>
             <tbody className="[&>tr]:border-b [&>tr]:border-yellow">
-              {currentClients.map((client, index) => (
-                <ClientTableRow
-                  key={index}
-                  client={client}
-                  onDelete={() => openClientDeactivationModal(client)}
-                />
-              ))}
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, index) => (
+                  <tr key={index} className="bg-white animate-pulse">
+                    <td className="px-6 py-4" colSpan={5}>
+                      <div className="h-10 w-full rounded bg-gray-200" />
+                    </td>
+                  </tr>
+                ))
+              ) : currentClients.length === 0 ? (
+                <tr className="bg-white">
+                  <td
+                    className="px-6 py-12 text-center text-gray-400"
+                    colSpan={5}
+                  >
+                    No clients yet
+                  </td>
+                </tr>
+              ) : (
+                currentClients.map((client, index) => (
+                  <ClientTableRow
+                    key={index}
+                    client={client}
+                    onDelete={() => openClientDeactivationModal(client)}
+                  />
+                ))
+              )}
             </tbody>
           </table>
         </div>
 
         <div className="space-y-4 md:hidden">
-          {currentClients.map((client, index) => (
-            <ClientCard
-              key={index}
-              client={client}
-              onDelete={() => openClientDeactivationModal(client)}
-            />
-          ))}
+          {isLoading ? (
+            Array.from({ length: 3 }).map((_, index) => (
+              <div
+                key={index}
+                className="bg-white shadow rounded-lg p-4 animate-pulse"
+              >
+                <div className="h-24 w-full rounded bg-gray-200" />
+              </div>
+            ))
+          ) : currentClients.length === 0 ? (
+            <div className="bg-white shadow rounded-lg p-12 text-center text-gray-400">
+              No clients yet
+            </div>
+          ) : (
+            currentClients.map((client, index) => (
+              <ClientCard
+                key={index}
+                client={client}
+                onDelete={() => openClientDeactivationModal(client)}
+              />
+            ))
+          )}
         </div>
 
         <div className="flex justify-end w-full p-6">

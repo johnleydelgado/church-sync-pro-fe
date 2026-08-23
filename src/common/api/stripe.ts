@@ -27,6 +27,7 @@ const getStripePayouts = async (
     )
     return response.data.data
   } catch (e) {
+    console.error('getStripePayouts failed', e)
     return []
   }
 }
@@ -76,7 +77,10 @@ const syncStripePayout = async ({
     const response = await apiCall.post(url, data)
     return response.data
   } catch (e: any) {
-    return []
+    return {
+      success: false,
+      message: e?.response?.data?.message || e?.message || 'Sync failed',
+    }
   }
 }
 
@@ -97,7 +101,10 @@ const syncStripePayoutRegistration = async ({
     const response = await apiCall.post(url, data)
     return response.data
   } catch (e: any) {
-    return []
+    return {
+      success: false,
+      message: e?.response?.data?.message || e?.message || 'Sync failed',
+    }
   }
 }
 
@@ -110,7 +117,10 @@ const finalSyncStripe = async ({ ...rest }: { data: any }) => {
     const response = await apiCall.post(url, data)
     return response.data
   } catch (e: any) {
-    return e.response.data
+    return {
+      success: false,
+      message: e?.response?.data?.message || e?.message || 'Sync failed',
+    }
   }
 }
 

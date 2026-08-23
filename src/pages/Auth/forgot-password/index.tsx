@@ -1,5 +1,5 @@
 import { shouldLoadRoute } from '@/common/utils/supertoken'
-import { failNotification } from '@/common/utils/toast'
+import { failNotification, successNotification } from '@/common/utils/toast'
 import { TextInput, Checkbox, Label, Button, Spinner } from 'flowbite-react'
 import React, { FC, Fragment, useEffect, useState } from 'react'
 import { HiOutlineMail } from 'react-icons/hi'
@@ -40,7 +40,7 @@ const ForgotPassword: FC<LoginProps> = () => {
     setIsLoading(true)
     try {
       await sendPasswordReset(email)
-      navigate(route.ROOT)
+      successNotification({ title: 'Check your email for a reset link' })
     } catch (e: any) {
       failNotification({ title: e.message })
     } finally {
@@ -89,7 +89,7 @@ const ForgotPassword: FC<LoginProps> = () => {
                   type="submit"
                 >
                   {isLoading ? <Spinner className="mr-8" /> : null}
-                  FORGOT PASSWORD
+                  Send reset link
                 </Button>
               </form>
             </div>

@@ -7,19 +7,15 @@ import { RootState } from '../../../redux/store'
 
 import { getUserRelated } from '@/common/api/user'
 
-// import { Tab } from '@headlessui/react'
-
-import Account, { AccountTokenDataProps } from './component/Account'
-import { successNotification } from '@/common/utils/toast'
+import Account from './component/Account'
 import { isEmpty } from 'lodash'
 import { MdSettings } from 'react-icons/md'
-import { FiDivide } from 'react-icons/fi'
 import Profile from './component/Profile'
 import Billing from './component/Billing'
 import Bookkeeper from './component/Bookkeeper'
+import Projects from './component/Projects'
+import Email from './component/Email'
 import { useSearchParams } from 'react-router-dom'
-import { useDispatch } from 'react-redux'
-import { setTabSettings } from '@/redux/common'
 import {
   Tab,
   TabPanel,
@@ -56,40 +52,39 @@ export interface QboDataSelectProps {
   customers: { value: string; label: string }[]
 }
 
+interface TabItem {
+  key: string
+  label: string
+  Component: FC
+  clientOnly?: boolean
+}
+
+// Tab keys are used as the `?tab=` value so tabs are deep-linkable.
+const TABS: TabItem[] = [
+  { key: 'profile', label: 'Profile', Component: Profile },
+  { key: 'billing', label: 'Billing', Component: Billing },
+  { key: 'integrations', label: 'Integrations', Component: Account, clientOnly: true },
+  { key: 'bookkeeper', label: 'Bookkeepers', Component: Bookkeeper, clientOnly: true },
+  { key: 'projects', label: 'Projects', Component: Projects, clientOnly: true },
+  { key: 'email', label: 'Email', Component: Email },
+]
+
 interface SettingsProps {}
 
 const Settings: FC<SettingsProps> = () => {
   const { user } = useSelector((state: RootState) => state.common)
   const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
-  const dispatch = useDispatch()
 
-  const { tabSettings } = useSelector((state: RootState) => state.common)
   const [searchParams, setSearchParams] = useSearchParams()
 
-  const tabValue = tabSettings?.account
-    ? 'Account Data'
-    : tabSettings?.billing
-    ? 'Billing Info'
-    : tabSettings?.connect
-    ? 'Integrations'
-    : tabSettings?.bookkeeper
-    ? 'Bookkeepers Tab'
-    : 'Account Data'
+  const visibleTabs = TABS.filter(
+    (tab) => !tab.clientOnly || user.role === 'client',
+  )
 
-  const tabValue2 = (tabSettings: any) => {
-    switch (tabSettings) {
-      case '1':
-        return 'Account Data'
-      case '2':
-        return 'Billing Info'
-      case '3':
-        return 'Integrations'
-      case '4':
-        return 'Bookkeepers Tab'
-      default:
-        return 'Account Data'
-    }
-  }
+  const tabFromUrl = searchParams.get('tab') || ''
+  const activeTab = visibleTabs.some((tab) => tab.key === tabFromUrl)
+    ? tabFromUrl
+    : visibleTabs[0]?.key || 'profile'
 
   const reTriggerIsUserTokens = useSelector(
     (item: RootState) => item.common.reTriggerIsUserTokens,
@@ -110,12 +105,6 @@ const Settings: FC<SettingsProps> = () => {
   )
 
   const [isAutomationEnable, setIsAutomationEnable] = useState<boolean>(false)
-  const [activeTab, setActiveTab] = React.useState(tabValue || 'Account Data')
-  const [categories, setCategories] = useState(
-    user.role === 'client'
-      ? ['Account Data', 'Billing Info', 'Connect Accounts', 'Bookkeepers Tab']
-      : ['Account Data'],
-  )
 
   useEffect(() => {
     if (!isEmpty(userData?.UserSetting?.settingsData)) {
@@ -123,13 +112,9 @@ const Settings: FC<SettingsProps> = () => {
     }
   }, [userData])
 
-  useEffect(() => {
-    setActiveTab(tabValue)
-  }, [tabSettings])
-
-  // useEffect(() => {
-  //   if (searchParams.get('tab')) setActiveTab(tabValue2(searchParams.get('tab')))
-  // }, [searchParams])
+  const handleTabChange = (key: string) => {
+    setSearchParams({ tab: key })
+  }
 
   return (
     <MainLayout>
@@ -143,138 +128,39 @@ const Settings: FC<SettingsProps> = () => {
             </div>
           </div>
         </div>
-        <Tabs
-          // value={activeTab}
-          value={activeTab}
-          className="w-full"
-        >
+        <Tabs value={activeTab} className="w-full">
           <TabsHeader
             className="bg-transparent w-full md:w-1/2 lg:w-full xl:w-1/2"
             indicatorProps={{
               className: 'bg-yellow shadow-none rounded-2xl',
             }}
           >
-            {categories.map((category, index: number) => (
+            {visibleTabs.map((tab) => (
               <Tab
-                key={category}
-                value={category}
-                onClick={() =>
-                  dispatch(
-                    setTabSettings({
-                      account: category === categories[0],
-                      billing: category === categories[1],
-                      connect: category === categories[2],
-                      bookkeeper: category === categories[3],
-                    }),
-                  )
-                }
+                key={tab.key}
+                value={tab.key}
+                onClick={() => handleTabChange(tab.key)}
                 className={
-                  activeTab === category
+                  activeTab === tab.key
                     ? 'text-white text-md font-medium leading-5 p-4'
                     : 'text-black text-md font-medium leading-5 p-4'
                 }
               >
-                {category}
+                {tab.label}
               </Tab>
             ))}
           </TabsHeader>
           <TabsBody>
-            {/* {categories.map(({ value, desc }) => (
-          <TabPanel key={value} value={value}>
-            {desc}
-          </TabPanel>
-        ))} */}
-
-            <TabPanel key={1} value="Account Data">
-              <Profile />
-            </TabPanel>
-
-            <TabPanel key={2} value="Billing Info">
-              <Billing />
-            </TabPanel>
-
-            {user.role === 'client' && (
-              <TabPanel key={3} value="Connect Accounts">
-                <Account />
-              </TabPanel>
-            )}
-
-            {user.role === 'client' && (
-              <TabPanel key={4} value="Bookkeepers Tab">
-                <Bookkeeper />
-              </TabPanel>
-            )}
+            {visibleTabs.map((tab) => {
+              const PanelComponent = tab.Component
+              return (
+                <TabPanel key={tab.key} value={tab.key}>
+                  <PanelComponent />
+                </TabPanel>
+              )
+            })}
           </TabsBody>
         </Tabs>
-        {/* <Tab.Group
-          defaultIndex={
-            tabSettings?.account
-              ? 0
-              : tabSettings?.billing
-              ? 1
-              : tabSettings?.connect
-              ? 2
-              : tabSettings?.bookkeeper
-              ? 3
-              : 0
-          }
-          onChange={(currentTab) =>
-            dispatch(
-              setTabSettings({
-                account: currentTab === 0,
-                billing: currentTab === 1,
-                connect: currentTab === 2,
-                bookkeeper: currentTab === 3,
-              }),
-            )
-          }
-        >
-          <div className="flex">
-            <Tab.List className="flex space-x-1 rounded-xl bg-transparent px-4 py-2 w-96">
-              {categories.map((category, index: number) => (
-                <div className="flex items-center" key={category}>
-                  <Tab
-                    className={({ selected }) =>
-                      classNames(
-                        'flex items-center w-36 justify-center rounded-lg p-2 text-sm font-medium leading-5 text-gray-400',
-                        selected
-                          ? 'bg-yellow shadow text-white'
-                          : 'hover:bg-white/[0.12] hover:text-black',
-                      )
-                    }
-                  >
-                    <p className="text-center">{category}</p>
-                  </Tab>
-                  {index === Object.keys(categories).length - 1 ? null : (
-                    <p className="text-gray-400 p-2"> | </p>
-                  )}
-                </div>
-              ))}
-            </Tab.List>
-          </div>
-
-          <Tab.Panels>
-            <Tab.Panel key={1}>
-              <Profile />
-            </Tab.Panel>
-
-            <Tab.Panel key={2}>
-              <Billing />
-            </Tab.Panel>
-
-            {user.role === 'client' && (
-              <Tab.Panel key={3}>
-                <Account />
-              </Tab.Panel>
-            )}
-
-            {user.role === 'client' && (
-              <Tab.Panel key={4}>
-                <Bookkeeper />
-              </Tab.Panel>
-            )}
-          </Tab.Panels>
-        </Tab.Group> */}
       </div>
     </MainLayout>
   )

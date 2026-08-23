@@ -40,7 +40,6 @@ import { mainRoute } from '@/common/constant/route'
 import { IoMdImages } from 'react-icons/io'
 import { MODALS_NAME } from '@/common/constant/modal'
 import HideQuickGuideModal from '../modal/HideQuickGuideModal'
-import colors from '@/common/constant/colors'
 import { useBookkeeperListSidebar } from '@/common/hooks/useQueries'
 
 interface SideBarProps {
@@ -87,6 +86,11 @@ const Input = (props: any) => (
     inputClassName="outline-none border-none shadow-none focus:ring-transparent"
   />
 )
+
+const isRouteActive = (pathName?: string, link?: string) => {
+  if (!pathName || !link) return false
+  return pathName === link || pathName.startsWith(link + '/')
+}
 
 export const customStyles = {
   control: (base: any, state: any) => ({
@@ -146,8 +150,10 @@ function Accordion({
 }) {
   const route = useLocation()
   const [expanded, setExpanded] = useState(
-    route.pathname.includes(title.toLocaleLowerCase()),
-  ) // auto expand if the route contains a hardware or software string
+    (dropdownLinks || []).some((item) =>
+      isRouteActive(route.pathname, item.link),
+    ),
+  ) // auto expand if the current route matches one of the children
 
   const toggleExpanded = () => setExpanded((current) => !current)
   return (
@@ -189,13 +195,7 @@ function Accordion({
                     } ${isTrigger ? 'mr-8' : ''}`}
                   >
                     {item.childrenIcon || null}
-                    {isTrigger ? null : (
-                      <Link
-                        to={`${item.link}`} //ex. hardware/all
-                      >
-                        {item.name}
-                      </Link>
-                    )}
+                    {isTrigger ? null : <span>{item.name}</span>}
                   </div>
                 </Link>
               )
@@ -228,24 +228,25 @@ const ItemSideBar = ({
           role={role}
         />
       ) : isHide ? null : isTrigger ? (
-        <a
+        <Link
+          title={name}
           className={`flex gap-x-4 items-center p-2 transition transform hover:text-primary
        duration-100 hover:bg-secondaryYellow rounded-md ${
-         pathName?.includes(link || '') ? 'bg-secondaryYellow' : ''
+         isRouteActive(pathName, link) ? 'bg-secondaryYellow' : ''
        }`}
-          href={link}
+          to={link || ''}
         >
           {icon}
-        </a>
+        </Link>
       ) : link === mainRoute.QUICK_START_QUIDE ? (
-        <a
+        <Link
           className={`flex items-center px-4 py-2 transition transform hover:text-primary
    duration-100 hover:bg-secondaryYellow ${
-     pathName?.includes(link || '')
+     isRouteActive(pathName, link)
        ? 'bg-secondaryYellow justify-between'
        : 'gap-x-4'
    } rounded-md`}
-          href={link}
+          to={link || ''}
         >
           {icon}
           <p className="font-normal">{name}</p>
@@ -261,18 +262,18 @@ const ItemSideBar = ({
               <FaTimes size={16} />
             </IconButton>
           )}
-        </a>
+        </Link>
       ) : (
-        <a
+        <Link
           className={`flex gap-x-4 items-center px-4 py-2 transition transform hover:text-primary
        duration-100 hover:bg-secondaryYellow ${
-         pathName?.includes(link || '') ? 'bg-secondaryYellow' : ''
+         isRouteActive(pathName, link) ? 'bg-secondaryYellow' : ''
        } rounded-md`}
-          href={link}
+          to={link || ''}
         >
           {icon}
           <p className="font-normal">{name}</p>
-        </a>
+        </Link>
       )}
     </>
   )
@@ -475,8 +476,6 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
                   pathName={location.pathname}
                   key={el.name}
                   isHide={
-                    (el.name === 'Bookkeepers' &&
-                      userData.role === 'bookkeeper') ||
                     (el.name === 'Clients' && userData.role === 'client') ||
                     (isQuickStartHide && el.link === '/quick-start-guide')
                   }
@@ -488,11 +487,11 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
               <div className="flex flex-col">
                 <Link
                   to={mainRoute.ASK_US}
-                  className={`mt-auto transition transform duration-100 hover:bg-secondaryYellow hover:text-primary text-white bg-[${
+                  className={`mt-auto transition transform duration-100 hover:bg-secondaryYellow hover:text-primary text-white ${
                     location.pathname === '/ask-us'
-                      ? colors.secondaryYellow
-                      : ''
-                  }]`}
+                      ? 'bg-secondaryYellow'
+                      : 'bg-transparent'
+                  }`}
                 >
                   <div className="flex gap-x-8  p-8 items-center">
                     <BiHelpCircle
@@ -501,15 +500,14 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
                     />
                   </div>
                 </Link>
+                <div className="mx-4 border-t border-white/20" />
                 <button
-                  className="mt-auto transition transform duration-100 hover:bg-secondaryYellow hover:text-primary text-white"
+                  title="Log-out"
+                  className="mt-auto transition transform duration-100 hover:bg-red-500/20 text-red-300 hover:text-red-200"
                   onClick={handleLogout}
                 >
                   <div className="flex gap-x-8  p-8 items-center">
-                    <HiOutlineLogout
-                      size={30}
-                      className="group-hover:text-white"
-                    />
+                    <HiOutlineLogout size={30} />
                   </div>
                 </button>
               </div>
@@ -517,11 +515,11 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
               <div className="flex flex-col justify-end h-full">
                 <Link
                   to={mainRoute.ASK_US}
-                  className={`group transition transform duration-100 hover:bg-secondaryYellow hover:text-primary text-white bg-[${
+                  className={`group transition transform duration-100 hover:bg-secondaryYellow hover:text-primary text-white ${
                     location.pathname === '/ask-us'
-                      ? colors.secondaryYellow
-                      : ''
-                  }]`}
+                      ? 'bg-secondaryYellow'
+                      : 'bg-transparent'
+                  }`}
                 >
                   <div className="flex gap-x-8  p-8 py-4 items-center">
                     <BiHelpCircle
@@ -531,18 +529,14 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
                     <p className="font-normal group-hover:text-white">Ask Us</p>
                   </div>
                 </Link>
+                <div className="mx-8 border-t border-white/20" />
                 <button
-                  className="group transition transform duration-100 hover:bg-secondaryYellow hover:text-primary text-white"
+                  className="group transition transform duration-100 hover:bg-red-500/20 text-red-300 hover:text-red-200"
                   onClick={handleLogout}
                 >
                   <div className="flex gap-x-8  p-8 py-4 pb-8 items-center">
-                    <HiOutlineLogout
-                      size={30}
-                      className="group-hover:text-white"
-                    />
-                    <p className="font-normal group-hover:text-white">
-                      Log-out
-                    </p>
+                    <HiOutlineLogout size={30} />
+                    <p className="font-normal">Log-out</p>
                   </div>
                 </button>
               </div>

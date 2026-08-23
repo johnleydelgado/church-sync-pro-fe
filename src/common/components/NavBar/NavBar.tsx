@@ -18,7 +18,6 @@ import { mainRoute } from '@/common/constant/route'
 import { BiHelpCircle, BiSortDown } from 'react-icons/bi'
 import { FaChevronDown, FaChevronUp, FaTimes } from 'react-icons/fa'
 import pages, { DropdownLink } from '../SideBar/constant'
-import colors from '@/common/constant/colors'
 import { useBookkeeperListSidebar } from '@/common/hooks/useQueries'
 interface NavBarProps {}
 
@@ -28,6 +27,11 @@ const Input = (props: any) => (
     inputClassName="outline-none border-none shadow-none focus:ring-transparent"
   />
 )
+
+const isRouteActive = (pathName?: string, link?: string) => {
+  if (!pathName || !link) return false
+  return pathName === link || pathName.startsWith(link + '/')
+}
 
 interface ItemSideBarProps {
   icon: any
@@ -50,8 +54,10 @@ function Accordion({
 }) {
   const route = useLocation()
   const [expanded, setExpanded] = useState(
-    route.pathname.includes(title.toLocaleLowerCase()),
-  ) // auto expand if the route contains a hardware or software string
+    (dropdownLinks || []).some((item) =>
+      isRouteActive(route.pathname, item.link),
+    ),
+  ) // auto expand if the current route matches one of the children
 
   const toggleExpanded = () => setExpanded((current) => !current)
 
@@ -114,16 +120,16 @@ const ItemSideBar = ({
     {withDropdown ? (
       <Accordion title={name} icon={icon} dropdownLinks={dropdownLinks} />
     ) : isHide ? null : (
-      <a
+      <Link
         className={`flex gap-x-8 items-center px-4 py-2 transition transform hover:text-primary
        duration-100 hover:bg-secondaryYellow ${
-         pathName?.includes(link || '') ? 'bg-secondaryYellow' : ''
+         isRouteActive(pathName, link) ? 'bg-secondaryYellow' : ''
        } rounded-md`}
-        href={link}
+        to={link || ''}
       >
         {icon}
         <p className="font-normal">{name}</p>
-      </a>
+      </Link>
     )}
   </>
 )
@@ -132,7 +138,7 @@ const NavBar: FC<NavBarProps> = () => {
   const isTabletOrMobile = useMediaQuery({ query: '(max-width: 767px)' })
   const dispatch = useDispatch()
   const [openNav, setOpenNav] = useState(false)
-  const { id, role, firstName, lastName } = useSelector(
+  const { id, role, firstName, lastName, churchName } = useSelector(
     (item: RootState) => item.common.user,
   )
   const userData = useSelector((item: RootState) => item.common.user)
@@ -191,12 +197,23 @@ const NavBar: FC<NavBarProps> = () => {
           isTabletOrMobile ? 'h-max' : 'h-10'
         } max-w-full rounded-none py-2 px-4 lg:px-8 lg:py-4 mb-2 shadow-none`}
       >
-        <IconButton
-          variant="text"
-          className="ml-auto h-6 w-6 text-inherit hover:bg-transparent focus:bg-transparent active:bg-transparent lg:hidden text-black"
-          ripple={false}
-          onClick={() => setOpenNav(!openNav)}
-        >
+        <div className="flex items-center justify-between w-full lg:hidden">
+          <div className="flex flex-col leading-tight">
+            <span className="text-sm font-bold text-primary">
+              Church Sync Pro
+            </span>
+            {(role === 'bookkeeper' ? bookkeeper?.churchName : churchName) ? (
+              <span className="text-xs text-gray-500 truncate max-w-[180px]">
+                {role === 'bookkeeper' ? bookkeeper?.churchName : churchName}
+              </span>
+            ) : null}
+          </div>
+          <IconButton
+            variant="text"
+            className="h-6 w-6 text-inherit hover:bg-transparent focus:bg-transparent active:bg-transparent text-black"
+            ripple={false}
+            onClick={() => setOpenNav(!openNav)}
+          >
           {openNav ? (
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -227,10 +244,11 @@ const NavBar: FC<NavBarProps> = () => {
               />
             </svg>
           )}
-        </IconButton>
+          </IconButton>
+        </div>
       </Navbar>
 
-      <Drawer open={openNav} onClose={() => console.log('')}>
+      <Drawer open={openNav} onClose={() => setOpenNav(false)}>
         <div className="h-full bg-primary shadow-md flex flex-col gap-2 overflow-y-auto">
           <div className={`flex px-8 w-full pt-2 items-center justify-between`}>
             <p className="text-white p-2 text-xl">Church Sync Pro</p>
@@ -291,18 +309,18 @@ const NavBar: FC<NavBarProps> = () => {
                 {...el}
                 pathName={location.pathname}
                 key={el.name}
-                isHide={
-                  el.name === 'Bookkeepers' && userData.role === 'bookkeeper'
-                }
+                isHide={el.name === 'Clients' && userData.role === 'client'}
               />
             ))}
           </div>
           <div className="flex flex-col justify-end h-full">
             <Link
               to={mainRoute.ASK_US}
-              className={`group transition transform duration-100 hover:bg-secondaryYellow hover:text-primary text-white bg-[${
-                location.pathname === '/ask-us' ? colors.secondaryYellow : ''
-              }]`}
+              className={`group transition transform duration-100 hover:bg-secondaryYellow hover:text-primary text-white ${
+                location.pathname === '/ask-us'
+                  ? 'bg-secondaryYellow'
+                  : 'bg-transparent'
+              }`}
             >
               <div className="flex gap-x-8  p-8 items-center">
                 <BiHelpCircle size={30} className="group-hover:text-white" />

@@ -76,7 +76,7 @@ const ResetPassword: FC<ResetPasswordProps> = () => {
         <div className="flex w-full h-full justify-end items-center">
           <div
             style={{ backgroundColor: 'rgba(251, 251, 251, 0.8)' }}
-            className="w-[520px]  absolute top-1/2 transform -translate-y-1/2 right-28 shadow-2xl rounded-3xl"
+            className="sm:w-96 xs:w-96 md:w-[520px] shadow-2xl rounded-3xl m-4 sm:mr-12"
           >
             <div className="flex flex-col gap-8 p-12 items-center">
               <img src={logo} alt="" />
@@ -103,6 +103,7 @@ const ResetPassword: FC<ResetPasswordProps> = () => {
                     onChange={formik.handleChange}
                     value={formik.values.password}
                     security="false"
+                    helperText={formik.errors.password}
                   />
 
                   <div
@@ -116,10 +117,6 @@ const ResetPassword: FC<ResetPasswordProps> = () => {
                     )}
                   </div>
                 </div>
-
-                {formik.errors.password ? (
-                  <p>{formik.errors.password}</p>
-                ) : null}
 
                 <div
                   className={`${
@@ -136,6 +133,7 @@ const ResetPassword: FC<ResetPasswordProps> = () => {
                     onChange={formik.handleChange}
                     value={formik.values.confirmPassword}
                     security="false"
+                    helperText={formik.errors.confirmPassword}
                   />
                   <div
                     className="absolute right-2 top-2 text-slate-600 cursor-pointer p-1 hover:bg-blue-900 hover:text-white rounded-full"
@@ -148,9 +146,6 @@ const ResetPassword: FC<ResetPasswordProps> = () => {
                     )}
                   </div>
                 </div>
-                {formik.errors.confirmPassword ? (
-                  <p>{formik.errors.confirmPassword}</p>
-                ) : null}
 
                 <Button
                   className="bg-btmColor rounded-md shadow-sm h-12 my-4 hover:bg-slate-600 [&>*]:text-white"

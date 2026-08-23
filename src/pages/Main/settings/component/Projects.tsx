@@ -26,8 +26,6 @@ import {
   setDeleteBookkeeper,
   setProjectFieldValues,
 } from '@/redux/nonPersistState'
-import MainLayout from '@/common/components/main-layout/MainLayout'
-import { MdSettings } from 'react-icons/md'
 import { QboGetAllQboData, findCustomers, getQboData } from '@/common/api/qbo'
 import { BiChevronLeft, BiChevronRight } from 'react-icons/bi'
 import ModalCreateUpdateProject from '@/common/components/modal/ModalCreateUpdateProject'
@@ -156,7 +154,7 @@ const Projects: FC<AccountProps> = ({}) => {
       }
       setRemoveLoading(false)
     } catch (error) {
-      setRemoveLoading(true)
+      setRemoveLoading(false)
       console.log('error', error)
     }
   }
@@ -204,18 +202,8 @@ const Projects: FC<AccountProps> = ({}) => {
   }, [projectFieldValues, isEditLoading, isRemoveLoading])
 
   return (
-    <MainLayout>
-      <div className="-m-6 p-6 h-full">
-        {/* Header */}
-        <div className="pb-2">
-          <div className="flex flex-col border-b-2 pb-2">
-            <div className="flex items-center gap-2">
-              <MdSettings size={28} className="text-blue-400" />
-              <span className="font-bold text-lg text-primary">Settings</span>
-            </div>
-          </div>
-        </div>
-
+    <div className="h-full">
+      <div className="h-full">
         {isQboDataLoading ? (
           <Loading />
         ) : (
@@ -239,7 +227,6 @@ const Projects: FC<AccountProps> = ({}) => {
                 variant="outlined"
                 className="border-gray-400 text-black flex items-center gap-3 font-thin"
                 onClick={handleCreateProjectSelection}
-                disabled={data ? (data?.length > 3 ? true : false) : false}
               >
                 <AiOutlineUserAdd size={18} className="text-yellow" />
                 Add new project
@@ -287,7 +274,6 @@ const Projects: FC<AccountProps> = ({}) => {
                       </div>
                     </div>
                   </div>
-                  <div className="grid grid-cols-3 px-4 gap-4 border-b-[1px] py-6 border-[#DDDDDD]" />
                 </div>
               ))
             ) : (
@@ -310,20 +296,17 @@ const Projects: FC<AccountProps> = ({}) => {
               </IconButton>
 
               {/* Current Page and Total Pages */}
-              {searchTerm === '' && ( // Only show pagination when not searching
-                <p className="block font-sans text-base antialiased font-normal leading-relaxed text-gray-700">
-                  Page <strong className="text-gray-900">{currentPage}</strong>{' '}
-                  of{' '}
-                  <strong className="text-gray-900">
-                    {totalPages}{' '}
-                    {/* Use totalPages which is calculated from filteredAccounts */}
-                  </strong>
-                </p>
-              )}
+              <p className="block font-sans text-base antialiased font-normal leading-relaxed text-gray-700">
+                Page <strong className="text-gray-900">{currentPage}</strong> of{' '}
+                <strong className="text-gray-900">
+                  {totalPages || 1}{' '}
+                  {/* Use totalPages which is calculated from filteredAccounts */}
+                </strong>
+              </p>
 
               {/* Next Button */}
               <IconButton
-                disabled={currentPage === totalPages || searchTerm !== ''}
+                disabled={currentPage >= totalPages}
                 className="text-white bg-white"
                 onClick={() => handlePageChange(currentPage + 1)}
               >
@@ -333,7 +316,7 @@ const Projects: FC<AccountProps> = ({}) => {
           </div>
         )}
       </div>
-    </MainLayout>
+    </div>
   )
 }
 

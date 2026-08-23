@@ -15,6 +15,7 @@ import { RootState } from '../../../redux/store'
 import checkToken from '@/common/utils/tokenVerification'
 import { doesEmailExistRoute } from '@/common/utils/supertoken'
 import { route } from '@/common/constant/route'
+import { failNotification } from '@/common/utils/toast'
 import { addTokenInUser } from '@/common/api/user'
 import { authApi } from '@/common/api/auth'
 const { REACT_APP_API_PATH } = process.env
@@ -94,6 +95,9 @@ const SecondaryLogin: FC<indexProps> = () => {
         }
       } catch (e: any) {
         console.log(e)
+        failNotification({
+          title: 'We couldn’t connect QuickBooks. Please try again.',
+        })
         // NOTE: create a redirect or history here
       } finally {
         setLoading(false)
@@ -133,6 +137,9 @@ const SecondaryLogin: FC<indexProps> = () => {
         }
       } catch (e: any) {
         console.log(e)
+        failNotification({
+          title: 'We couldn’t connect Planning Center. Please try again.',
+        })
         // NOTE: create a redirect or history here
       } finally {
         setLoading(false)
@@ -170,6 +177,9 @@ const SecondaryLogin: FC<indexProps> = () => {
         }
       } catch (e: any) {
         console.log(e)
+        failNotification({
+          title: 'We couldn’t connect Stripe. Please try again.',
+        })
         // NOTE: create a redirect or history here
       } finally {
         setLoading(false)
@@ -205,13 +215,15 @@ const SecondaryLogin: FC<indexProps> = () => {
     }
   }, [checkSession, loadPC, loadQbo])
 
-  if (
-    !!checkToken(qboToken) &&
-    !!checkToken(pcToken) &&
-    !!thirdPartyTokens?.stripe_access_token
-  ) {
-    window.location.reload()
-  }
+  useEffect(() => {
+    if (
+      !!checkToken(qboToken) &&
+      !!checkToken(pcToken) &&
+      !!thirdPartyTokens?.stripe_access_token
+    ) {
+      window.location.reload()
+    }
+  }, [qboToken, pcToken, thirdPartyTokens?.stripe_access_token])
 
   return (
     <div className="h-screen bg-slate-400">
@@ -232,26 +244,29 @@ const SecondaryLogin: FC<indexProps> = () => {
           ) : (
             <div className="flex flex-col justify-center p-4 gap-6">
               <p className="font-lato font-medium text-center text-lg">
-                QBO and Planning Center
+                Connect your accounts to get started
               </p>
               <LoginButton
                 loginImage={qboLogin}
                 onClick={qboLoginHandler}
-                name="Already connected to Qbo"
+                name="Connect QuickBooks"
+                connectedName="✓ QuickBooks connected"
                 isHide={!!checkToken(qboToken)}
                 isLoading={isBtnLoading.qboLoading}
               />
               <LoginButton
                 loginImage={pcLogin}
                 onClick={pcLoginHandler}
-                name="Already connected to Planning Center"
+                name="Connect Planning Center"
+                connectedName="✓ Planning Center connected"
                 isHide={!!checkToken(pcToken)}
                 isLoading={isBtnLoading.pcoLoading}
               />
               <LoginButton
                 loginImage={stripeLogin}
                 onClick={stripeLoginHandler}
-                name="Already connected to Stripe Connect"
+                name="Connect Stripe"
+                connectedName="✓ Stripe connected"
                 isHide={!!thirdPartyTokens?.stripe_access_token}
                 isLoading={isBtnLoading.stripeLoading}
               />

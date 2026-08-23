@@ -4,7 +4,7 @@ import { useSelector } from 'react-redux'
 import { RootState } from '@/redux/store'
 
 import { useDispatch } from 'react-redux'
-import { Avatar, Button, Input } from '@material-tailwind/react'
+import { Avatar, Button, Input, Spinner } from '@material-tailwind/react'
 import qboIcon from '@/common/assets/qbo-icon.png'
 import { capitalAtFirstLetter } from '@/common/utils/helper'
 import { OPEN_MODAL } from '@/redux/common'
@@ -18,8 +18,6 @@ import { AiOutlineUserAdd } from 'react-icons/ai'
 import ModalInvitation from '../../bookkeeper/components/Modal'
 import DeleteModal from '../../bookkeeper/components/DeleteModal'
 import { setDeleteBookkeeper } from '@/redux/nonPersistState'
-import MainLayout from '@/common/components/main-layout/MainLayout'
-import { MdSettings } from 'react-icons/md'
 
 interface AccountProps {}
 
@@ -54,22 +52,12 @@ const Bookkeeper: FC<AccountProps> = ({}) => {
   )
 
   return (
-    <MainLayout>
-      <div className="-m-6 p-6 h-full">
-        {/* Header */}
-        <div className="pb-2">
-          <div className="flex flex-col border-b-2 pb-2">
-            <div className="flex items-center gap-2">
-              <MdSettings size={28} className="text-blue-400" />
-              <span className="font-bold text-lg text-primary">Settings</span>
-            </div>
-          </div>
-        </div>
-
+    <div className="h-full">
+      <div className="h-full">
         <div className="w-full  flex flex-col bg-white justify-center px-8 mt-2">
           <ModalInvitation refetch={refetch} />
           <DeleteModal refetch={refetch} />
-          <div className="flex justify-end mt-4">
+          <div className="flex flex-col items-end mt-4">
             <Button
               variant="outlined"
               className="border-gray-400 text-black flex items-center gap-3 font-thin"
@@ -79,8 +67,17 @@ const Bookkeeper: FC<AccountProps> = ({}) => {
               <AiOutlineUserAdd size={18} className="text-yellow" />
               Add new bookkeeper
             </Button>
+            {data && data.length > 3 ? (
+              <p className="text-sm text-gray-400 mt-1">
+                Maximum of 4 bookkeepers
+              </p>
+            ) : null}
           </div>
-          {data && data.length > 0 ? (
+          {isLoading ? (
+            <div className="flex justify-center items-center h-full py-16">
+              <Spinner color="green" className="h-10 w-10" />
+            </div>
+          ) : data && data.length > 0 ? (
             data.map((a) => (
               <div key={a.id}>
                 <div className="flex items-center justify-between gap-2 px-4 pt-4 w-full">
@@ -132,7 +129,7 @@ const Bookkeeper: FC<AccountProps> = ({}) => {
           )}
         </div>
       </div>
-    </MainLayout>
+    </div>
   )
 }
 

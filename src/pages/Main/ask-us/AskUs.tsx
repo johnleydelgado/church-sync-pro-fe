@@ -64,7 +64,7 @@ const AskUs: FC<BookkeeperProps> = ({}) => {
               isOpen={open === index}
               handleOpen={() => handleOpen(index)}
               key={index}
-              bgColor={index % 2 === 0 ? '#E5F2F8' : 'white'}
+              bgColor={index % 2 === 0 ? 'bg-[#E5F2F8]' : 'bg-white'}
               {...a}
             />
           ))}

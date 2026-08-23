@@ -17,12 +17,10 @@ import { capitalAtFirstLetter } from '@/common/utils/helper'
 import { useFormik } from 'formik'
 import { object } from 'yup'
 import * as yup from 'yup'
-import { error } from 'console'
 import { userUpdate } from '@/common/api/user'
+import { successNotification, failNotification } from '@/common/utils/toast'
 import { setIsQuickStartHide, setUserData } from '@/redux/common'
 import { IoMdImages } from 'react-icons/io'
-import MainLayout from '@/common/components/main-layout/MainLayout'
-import { MdSettings } from 'react-icons/md'
 interface AccountProps {}
 
 const TextInput = ({
@@ -98,7 +96,6 @@ const Profile: FC<AccountProps> = ({}) => {
       }
       try {
         const response = await userUpdate(data)
-        setIsEditing(false)
         const imgUrl = response.data.imageUrl || ''
         const finalImgUrl = imgUrl || img_url
         dispatch(
@@ -109,9 +106,11 @@ const Profile: FC<AccountProps> = ({}) => {
             ...(finalImgUrl ? { img_url: finalImgUrl } : {}),
           }),
         )
+        successNotification({ title: 'Profile updated successfully.' })
+        setIsEditing(false)
       } catch (e: any) {
         console.log('', e)
-        setIsEditing(false)
+        failNotification({ title: 'Failed to update profile. Please try again.' })
       } finally {
         setLoadingSave(false)
       }
@@ -133,17 +132,8 @@ const Profile: FC<AccountProps> = ({}) => {
   }, [img_url])
 
   return (
-    <MainLayout>
-      <div className="-m-6 p-6 h-full">
-        {/* Header */}
-        <div className="pb-2">
-          <div className="flex flex-col border-b-2 pb-2">
-            <div className="flex items-center gap-2">
-              <MdSettings size={28} className="text-blue-400" />
-              <span className="font-bold text-lg text-primary">Settings</span>
-            </div>
-          </div>
-        </div>
+    <div className="h-full">
+      <div className="h-full">
         <div className="w-full  flex flex-col bg-white justify-center mt-2">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 md:p-4 sm:w-3/6 md:w-3/6 lg:w-full xl:w-1/2  w-full">
             <p className="text-4xl font-bold text-primary">Profile</p>
@@ -263,6 +253,7 @@ const Profile: FC<AccountProps> = ({}) => {
               title="Email"
               defValue={email}
               isEditing={isEditing}
+              error={formik.errors.email}
               onChange={(e: any) =>
                 formik.setFieldValue('email', e.target.value)
               }
@@ -288,7 +279,7 @@ const Profile: FC<AccountProps> = ({}) => {
           </div>
         </div>
       </div>
-    </MainLayout>
+    </div>
   )
 }
 

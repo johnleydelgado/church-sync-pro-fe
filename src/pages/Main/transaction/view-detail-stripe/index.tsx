@@ -4,7 +4,7 @@ import MainLayout from '@/common/components/main-layout/MainLayout'
 import { RootState } from '@/redux/store'
 import React, { FC, useEffect, useState } from 'react'
 import { useQuery } from 'react-query'
-import { useSelector } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate, useParams } from 'react-router'
 import { AttributesProps, BatchesProps } from '..'
 import { format, fromUnixTime, parseISO } from 'date-fns'
@@ -27,6 +27,9 @@ import { deleteQboDeposit } from '@/common/api/qbo'
 import { failNotification, successNotification } from '@/common/utils/toast'
 import { mainRoute } from '@/common/constant/route'
 import { usePagination } from '@/common/context/PaginationProvider'
+import ConfirmActionModal from '@/common/components/modal/ConfirmActionModal'
+import { MODALS_NAME } from '@/common/constant/modal'
+import { OPEN_MODAL } from '@/redux/common'
 interface indexProps {}
 
 interface FinalDataProps {
@@ -83,6 +86,7 @@ function extractCategory(description: string): string {
 const ViewDetails: FC<indexProps> = ({}) => {
   const { payoutDate } = useParams()
   const navigation = useNavigate()
+  const dispatch = useDispatch()
   const [isFetching, setIsFetching] = useState(false)
   const {
     user,
@@ -200,7 +204,7 @@ const ViewDetails: FC<indexProps> = ({}) => {
       const result = await deleteQboDeposit(email, synchedBatches)
       if (result === 'success') {
         setIsSynching(false)
-        successNotification({ title: `Unsynched Successfully` })
+        successNotification({ title: `Unsynced Successfully` })
         refetch()
       } else {
         setIsSynching(false)
@@ -436,8 +440,6 @@ const ViewDetails: FC<indexProps> = ({}) => {
             )
           : []
 
-        console.log('stripePayoutRes', stripePayoutRes)
-
         const newStripeObj: StripeObj | undefined = stripePayoutRes
           ? stripePayoutRes.find(
               (item: { payoutDate: string }) =>
@@ -448,8 +450,6 @@ const ViewDetails: FC<indexProps> = ({}) => {
         let data: any[] = []
 
         if (newStripeObj?.data && Array.isArray(newStripeObj.data)) {
-          console.log('Go to if')
-
           data = await Promise.all(
             newStripeObj.data.map(async (item: any) => {
               try {
@@ -458,10 +458,7 @@ const ViewDetails: FC<indexProps> = ({}) => {
                 )
 
                 if (index !== -1) {
-                  console.log('index', index)
-
                   const str = filterFundName[index]
-                  console.log('fund', str)
 
                   return {
                     fund: str,
@@ -474,7 +471,6 @@ const ViewDetails: FC<indexProps> = ({}) => {
                   }
                 } else {
                   const descriptionFinal = extractCategory(item.description)
-                  console.log('descriptionFinal', descriptionFinal)
 
                   const registrationFund =
                     userData.data.UserSetting.settingRegistrationData.find(
@@ -522,6 +518,14 @@ const ViewDetails: FC<indexProps> = ({}) => {
 
   return (
     <MainLayout>
+      <ConfirmActionModal
+        modalName={MODALS_NAME.modalConfirmRemoveSync}
+        title="Remove this sync?"
+        body="This will delete the journal entry in QuickBooks. This cannot be undone."
+        confirmLabel="Remove"
+        onConfirm={() => triggerUnSync()}
+      />
+
       <div className="flex flex-col h-full gap-4 font-sans">
         {isLoadingBatchData ||
         isFetching ||
@@ -554,14 +558,18 @@ const ViewDetails: FC<indexProps> = ({}) => {
                       {synchedBatches[0]?.createdAt ? (
                         <div className="flex gap-4">
                           <span className="text-slate-500 font-normal text-sm text-[#1b1b1bcc]">
-                            {`Synched Planning Center to QuicBooks Online | Last synched at ${format(
+                            {`Synced Planning Center to QuickBooks Online | Last synced at ${format(
                               parseISO(synchedBatches[0]?.createdAt || ''),
                               "hh:mm aaaa 'on' EEEE MMMM d, yyyy",
                             )} | `}
                           </span>
                           <button
                             className="text-orange-500 flex items-center gap-1"
-                            onClick={() => triggerUnSync()}
+                            onClick={() =>
+                              dispatch(
+                                OPEN_MODAL(MODALS_NAME.modalConfirmRemoveSync),
+                              )
+                            }
                           >
                             <BiSync
                               className={`${
@@ -662,7 +670,7 @@ const ViewDetails: FC<indexProps> = ({}) => {
                             ? 'bg-gray-50 dark:bg-gray-800'
                             : 'bg-white dark:bg-gray-900'
                         } border-b border-yellow dark:border-gray-700 [&>*]:px-6 [&>*]:py-4`}
-                        key={Math.random()}
+                        key={`${item.item?.description ?? ''}-${index}`}
                       >
                         <Table.Cell className="whitespace-nowrap font-medium dark:text-white">
                           {item?.fund || ''}

@@ -44,7 +44,7 @@ const GoogleCallBack: FC<googleCallbackProps> = ({}) => {
               }),
             )
             localStorage.setItem(storageKey.PERSONAL_TOKEN, role)
-            window.location.assign(route.TRANSACTION)
+            window.location.assign(route.DAILY)
           }
         } else {
           // SuperTokens requires that the third party provider

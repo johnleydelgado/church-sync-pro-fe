@@ -1,15 +1,11 @@
-import MainLayout from '@/common/components/main-layout/MainLayout'
+import { mainRoute } from '@/common/constant/route'
 import React, { FC } from 'react'
-import bgImage from '@/common/assets/home-bg.png'
+import { Navigate } from 'react-router-dom'
 
 interface HomeProps {}
 
 const Home: FC<HomeProps> = ({}) => {
-  return (
-    <MainLayout removePadding removeNavBar>
-      <img className="absolute w-full h-full" src={bgImage} alt="" />
-    </MainLayout>
-  )
+  return <Navigate to={mainRoute.DAILY} replace />
 }
 
 export default Home

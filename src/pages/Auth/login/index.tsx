@@ -305,7 +305,7 @@ const Login: FC<LoginProps> = () => {
                 {googleLoading ? <Spinner className="mr-8" /> : null}
                 <FcGoogle size={48} className="mr-4" />
                 <span className="text-md font-thin text-slate-700 group-hover:text-white group-hover:font-normal">
-                  Login or Sig up with google
+                  Login or Sign up with google
                 </span>
               </div>
               <div className="border-[0.5px] w-52 -mt-6" />

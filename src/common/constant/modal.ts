@@ -14,6 +14,8 @@ const MODALS_NAME = {
   subscriptionModal: 'subscription-modal',
   modalClientRegistration: 'modal-client-registration',
   modalConfirmDeactivation: 'modal-confirm-deactivation',
+  modalConfirmDisconnect: 'modal-confirm-disconnect',
+  modalConfirmRemoveSync: 'modal-confirm-remove-sync',
 }
 
 export { MODALS_NAME }

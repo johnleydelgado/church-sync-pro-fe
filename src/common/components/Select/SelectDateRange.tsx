@@ -52,7 +52,7 @@ const SelectDateRange: FC<SelectDateRangeProps> = ({}) => {
   }) => (
     <input
       onChange={onChange}
-      placeholder="Select synched date"
+      placeholder="Select synced date"
       value={value}
       onClick={onClick}
       className="bg-gray-100 rounded-xl p-2 w-60 items-center flex justify-center"

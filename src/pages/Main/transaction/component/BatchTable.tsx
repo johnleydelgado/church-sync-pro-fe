@@ -4,12 +4,15 @@ import { List, isEmpty } from 'lodash'
 import { AiOutlineSync } from 'react-icons/ai'
 import { HiCheckCircle } from 'react-icons/hi'
 import { Link } from 'react-router-dom'
+import { Button, Tooltip } from '@material-tailwind/react'
+import { Spinner } from 'flowbite-react'
 import Empty from '@/common/components/empty/Empty'
 import Pagination from '@/common/components/pagination/Pagination'
-import { useSelector } from 'react-redux'
+import { useSelector, useDispatch } from 'react-redux'
 import { RootState } from '@/redux/store'
 import Loading from '@/common/components/loading/Loading'
 import { usePagination } from '@/common/context/PaginationProvider'
+import { setDateRangeTransaction } from '@/redux/common'
 
 interface batchDataProps {
   id: string
@@ -55,6 +58,7 @@ const BatchTable: FC<BatchTableProps> = ({
   batchSyncing,
   amount,
 }) => {
+  const dispatch = useDispatch()
   const { user } = useSelector((state: RootState) => state.common)
   const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
   const { data, synchedBatches, isLoading, isRefetching, refetch, setAmount } =
@@ -63,24 +67,6 @@ const BatchTable: FC<BatchTableProps> = ({
   const email =
     user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
   const finalData = data
-  // extract the logic to a separate function
-  const getSyncIconClassName = (batchSyncing: any, batchId: string) => {
-    // Return early if batchSyncing is not an array or has less than 2 elements
-    if (!Array.isArray(batchSyncing) || batchSyncing.length <= 1) {
-      return 'text-slate-400 cursor-pointer'
-    }
-
-    // Find the batch object in the array
-    const batchObj = batchSyncing.find(
-      (bc: { realBatchId: string }) => bc.realBatchId === batchId,
-    )
-
-    // Set class name depending on the `trigger` property of the batch object
-    const animateClass = batchObj?.trigger ? 'animate-spin' : 'animate-none'
-
-    return `text-slate-400 cursor-pointer ${animateClass}`
-  }
-
   const isButtonDisabled = (batchSyncing: any, batchId: string) => {
     // Return false if batchSyncing is not an array or has less than 2 elements
     if (!Array.isArray(batchSyncing) || batchSyncing.length <= 1) {
@@ -197,30 +183,53 @@ const BatchTable: FC<BatchTableProps> = ({
                       </div>
                     </td>
                     <td className="">
-                      <div className="flex h-10 justify-end">
+                      <div className="flex h-10 items-center justify-end">
                         {isEmpty(
                           synchedBatches.find(
                             (el: synchedBatchesProps) =>
                               el.batchId === `${item.batch.id} - ${email}`,
                           ),
                         ) ? (
-                          <button
-                            onClick={() => syncHandler(item)}
-                            disabled={isButtonDisabled(
+                          (() => {
+                            const isSyncing = isButtonDisabled(
                               batchSyncing,
                               item.batch.id,
-                            )}
-                          >
-                            <AiOutlineSync
-                              className={getSyncIconClassName(
-                                batchSyncing,
-                                `${item.batch.id} - ${email}`,
-                              )}
-                              size={28}
-                            />
-                          </button>
+                            )
+                            return (
+                              <Tooltip
+                                content={
+                                  <span className="block max-w-xs text-xs leading-snug">
+                                    Create the journal entry in QuickBooks
+                                  </span>
+                                }
+                                placement="top"
+                              >
+                                <Button
+                                  size="sm"
+                                  onClick={() => syncHandler(item)}
+                                  disabled={isSyncing}
+                                  className="flex items-center gap-2 normal-case bg-yellow"
+                                >
+                                  {isSyncing ? (
+                                    <>
+                                      <Spinner size="sm" />
+                                      Syncing…
+                                    </>
+                                  ) : (
+                                    <>
+                                      <AiOutlineSync size={16} />
+                                      Sync to QuickBooks
+                                    </>
+                                  )}
+                                </Button>
+                              </Tooltip>
+                            )
+                          })()
                         ) : (
-                          <HiCheckCircle className="text-yellow" size={32} />
+                          <div className="flex items-center gap-1.5 text-success font-semibold">
+                            <HiCheckCircle className="text-success" size={24} />
+                            Synced
+                          </div>
                         )}
                       </div>
                     </td>
@@ -256,7 +265,18 @@ const BatchTable: FC<BatchTableProps> = ({
       ) : null} */}
     </div>
   ) : (
-    <Empty />
+    <Empty
+      message="No batches found for this date range."
+      action={
+        <Button
+          size="sm"
+          onClick={() => dispatch(setDateRangeTransaction([]))}
+          className="normal-case bg-yellow"
+        >
+          Clear date filter
+        </Button>
+      }
+    />
   )
 }
 

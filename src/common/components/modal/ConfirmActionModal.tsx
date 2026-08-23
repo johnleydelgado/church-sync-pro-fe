@@ -1,30 +1,38 @@
-// ConfirmDeactivationModal.tsx
+// ConfirmActionModal.tsx
 import React, { FC, Fragment, useMemo } from 'react'
 import { Dialog, Transition } from '@headlessui/react'
 import { Button } from '@material-tailwind/react'
 import { useDispatch, useSelector } from 'react-redux'
-import { MODALS_NAME } from '@/common/constant/modal'
 import { CLOSE_MODAL } from '@/redux/common'
 import { RootState } from '@/redux/store'
 
-interface ConfirmDeactivationModalProps {
-  onConfirm: () => void // Callback function to proceed with deactivation
-  selectedClient: any // Accept the selected client as a prop
+interface ConfirmActionModalProps {
+  modalName: string // The MODALS_NAME identifier that toggles this modal
+  title: string
+  body: string
+  confirmLabel?: string
+  cancelLabel?: string
+  onConfirm: () => void // Callback that runs the destructive action on confirm
 }
 
-const ConfirmDeactivationModal: FC<ConfirmDeactivationModalProps> = ({
+const ConfirmActionModal: FC<ConfirmActionModalProps> = ({
+  modalName,
+  title,
+  body,
+  confirmLabel = 'Confirm',
+  cancelLabel = 'Cancel',
   onConfirm,
-  selectedClient,
 }) => {
   const dispatch = useDispatch()
   const openModals = useSelector((state: RootState) => state.common.openModals)
+
   const handleCloseModals = () => {
-    dispatch(CLOSE_MODAL(MODALS_NAME.modalConfirmDeactivation))
+    dispatch(CLOSE_MODAL(modalName))
   }
 
   const isOpen = useMemo(
-    () => openModals.includes(MODALS_NAME.modalConfirmDeactivation),
-    [openModals],
+    () => openModals.includes(modalName),
+    [openModals, modalName],
   )
 
   return (
@@ -58,25 +66,17 @@ const ConfirmDeactivationModal: FC<ConfirmDeactivationModalProps> = ({
                   as="h3"
                   className="text-xl font-semibold text-gray-700"
                 >
-                  Are you sure you want to deactivate this client account?
+                  {title}
                 </Dialog.Title>
 
-                {/* Display the selected client information */}
-                {selectedClient && (
-                  <p className="text-gray-500 mt-4">
-                    Deactivating account for:{' '}
-                    <strong>
-                      {selectedClient.churchName || selectedClient.email}
-                    </strong>
-                  </p>
-                )}
+                <p className="text-gray-500 mt-4">{body}</p>
 
                 <div className="mt-6 flex gap-4">
                   <Button
                     className="w-full bg-gray-300 text-gray-700 font-semibold py-2 rounded-md hover:bg-gray-400 transition duration-300"
                     onClick={handleCloseModals}
                   >
-                    Cancel
+                    {cancelLabel}
                   </Button>
                   <Button
                     className="w-full bg-red-600 text-white font-semibold py-2 rounded-md hover:bg-red-700 transition duration-300"
@@ -85,7 +85,7 @@ const ConfirmDeactivationModal: FC<ConfirmDeactivationModalProps> = ({
                       handleCloseModals()
                     }}
                   >
-                    Proceed
+                    {confirmLabel}
                   </Button>
                 </div>
               </Dialog.Panel>
@@ -97,4 +97,4 @@ const ConfirmDeactivationModal: FC<ConfirmDeactivationModalProps> = ({
   )
 }
 
-export default ConfirmDeactivationModal
+export default ConfirmActionModal

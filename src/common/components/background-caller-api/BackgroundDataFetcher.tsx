@@ -19,7 +19,11 @@ const BackgroundDataFetcher = () => {
     const fetchData = async () => {
       dispatch(CLOSE_MODAL(MODALS_NAME.subscriptionModal))
 
-      if (location.pathname === mainRoute.AUTOMATION_MAPPING) {
+      if (
+        location.pathname === mainRoute.AUTOMATION_MAPPING ||
+        location.pathname === mainRoute.TRANSACTION ||
+        location.pathname.startsWith('/transaction/view-page-stripe')
+      ) {
         const fetchedQBOData = await getQboData(user, bookkeeper)
 
         const fetchedStripeListData = await getActiveStripeList(
