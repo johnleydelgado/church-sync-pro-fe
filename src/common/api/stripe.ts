@@ -133,7 +133,9 @@ const getStripeList = async ({ ...rest }: { email: string }) => {
     const response = await apiCall.post(url, data)
     return response.data
   } catch (e: any) {
-    return e.response.data
+    // A network failure or a dropped connection has no `response`, and dereferencing
+    // it here threw *inside* the catch - surfacing as an uncaught runtime error.
+    return e?.response?.data ?? null
   }
 }
 
@@ -153,7 +155,9 @@ const createPaymentIntent = async ({
     const response = await apiCall.post(url, data)
     return response.data
   } catch (e: any) {
-    return e.response.data
+    // A network failure or a dropped connection has no `response`, and dereferencing
+    // it here threw *inside* the catch - surfacing as an uncaught runtime error.
+    return e?.response?.data ?? null
   }
 }
 

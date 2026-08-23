@@ -331,7 +331,7 @@ const manualSync = async ({
     const response = await apiCall.post(url, data)
     return response.data
   } catch (e: any) {
-    return e.response.data
+    return e?.response?.data ?? null
   }
 }
 

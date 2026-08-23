@@ -99,9 +99,9 @@ const updateProject = async (
   } catch (e: any) {
     console.error('Error response:', e.response)
     // Here you can access the specific error message and details
-    const errorCode = e.response.data.code
-    const errorMessage = e.response.data.message
-    const errorData = e.response.data.data
+    const errorCode = e?.response?.data?.code
+    const errorMessage = e?.response?.data?.message
+    const errorData = e?.response?.data?.data
     const errorType = errorData?.Fault?.type
     const detailedMessage = errorData?.Fault?.Error?.[0]?.Message
 
@@ -151,8 +151,11 @@ const getActiveStripeList = async (
     user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
   if (email) {
     const res = await getStripeList({ email })
-    return res.data
+    // getStripeList returns null when the call fails - and Stripe is optional, so a
+    // church that has not connected it must not break the mapping page.
+    return res?.data ?? null
   }
+  return null
 }
 
 export {
