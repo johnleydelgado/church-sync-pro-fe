@@ -14,6 +14,7 @@ import { useQuery } from 'react-query'
 import { useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
 import { Tooltip } from '@material-tailwind/react'
+import ClearingStatement from './ClearingStatement'
 import { BiCalendarCheck } from 'react-icons/bi'
 import {
   HiOutlineCheckCircle,
@@ -151,10 +152,18 @@ const DailyJournalEntries: FC<DailyJournalEntriesProps> = () => {
                     </Tooltip>
                   </div>
                   <p className="pt-2 text-3xl font-bold text-primary">
-                    {formatUsd(data?.clearingBalance)}
+                    {formatUsd(
+                      data?.qboClearingBalance ?? data?.clearingBalance,
+                    )}
                   </p>
                   <p className="pt-1 text-xs text-gray-400">
-                    Awaiting bank deposit
+                    {data?.qboClearingBalance != null
+                      ? `Live in QuickBooks${
+                          data?.clearingAccountName
+                            ? ` · ${data.clearingAccountName}`
+                            : ''
+                        } · ${formatUsd(data?.clearingBalance)} posted by CSP to date`
+                      : 'Posted by CSP to date · QuickBooks balance unavailable'}
                   </p>
                 </div>
 
@@ -298,6 +307,8 @@ const DailyJournalEntries: FC<DailyJournalEntriesProps> = () => {
                   })}
                 </div>
               )}
+
+              <ClearingStatement />
             </>
           )}
         </div>

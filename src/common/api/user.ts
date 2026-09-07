@@ -290,8 +290,46 @@ export interface DailyJournalEntriesData {
     lastRunAt: string | null
     lastRunStatus: string | null
   }
+  /** Cumulative net CSP has posted to clearing - grows forever, not the live balance. */
   clearingBalance: number
+  /** The clearing account's live balance read from QuickBooks; null if unreadable. */
+  qboClearingBalance: number | null
+  clearingAccountName: string | null
   entries: DailyJournalEntry[]
+}
+
+export interface ClearingStatementLine {
+  date: string
+  gross: number
+  fees: number
+  refundsGross: number
+  refundsFees: number
+  net: number
+  runningBalance: number
+  entries: number
+  qboEntryIds: string[]
+  batchIds: string[]
+}
+
+export interface ClearingStatementData {
+  month: string
+  clearingAccount: { value: string; name: string } | null
+  opening: number
+  lines: ClearingStatementLine[]
+  totals: { gross: number; fees: number; refundsGross: number; refundsFees: number; net: number }
+  closing: number
+  qboBalance: number | null
+  difference: number | null
+  generatedAt: string
+}
+
+const getClearingStatement = async (
+  email: string,
+  month: string,
+): Promise<ClearingStatementData> => {
+  const url = userRoutes.getClearingStatement
+  const res = await apiCall.get(url + `?email=${encodeURIComponent(email)}&month=${month}`)
+  return res.data.data
 }
 
 const getDailyJournalEntries = async (
@@ -660,4 +698,5 @@ export {
   getUserRelatedSettings,
   toggleUserActiveStatusApi,
   getDailyJournalEntries,
+  getClearingStatement,
 }
