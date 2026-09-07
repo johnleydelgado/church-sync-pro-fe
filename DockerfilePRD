@@ -27,9 +27,12 @@ COPY --from=builder /app/build ./build
 COPY package.json ./
 # Set npm timeout before installing 'serve'
 RUN npm config set timeout 60000
-RUN npm install serve
+# Install serve globally. A local `npm install serve` reads this project's
+# package.json overrides (which use the $react alias) in a directory with no
+# node_modules and fails with "Unable to resolve reference $react".
+RUN npm install -g serve
 
 EXPOSE 3000
 ENV PORT 3000
 
-CMD [ "npx", "serve", "-s", "build" ]
+CMD [ "serve", "-s", "build" ]
