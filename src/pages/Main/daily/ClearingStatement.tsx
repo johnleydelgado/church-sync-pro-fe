@@ -103,10 +103,19 @@ const ClearingStatement: FC = () => {
               <p className="pt-1 text-xl font-bold text-primary">
                 {data.qboBalance === null ? '—' : usd(data.qboBalance)}
               </p>
-              {data.difference !== null ? (
-                <p className="pt-0.5 text-xs text-gray-400">{usd(data.difference)} already reconciled</p>
-              ) : (
+              {data.difference === null ? (
                 <p className="pt-0.5 text-xs text-gray-400">Not readable from QuickBooks</p>
+              ) : data.difference > 0 ? (
+                // QuickBooks is below CSP's figure: deposits have been reconciled out.
+                <p className="pt-0.5 text-xs text-gray-400">{usd(data.difference)} already reconciled</p>
+              ) : data.difference < 0 ? (
+                // QuickBooks is ABOVE CSP's figure: the account holds money CSP never posted —
+                // an opening balance, or a real bank account being used as the clearing account.
+                <p className="pt-0.5 text-xs text-amber-600">
+                  {usd(-data.difference)} in the account not posted by CSP
+                </p>
+              ) : (
+                <p className="pt-0.5 text-xs text-gray-400">Matches CSP exactly</p>
               )}
             </div>
           </div>
