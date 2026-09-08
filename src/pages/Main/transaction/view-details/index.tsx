@@ -225,7 +225,28 @@ const ViewDetails: FC<indexProps> = ({}) => {
       })
       if (result.success) {
         setIsSynching(false)
-        successNotification({ title: `Batch: ${batchName} successfully sync` })
+        // Report what the sync actually did. This button runs the daily journal-entry
+        // engine, which posts only Stripe-processed giving - so a batch of cash or cheques
+        // correctly produces nothing. Announcing that as "successfully sync" sent people
+        // looking for entries in QuickBooks that were never meant to exist.
+        const outcome = result.data ?? {}
+        if (outcome.failedDays?.length) {
+          failNotification({
+            title: `Batch: ${batchName} - ${outcome.failedDays.length} day(s) could not be posted`,
+          })
+        } else if (outcome.postedDays?.length) {
+          successNotification({
+            title: `Batch: ${batchName} posted ${outcome.postedDays.length} journal ${
+              outcome.postedDays.length === 1 ? 'entry' : 'entries'
+            }`,
+          })
+        } else if (!outcome.eligibleDonations) {
+          successNotification({
+            title: `Batch: ${batchName} has no online giving. Cash and cheques are not posted to QuickBooks.`,
+          })
+        } else {
+          successNotification({ title: `Batch: ${batchName} is already up to date` })
+        }
         refetch({ force: true })
       } else {
         setIsSynching(false)
