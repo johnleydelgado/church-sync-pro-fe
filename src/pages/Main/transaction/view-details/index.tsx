@@ -335,12 +335,12 @@ const ViewDetails: FC<indexProps> = ({}) => {
                           finalData.synchedBatches &&
                           finalData.synchedBatches.length > 0 &&
                           finalData.synchedBatches[0]?.createdAt
-                            ? `Synced Planning Center to QuickBooks Online | Last synced at ${format(
+                            ? `Journal entry posted to QuickBooks | Last posted at ${format(
                                 parseISO(finalData.synchedBatches[0].createdAt),
                                 "hh:mm aaaa 'on' EEEE MMMM d, yyyy",
                               )} | `
                             : // Provide a fallback string or component when synchedBatches is undefined or empty
-                              'No sync data available'}
+                              'No posting data available'}
                         </span>
                         <button
                           className="text-orange-500 flex items-center gap-1"
@@ -355,12 +355,12 @@ const ViewDetails: FC<indexProps> = ({}) => {
                               isSynching ? 'animate-spin' : 'animate-none'
                             }`}
                           />
-                          <p className="underline">Remove sync</p>
+                          <p className="underline">Remove posting record</p>
                         </button>
                       </div>
                     ) : (
                       <div className="flex gap-4">
-                        <p className="text-[#1b1b1bcc]">Not Sync | </p>
+                        <p className="text-[#1b1b1bcc]">No journal entry yet | </p>
                         <button
                           className="text-primary flex items-center gap-1"
                           onClick={() =>
@@ -378,7 +378,7 @@ const ViewDetails: FC<indexProps> = ({}) => {
                               isSynching ? 'animate-spin' : 'animate-none'
                             }`}
                           />
-                          <p className="underline">Sync</p>
+                          <p className="underline">Post to QuickBooks now</p>
                         </button>
                       </div>
                     )}
@@ -391,6 +391,12 @@ const ViewDetails: FC<indexProps> = ({}) => {
                 <span className="font-normal text-2xl text-yellow">
                   Batch Summary
                 </span>
+                <p className="text-sm text-gray-500 font-light mt-1">
+                  Posting a batch runs the same daily journal entry the automatic sync
+                  does, for this batch only. Just the online giving in it &mdash; card
+                  and bank gifts processed by Stripe &mdash; reaches QuickBooks. Cash
+                  and cheques stay out, so a batch holding only those posts nothing.
+                </p>
                 <div className="border-y-[1px] flex justify-between p-8 mt-2 border-yellow bg-[#D9D9D933]">
                   <div className="flex flex-col gap-2">
                     <p className="font-semibold text-gray-500">Total Amount</p>

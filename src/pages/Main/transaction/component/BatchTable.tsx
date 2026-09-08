@@ -199,7 +199,8 @@ const BatchTable: FC<BatchTableProps> = ({
                               <Tooltip
                                 content={
                                   <span className="block max-w-xs text-xs leading-snug">
-                                    Create the journal entry in QuickBooks
+                                    Post this batch&apos;s online giving to QuickBooks
+                                    now. Cash and cheques are not included.
                                   </span>
                                 }
                                 placement="top"
