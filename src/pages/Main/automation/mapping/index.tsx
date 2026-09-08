@@ -204,8 +204,10 @@ const Mapping: FC<SettingsProps> = () => {
               (b) => b.fundName === a.attributes.name,
             )
 
-            // Include the fund if it has isActive set to true, or if isActive is undefined or null
-            return fundSetting && fundSetting.isActive !== false
+            // Show the fund unless it has been explicitly deactivated. A fund added
+            // in Planning Center after the mapping was first saved has no entry here
+            // yet, and requiring one hid every new fund from this page for good.
+            return !fundSetting || fundSetting.isActive !== false
           })
 
           return filteredFunds // Return the filtered array
