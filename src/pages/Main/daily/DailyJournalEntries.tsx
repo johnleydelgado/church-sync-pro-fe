@@ -83,11 +83,16 @@ const DailyJournalEntries: FC<DailyJournalEntriesProps> = () => {
 
   const [expandedRow, setExpandedRow] = useState<string | null>(null)
 
-  const accountNameByRef = (accountRef: string) => {
+  // The name comes from the API, resolved from the church's own fund mapping. The redux
+  // lookup below is a fallback for entries posted before the API carried it - and it only
+  // works when the QuickBooks account list happens to be cached, which on this page it
+  // usually is not. That is why every row used to read "Revenue account".
+  const accountNameByRef = (accountRef: string, accountName?: string) => {
+    if (accountName) return accountName
     const account = reduxQboData?.accounts?.find(
       (acc) => acc.value === accountRef || acc.label === accountRef,
     )
-    return account?.label || 'Revenue account'
+    return account?.label || `Account ${accountRef}`
   }
 
   const { data, isLoading } = useQuery(
@@ -279,7 +284,7 @@ const DailyJournalEntries: FC<DailyJournalEntriesProps> = () => {
                                     className="flex items-center justify-between border-b border-gray-100 py-1 text-sm"
                                   >
                                     <span className="text-gray-600">
-                                      {accountNameByRef(credit.accountRef)}
+                                      {accountNameByRef(credit.accountRef, credit.accountName)}
                                     </span>
                                     <span className="font-medium text-primary">
                                       {formatUsd(credit.amount)}

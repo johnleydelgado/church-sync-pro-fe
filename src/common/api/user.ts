@@ -271,6 +271,8 @@ const getUserRelated = async (email: string) => {
 export interface DailyJournalEntryCredit {
   accountRef: string
   amount: number
+  /** The account's name, resolved server-side from the church's fund mapping. */
+  accountName?: string
 }
 
 export interface DailyJournalEntry {
