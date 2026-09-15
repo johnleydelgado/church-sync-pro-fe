@@ -114,8 +114,9 @@ const Dashboard: FC<DashboardProps> = () => {
             <p className="max-w-3xl pt-1 text-sm text-gray-500">
               Every day&apos;s online giving that Stripe processed, read
               straight from Planning Center, and whether its journal entry has
-              reached QuickBooks yet. Open a day to see the gifts behind it.
-              Cash and cheques are not shown — Stripe never handles them.
+              reached QuickBooks yet. Open a day to see the gifts behind it, or
+              post one without waiting for the 8am run. Cash and cheques are not
+              shown — Stripe never handles them.
             </p>
           </div>
 

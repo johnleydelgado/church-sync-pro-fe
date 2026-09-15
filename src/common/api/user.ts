@@ -356,6 +356,11 @@ export interface StripeGivingDay {
 export interface StripeGivingByDayData {
   days: StripeGivingDay[]
   orgTimeZone?: string
+  /**
+   * The church's sync start date as YYYY-MM-DD, or null when they have not set one.
+   * Days before it are giving the church has decided not to bring across.
+   */
+  syncStartDay?: string | null
   from?: string
   to?: string
   /** Set when the church is not set up enough to answer - no PCO token, say. */
@@ -685,15 +690,19 @@ const setStartDataAutomation = async (
   const url = userRoutes.setStartDataAutomation
   const data = JSON.stringify({ date, email, type })
 
+  if (!email) throw new Error('No account to save the start date against.')
+
   try {
-    if (email) {
-      const response = await apiCall.post(url, data)
-      console.log('response', response)
-      return response.data.data
-    }
-    return []
+    const response = await apiCall.post(url, data)
+    return response.data.data
   } catch (e: any) {
-    return e.message || 'An error occurred'
+    // Rethrow. This used to return the error message as if it were a result, so a rejected
+    // save was indistinguishable from a successful one at every call site.
+    throw new Error(
+      e?.response?.data?.error ??
+        e?.response?.data?.message ??
+        'The start date could not be saved.',
+    )
   }
 }
 
