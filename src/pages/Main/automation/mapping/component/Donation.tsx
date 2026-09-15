@@ -92,6 +92,10 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
   )
   const [settingsData, setSettingsData] = useState<qboSettings[]>([])
   const [onGoingSaving, setOnGoingSaving] = useState<boolean>(false)
+  // Auto-save status, shown inline rather than as a toast per keystroke.
+  const [autoSaveState, setAutoSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
+  // Skips the save that would otherwise fire when the saved mapping is first loaded in.
+  const hasLoadedSettings = React.useRef(false)
   const [openStates, setOpenStates] = useState<Record<number, boolean>>({})
 
   const dispatch = useDispatch()
@@ -197,9 +201,6 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
       await delay(2000)
       dispatch(setReTriggerIsUserTokens(!reTriggerIsUserTokens))
       successNotification({ title: 'Settings successfully saved !' })
-      if (!selectedStartDate) {
-        dispatch(OPEN_MODAL(MODALS_NAME.transactionDate))
-      }
       setOnGoingSaving(false)
     } catch (e) {
       // no-op
@@ -270,9 +271,45 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
     }
   }, [userData])
 
+  /**
+   * Save the mapping as it is edited.
+   *
+   * Deliberately saves PARTIAL mappings, unlike the Save button, which refuses until every fund
+   * on the page has an account. Mapping a church with a dozen funds is not one sitting, and
+   * losing the work because the last fund is undecided is the behaviour this replaces.
+   *
+   * Debounced so picking an account, then a class, then a customer is one write rather than
+   * three, and the status is shown inline - a toast on every dropdown would be unbearable.
+   */
+  useEffect(() => {
+    if (!hasLoadedSettings.current) {
+      // The first run is the saved mapping arriving, not a user edit.
+      if (settingsData.length > 0) hasLoadedSettings.current = true
+      return
+    }
+    if (!email || settingsData.length === 0) return
+
+    setAutoSaveState('saving')
+    const timer = setTimeout(async () => {
+      try {
+        await mutate({ email, settingsData })
+        setAutoSaveState('saved')
+      } catch {
+        // Leave the Save button as the visible way to retry rather than interrupting typing.
+        setAutoSaveState('idle')
+      }
+    }, 1200)
+
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settingsData, email])
+
   return (
     <div>
-      {isSavingSettings || isQboDataLoading || onGoingSaving ? (
+      {/* Deliberately not `isSavingSettings`: that fires on auto-save too, and blanking the
+          whole mapping behind a spinner every time a dropdown changes is unusable. The button
+          path sets `onGoingSaving`; auto-save shows its status inline instead. */}
+      {isQboDataLoading || onGoingSaving ? (
         <Loading />
       ) : (
         <>
@@ -399,7 +436,12 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
               )}
             </div>
           ))}
-          <div className="flex justify-end">
+          <div className="flex items-center justify-end gap-3">
+            {autoSaveState !== 'idle' && (
+              <span className="text-sm font-light text-gray-500">
+                {autoSaveState === 'saving' ? 'Saving…' : 'Changes saved'}
+              </span>
+            )}
             <Button className="bg-green-400" onClick={() => handleSubmit()}>
               Save
             </Button>
