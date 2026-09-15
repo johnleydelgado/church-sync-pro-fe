@@ -130,13 +130,23 @@ const addTokenInUser = async ({ ...rest }: TokensProps) => {
 const createSettings = async ({
   ...rest
 }: SettingQBOProps | SettingRegistrationQBOProps) => {
-  // await axios.get
   const url = userRoutes.createSettings
   try {
     const response = await apiCall.post(url, rest)
     return response.data
   } catch (e: any) {
-    return []
+    // Rethrow. This used to return [] on failure, which made a failed save
+    // indistinguishable from a successful one - so the mapping page's auto-save
+    // reported "Changes saved" for writes that never landed. Every caller runs
+    // this through react-query's useMutation, which catches the rejection and
+    // surfaces it as isError rather than letting it escape.
+    // The backend answers with `{ error }`, other handlers with `{ message }`; read both so
+    // the real reason reaches the page instead of the generic fallback.
+    throw new Error(
+      e?.response?.data?.error ??
+        e?.response?.data?.message ??
+        'Your mapping could not be saved.',
+    )
   }
 }
 

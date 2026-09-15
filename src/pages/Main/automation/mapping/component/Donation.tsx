@@ -23,6 +23,8 @@ import { QboDataSelectProps } from '..'
 import { MODALS_NAME } from '@/common/constant/modal'
 import ModalCreateUpdateProject from '@/common/components/modal/ModalCreateUpdateProject'
 import { BsPlus, BsQuestionCircle } from 'react-icons/bs'
+import { HiCheck, HiOutlineExclamationCircle } from 'react-icons/hi'
+import { Spinner } from 'flowbite-react'
 import { BiArchiveIn, BiDotsHorizontal } from 'react-icons/bi'
 import { FundAttProps } from '@/common/constant/interfaces'
 import colors from '@/common/constant/colors'
@@ -86,14 +88,76 @@ const HelpTip: FC<{ text: string }> = ({ text }) => (
   </Tooltip>
 )
 
+/**
+ * Auto-save status for one dropdown.
+ *
+ * Shown beside the field's own label rather than inside the control: react-select already owns
+ * that space with its clear and chevron indicators, and a spinner there shifts them around as it
+ * appears. The label row is empty and sits directly above the field, so the status is adjacent to
+ * what the person just changed without moving anything.
+ *
+ * "Saved" is deliberately transient. A tick that never leaves stops being read after the first
+ * time; one that fades says "that landed" and then gets out of the way. A failure does NOT fade -
+ * unsaved work is the one thing here worth interrupting for.
+ */
+type FieldSaveStatus = 'idle' | 'saving' | 'saved' | 'error'
+
+const FieldStatus: FC<{ status: FieldSaveStatus }> = ({ status }) => {
+  if (status === 'idle') return null
+
+  if (status === 'saving') {
+    return (
+      <span
+        className="flex items-center gap-1 text-xs font-normal text-gray-400"
+        role="status"
+        aria-live="polite"
+      >
+        <Spinner size="sm" className="h-3 w-3" />
+        Saving
+      </span>
+    )
+  }
+
+  if (status === 'saved') {
+    return (
+      <span
+        className="flex items-center gap-1 text-xs font-normal text-success"
+        role="status"
+        aria-live="polite"
+      >
+        <HiCheck size={14} />
+        Saved
+      </span>
+    )
+  }
+
+  return (
+    <span
+      className="flex items-center gap-1 text-xs font-medium text-red-500"
+      role="alert"
+    >
+      <HiOutlineExclamationCircle size={14} />
+      Not saved
+    </span>
+  )
+}
+
+/** Identifies one dropdown: a fund plus which of its three fields. */
+const fieldKey = (fundName: string | null | undefined, category: string) =>
+  `${fundName ?? ''}::${category}`
+
 const Donation: FC<DonationProps> = ({ fundData, userData }) => {
   const { user, selectedStartDate } = useSelector(
     (state: RootState) => state.common,
   )
   const [settingsData, setSettingsData] = useState<qboSettings[]>([])
   const [onGoingSaving, setOnGoingSaving] = useState<boolean>(false)
-  // Auto-save status, shown inline rather than as a toast per keystroke.
-  const [autoSaveState, setAutoSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
+  // Which dropdowns have an edit that has not reached the server yet, and which just landed.
+  // Tracking them per field is what lets the status sit next to the control the person touched
+  // instead of only at the bottom of a page that may be several funds long.
+  const [pendingFields, setPendingFields] = useState<Set<string>>(new Set())
+  const [justSavedFields, setJustSavedFields] = useState<Set<string>>(new Set())
+  const [saveError, setSaveError] = useState<string | null>(null)
   // Skips the save that would otherwise fire when the saved mapping is first loaded in.
   const hasLoadedSettings = React.useRef(false)
   const [openStates, setOpenStates] = useState<Record<number, boolean>>({})
@@ -105,7 +169,7 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
   )
 
   // create user settings
-  const { mutate, isLoading: isSavingSettings } = useMutation<
+  const { mutate, mutateAsync, isLoading: isSavingSettings } = useMutation<
     unknown,
     unknown,
     SettingQBOProps
@@ -166,6 +230,29 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
     }
 
     setSettingsData(tempData)
+
+    // Mark this exact dropdown as in-flight straight away, so the spinner appears on the
+    // control the person just used rather than after the debounce has elapsed.
+    const key = fieldKey(fundName, category)
+    setPendingFields((prev) => new Set(prev).add(key))
+    setJustSavedFields((prev) => {
+      if (!prev.has(key)) return prev
+      const next = new Set(prev)
+      next.delete(key)
+      return next
+    })
+    setSaveError(null)
+  }
+
+  /** The status to show beside one dropdown's label. */
+  const statusFor = (
+    fundName: string | null | undefined,
+    category: string,
+  ): FieldSaveStatus => {
+    const key = fieldKey(fundName, category)
+    if (pendingFields.has(key)) return saveError ? 'error' : 'saving'
+    if (justSavedFields.has(key)) return 'saved'
+    return 'idle'
   }
 
   const isAnyKeyMissing = (): boolean => {
@@ -289,20 +376,47 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
     }
     if (!email || settingsData.length === 0) return
 
-    setAutoSaveState('saving')
     const timer = setTimeout(async () => {
+      // Snapshot what this write covers. More edits can land while it is in flight, and those
+      // must stay pending rather than being marked saved by a request that did not include them.
+      const inFlight = new Set(pendingFields)
       try {
-        await mutate({ email, settingsData })
-        setAutoSaveState('saved')
-      } catch {
-        // Leave the Save button as the visible way to retry rather than interrupting typing.
-        setAutoSaveState('idle')
+        // mutateAsync, not mutate: mutate returns void, so the old `await mutate(...)` resolved
+        // immediately and reported success before the request had even been sent.
+        await mutateAsync({ email, settingsData })
+        setPendingFields((prev) => {
+          const next = new Set(prev)
+          inFlight.forEach((k) => next.delete(k))
+          return next
+        })
+        setJustSavedFields((prev) => {
+          const next = new Set(prev)
+          inFlight.forEach((k) => next.add(k))
+          return next
+        })
+        setSaveError(null)
+      } catch (e: any) {
+        // The fields stay pending, so their status flips to "Not saved" and the work is
+        // visibly still outstanding. Typing is never interrupted.
+        setSaveError(e?.message ?? 'Your mapping could not be saved.')
       }
     }, 1200)
 
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settingsData, email])
+
+  /**
+   * Retire each "Saved" tick a couple of seconds after it appears.
+   *
+   * Without this the page slowly fills with green ticks that nobody reads any more, and the one
+   * field that is genuinely still saving is lost among them.
+   */
+  useEffect(() => {
+    if (justSavedFields.size === 0) return
+    const timer = setTimeout(() => setJustSavedFields(new Set()), 2500)
+    return () => clearTimeout(timer)
+  }, [justSavedFields])
 
   return (
     <div>
@@ -359,6 +473,9 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
                     <div className="flex items-center gap-1">
                       <p>Accounts</p>
                       <HelpTip text="The QuickBooks income account this fund's gifts are credited to, e.g. 'Tithes & Offerings'." />
+                      <FieldStatus
+                        status={statusFor(item.attributes.name, 'account')}
+                      />
                     </div>
                     <Dropdown
                       options={qboData?.accounts?.filter(
@@ -382,6 +499,9 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
                     <div className="flex items-center gap-1">
                       <p>Classes (optional)</p>
                       <HelpTip text="Optional QuickBooks class for tracking. Leave blank if you don't use classes." />
+                      <FieldStatus
+                        status={statusFor(item.attributes.name, 'class')}
+                      />
                     </div>
                     <Dropdown
                       options={qboData?.classes}
@@ -403,6 +523,9 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
                     <div className="flex items-center gap-1">
                       <p>Customer / Project (optional)</p>
                       <HelpTip text="Optional QuickBooks customer/project to tag this fund. Leave blank if unsure." />
+                      <FieldStatus
+                        status={statusFor(item.attributes.name, 'customer')}
+                      />
                     </div>
                     <Dropdown
                       key={index}
@@ -436,12 +559,36 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
               )}
             </div>
           ))}
-          <div className="flex items-center justify-end gap-3">
-            {autoSaveState !== 'idle' && (
-              <span className="text-sm font-light text-gray-500">
-                {autoSaveState === 'saving' ? 'Saving…' : 'Changes saved'}
+          {/* Sticky, because a mapping can run several screens long: a status pinned to the
+              bottom of the document is out of sight exactly when someone edits the top of it. */}
+          <div className="sticky bottom-0 -mx-2 flex items-center justify-end gap-3 border-t border-gray-100 bg-white/95 px-2 py-3 backdrop-blur">
+            {saveError ? (
+              <span
+                className="flex items-center gap-1.5 text-sm font-medium text-red-500"
+                role="alert"
+              >
+                <HiOutlineExclamationCircle size={16} />
+                {saveError} Your changes are still here — press Save to retry.
               </span>
-            )}
+            ) : pendingFields.size > 0 ? (
+              <span
+                className="flex items-center gap-1.5 text-sm font-light text-gray-500"
+                role="status"
+                aria-live="polite"
+              >
+                <Spinner size="sm" className="h-3.5 w-3.5" />
+                Saving…
+              </span>
+            ) : justSavedFields.size > 0 ? (
+              <span
+                className="flex items-center gap-1.5 text-sm font-light text-success"
+                role="status"
+                aria-live="polite"
+              >
+                <HiCheck size={16} />
+                All changes saved
+              </span>
+            ) : null}
             <Button className="bg-green-400" onClick={() => handleSubmit()}>
               Save
             </Button>
