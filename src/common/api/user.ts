@@ -325,6 +325,48 @@ export interface ClearingStatementData {
   generatedAt: string
 }
 
+/** One day of Stripe-processed giving, as Planning Center reports it. Amounts are dollars. */
+export interface StripeGivingDay {
+  date: string
+  donations: number
+  gross: number
+  fees: number
+  net: number
+  /** What CSP has done about the day: 'posted', 'failed', or 'pending' when no entry exists yet. */
+  status: string
+  postedGross: number
+}
+
+export interface StripeGivingByDayData {
+  days: StripeGivingDay[]
+  orgTimeZone?: string
+  from?: string
+  to?: string
+  /** Set when the church is not set up enough to answer - no PCO token, say. */
+  unavailable?: string
+}
+
+const getStripeGivingByDay = async (
+  email: string,
+  from: string,
+  to: string,
+): Promise<StripeGivingByDayData> => {
+  const url = userRoutes.getStripeGivingByDay
+  const res = await apiCall.get(
+    url + `?email=${encodeURIComponent(email)}&from=${from}&to=${to}`,
+  )
+  return res.data.data
+}
+
+const postStripeGivingDay = async (
+  email: string,
+  day: string,
+): Promise<{ status: string; postedDays: string[]; failedDays: string[]; reason?: string }> => {
+  const url = userRoutes.postStripeGivingDay
+  const res = await apiCall.post(url, JSON.stringify({ email, day }))
+  return res.data.data
+}
+
 const getClearingStatement = async (
   email: string,
   month: string,
@@ -443,7 +485,9 @@ const sendEmailInvitation = async (
     const response = await apiCall.post(url, data)
     return response.data
   } catch (e: any) {
-    return null
+    // Callers must be able to tell a failure from a send, so return the server's
+    // reason rather than a bare null that reads as "nothing to report".
+    return { success: false, message: e?.response?.data?.message ?? 'Request failed' }
   }
 }
 
@@ -701,4 +745,6 @@ export {
   toggleUserActiveStatusApi,
   getDailyJournalEntries,
   getClearingStatement,
+  getStripeGivingByDay,
+  postStripeGivingDay,
 }

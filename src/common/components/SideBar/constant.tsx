@@ -92,7 +92,7 @@ const pages: PageProps[] = [
     icon: <BiCalendarCheck size={30} />,
   },
   {
-    name: 'Batches',
+    name: 'Stripe Giving',
     link: '/transaction',
     icon: <HiOutlineDocumentText size={30} />,
   },

@@ -50,11 +50,19 @@ const ModalInvitation: FC<ModalRegistrationProps> = ({ size, refetch }) => {
           title: 'The format of the email is incorrect.',
         })
       }
-      await sendEmailInvitation(
+      // The result is checked: this used to announce success unconditionally, so a
+      // rejected invite still showed a green toast and the modal closed as if the
+      // email had gone out.
+      const result = await sendEmailInvitation(
         `${capitalAtFirstLetter(firstName)} ${capitalAtFirstLetter(lastName)}`,
         email,
         user.id || 0,
       )
+      if (result?.success === false) {
+        return failNotification({
+          title: result.message || 'The invite could not be sent.',
+        })
+      }
       refetch()
       successNotification({ title: 'Invite successfully sent !' })
       handleCloseModals()
