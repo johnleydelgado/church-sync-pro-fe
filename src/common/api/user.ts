@@ -328,7 +328,13 @@ export interface ClearingStatementData {
   clearingAccount: { value: string; name: string } | null
   opening: number
   lines: ClearingStatementLine[]
-  totals: { gross: number; fees: number; refundsGross: number; refundsFees: number; net: number }
+  totals: {
+    gross: number
+    fees: number
+    refundsGross: number
+    refundsFees: number
+    net: number
+  }
   closing: number
   qboBalance: number | null
   difference: number | null
@@ -368,10 +374,49 @@ const getStripeGivingByDay = async (
   return res.data.data
 }
 
+/** One donation inside a day's Stripe giving. Amounts are dollars; `fee` is positive. */
+export interface StripeGivingDonation {
+  id: string
+  receivedAt: string
+  completedAt: string | null
+  gross: number
+  fee: number
+  net: number
+  paymentMethod: string
+  paymentMethodSub: string | null
+  paymentStatus: string
+  feeCovered: boolean
+  designations: { fundName: string; amount: number }[]
+}
+
+export interface StripeGivingDayDetail {
+  day: string
+  orgTimeZone?: string
+  donations: StripeGivingDonation[]
+  totals?: { gross: number; fees: number; net: number; count: number }
+  unavailable?: string
+}
+
+const getStripeGivingDayDetail = async (
+  email: string,
+  day: string,
+): Promise<StripeGivingDayDetail> => {
+  const url = userRoutes.getStripeGivingDayDetail
+  const res = await apiCall.get(
+    url + `?email=${encodeURIComponent(email)}&day=${day}`,
+  )
+  return res.data.data
+}
+
 const postStripeGivingDay = async (
   email: string,
   day: string,
-): Promise<{ status: string; postedDays: string[]; failedDays: string[]; reason?: string }> => {
+): Promise<{
+  status: string
+  postedDays: string[]
+  failedDays: string[]
+  reason?: string
+}> => {
   const url = userRoutes.postStripeGivingDay
   const res = await apiCall.post(url, JSON.stringify({ email, day }))
   return res.data.data
@@ -382,7 +427,9 @@ const getClearingStatement = async (
   month: string,
 ): Promise<ClearingStatementData> => {
   const url = userRoutes.getClearingStatement
-  const res = await apiCall.get(url + `?email=${encodeURIComponent(email)}&month=${month}`)
+  const res = await apiCall.get(
+    url + `?email=${encodeURIComponent(email)}&month=${month}`,
+  )
   return res.data.data
 }
 
@@ -497,7 +544,10 @@ const sendEmailInvitation = async (
   } catch (e: any) {
     // Callers must be able to tell a failure from a send, so return the server's
     // reason rather than a bare null that reads as "nothing to report".
-    return { success: false, message: e?.response?.data?.message ?? 'Request failed' }
+    return {
+      success: false,
+      message: e?.response?.data?.message ?? 'Request failed',
+    }
   }
 }
 
@@ -757,4 +807,5 @@ export {
   getClearingStatement,
   getStripeGivingByDay,
   postStripeGivingDay,
+  getStripeGivingDayDetail,
 }

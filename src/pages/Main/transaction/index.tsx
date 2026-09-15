@@ -29,15 +29,18 @@ export interface BatchesProps {
 }
 
 /**
- * Date ranges this page offers.
- *
- * The backend refuses anything wider than 92 days, because a church with years of history would
- * otherwise ask Planning Center for all of it the moment someone widened the picker.
+ * Widest range the API will answer, in days. Kept in step with MAX_RANGE_DAYS on the backend:
+ * the sweep is a single paginated Planning Center request, so an unbounded range would pull a
+ * church's whole history and take minutes.
  */
+const MAX_RANGE_DAYS = 366
+
+/** Quick ranges, each ending today. */
 const RANGES = [
   { label: 'Last 7 days', days: 7 },
   { label: 'Last 30 days', days: 30 },
   { label: 'Last 90 days', days: 90 },
+  { label: 'Last 12 months', days: 365 },
 ]
 
 /** Today, and `days - 1` days before it, as date-only strings in the browser's local day. */
@@ -79,7 +82,8 @@ const Dashboard: FC<DashboardProps> = () => {
         (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) /
           86400000,
       ) + 1
-    if (span > 92) return 'Choose a range of 92 days or fewer.'
+    if (span > MAX_RANGE_DAYS)
+      return `That range is ${span} days. Planning Center is asked for the whole range at once, so pick a year or less — then step back a year at a time.`
     return null
   }, [from, to])
 
@@ -108,10 +112,10 @@ const Dashboard: FC<DashboardProps> = () => {
               </span>
             </div>
             <p className="max-w-3xl pt-1 text-sm text-gray-500">
-              Every day&apos;s online giving that Stripe processed, read straight
-              from Planning Center. Post a day here to send its journal entry to
-              QuickBooks without waiting for the 8am run. Cash and cheques are
-              not shown — Stripe never handles them.
+              Every day&apos;s online giving that Stripe processed, read
+              straight from Planning Center, and whether its journal entry has
+              reached QuickBooks yet. Open a day to see the gifts behind it.
+              Cash and cheques are not shown — Stripe never handles them.
             </p>
           </div>
 

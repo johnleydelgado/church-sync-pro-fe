@@ -1,26 +1,23 @@
-import React, { FC, useMemo, useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from 'react-query'
+import React, { FC, useEffect, useMemo, useState } from 'react'
+import { useQuery, useQueryClient } from 'react-query'
 import { useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
-import { Button, Tooltip } from '@material-tailwind/react'
-import { Spinner } from 'flowbite-react'
-import { AiOutlineSync } from 'react-icons/ai'
+import { Button } from '@material-tailwind/react'
 import {
+  HiChevronDown,
+  HiChevronUp,
   HiOutlineCheckCircle,
   HiOutlineClock,
   HiOutlineExclamationCircle,
 } from 'react-icons/hi'
 
-import {
-  StripeGivingDay,
-  getStripeGivingByDay,
-  postStripeGivingDay,
-} from '@/common/api/user'
+import { StripeGivingDay, getStripeGivingByDay } from '@/common/api/user'
 import Empty from '@/common/components/empty/Empty'
 import Loading from '@/common/components/loading/Loading'
+import PaginationStripe from '@/common/components/pagination/PaginationStripe'
+import StripeGivingDayDetail from './StripeGivingDayDetail'
 import { mainRoute } from '@/common/constant/route'
 import { formatDate } from '@/common/utils/helper'
-import { failNotification, successNotification } from '@/common/utils/toast'
 import { RootState } from '@/redux/store'
 import { FormatMoney } from 'format-money-js'
 
@@ -35,6 +32,15 @@ interface StripeGivingTableProps {
 const fm = new FormatMoney({ decimals: 2 })
 const formatUsd = (amount: number | undefined | null) =>
   fm.from(Number(amount ?? 0), { symbol: '$ ' })?.toString() || '$ 0.00'
+
+/**
+ * Days per page.
+ *
+ * Fifteen rows is roughly one screen at this row height. The whole range is already in memory -
+ * one sweep fetched it - so this is presentational only, and the summary cards above deliberately
+ * keep reporting the WHOLE range rather than the current page.
+ */
+const DAYS_PER_PAGE = 15
 
 // Why a day can have nothing to show. Kept in one place so the page explains itself instead of
 // rendering an empty table that could mean anything.
@@ -76,7 +82,9 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({ from, to }) => {
   const queryClient = useQueryClient()
   const user = useSelector((state: RootState) => state.common.user)
   const bookkeeper = useSelector((state: RootState) => state.common.bookkeeper)
-  const [postingDay, setPostingDay] = useState<string | null>(null)
+  const [page, setPage] = useState(1)
+  // Single-open accordion, matching the Daily Sync page.
+  const [expandedDay, setExpandedDay] = useState<string | null>(null)
 
   const email =
     user?.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user?.email
@@ -92,38 +100,6 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({ from, to }) => {
     { staleTime: 60_000, refetchOnWindowFocus: false, retry: false },
   )
 
-  const postDay = useMutation(
-    async (day: string) => postStripeGivingDay(email as string, day),
-    {
-      onMutate: (day: string) => {
-        setPostingDay(day)
-      },
-      onSettled: () => setPostingDay(null),
-      onSuccess: (result, day) => {
-        if (result?.postedDays?.length) {
-          successNotification({ title: `Posted ${formatDate(day)} to QuickBooks` })
-        } else if (result?.failedDays?.length) {
-          failNotification({ title: `Could not post ${formatDate(day)}` })
-        } else if (result?.reason) {
-          // A skip is not a success. Say which setup step is missing rather than
-          // showing a green toast for an entry that was never written.
-          failNotification({
-            title: `Nothing posted - ${result.reason.replace(/_/g, ' ')}`,
-          })
-        } else {
-          successNotification({
-            title: `${formatDate(day)} is already up to date in QuickBooks`,
-          })
-        }
-        queryClient.invalidateQueries(queryKey)
-        queryClient.invalidateQueries('getDailyJournalEntries')
-      },
-      onError: () => {
-        failNotification({ title: 'Could not reach the sync service' })
-      },
-    },
-  )
-
   // Memoised so the totals below do not recompute on every render: `?? []` builds a fresh
   // array each time, which would make the useMemo dependency change constantly.
   const days = useMemo(() => data?.days ?? [], [data])
@@ -136,11 +112,32 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({ from, to }) => {
           fees: acc.fees + d.fees,
           net: acc.net + d.net,
           donations: acc.donations + d.donations,
+          posted:
+            acc.posted + ((d.status || '').toLowerCase() === 'posted' ? 1 : 0),
         }),
-        { gross: 0, fees: 0, net: 0, donations: 0 },
+        { gross: 0, fees: 0, net: 0, donations: 0, posted: 0 },
       ),
     [days],
   )
+
+  const totalPages = Math.max(1, Math.ceil(days.length / DAYS_PER_PAGE))
+
+  // Clamped, not merely reset by an effect. The list changes whenever the query key changes -
+  // which includes `email`, because a bookkeeper can switch client from the navbar without
+  // touching the dates. Landing on page 4 of a list that now has one page renders a header with
+  // no rows under it, and the pagination control hides itself at one page, so there is nothing
+  // left on screen to click back with. Deriving the page makes that state unreachable.
+  const safePage = Math.min(page, totalPages)
+  const pagedDays = useMemo(
+    () => days.slice((safePage - 1) * DAYS_PER_PAGE, safePage * DAYS_PER_PAGE),
+    [days, safePage],
+  )
+
+  // Collapse any open row when the range changes - it belongs to the range being left.
+  useEffect(() => {
+    setPage(1)
+    setExpandedDay(null)
+  }, [from, to])
 
   if (isLoading) return <Loading />
 
@@ -221,6 +218,19 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({ from, to }) => {
         </div>
       </div>
 
+      {/* The page's other question, answered before the table: how much of this range has
+          actually reached QuickBooks. The nightly run settles yesterday each morning, so a
+          recent day sitting at "not posted" is expected, not a fault. */}
+      <p className="pb-4 text-sm text-gray-500">
+        <span className="font-semibold text-primary">
+          {totals.posted} of {days.length}
+        </span>{' '}
+        {days.length === 1 ? 'day has' : 'days have'} been posted to QuickBooks.
+        {totals.posted < days.length
+          ? ' The rest are posted by the 8am run, or from the Daily Sync page.'
+          : ''}
+      </p>
+
       <div className="overflow-hidden rounded-xl border border-gray-100">
         <div className="grid grid-cols-12 gap-2 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-400">
           <div className="col-span-3">Date</div>
@@ -230,68 +240,81 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({ from, to }) => {
           <div className="col-span-3 text-right">Status</div>
         </div>
 
-        {days.map((day) => {
-          const isPosting = postingDay === day.date
-          const isPosted = (day.status || '').toLowerCase() === 'posted'
+        {pagedDays.map((day) => {
+          const isOpen = expandedDay === day.date
           return (
-            <div
-              key={day.date}
-              className="grid grid-cols-12 items-center gap-2 border-t border-gray-100 px-4 py-4"
-            >
-              <div className="col-span-3">
-                <p className="font-medium text-primary">
-                  {formatDate(day.date)}
-                </p>
-                <p className="text-xs text-gray-400">
-                  {day.donations} donation{day.donations === 1 ? '' : 's'}
-                </p>
-              </div>
-              <div className="col-span-2 text-right font-semibold text-success">
-                {formatUsd(day.gross)}
-              </div>
-              <div className="col-span-2 text-right text-gray-500">
-                {formatUsd(day.fees)}
-              </div>
-              <div className="col-span-2 text-right font-medium text-primary">
-                {formatUsd(day.net)}
-              </div>
-              <div className="col-span-3 flex items-center justify-end gap-3">
-                <StatusBadge status={day.status} />
-                {isPosted ? null : (
-                  <Tooltip
-                    content={
-                      <span className="block max-w-xs text-xs leading-snug">
-                        Post this day&apos;s journal entry to QuickBooks now,
-                        without waiting for the 8am run.
-                      </span>
-                    }
-                    placement="top"
+            <div key={day.date} className="border-t border-gray-100">
+              {/* The row is a div, not a button: it contains the Post button, and a button
+                  inside a button is invalid and swallows the inner click. Only the date cell
+                  toggles, which is also the behaviour you want - pressing Post must post,
+                  not expand. */}
+              <div className="grid grid-cols-12 items-center gap-2 px-4 py-4">
+                <div className="col-span-3">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedDay(isOpen ? null : day.date)}
+                    aria-expanded={isOpen}
+                    className="flex items-center gap-2 rounded text-left font-medium text-primary transition hover:underline"
                   >
-                    <Button
-                      size="sm"
-                      disabled={isPosting || !email}
-                      onClick={() => postDay.mutate(day.date)}
-                      className="flex items-center gap-2 whitespace-nowrap bg-yellow normal-case"
-                    >
-                      {isPosting ? (
-                        <>
-                          <Spinner size="sm" />
-                          Posting…
-                        </>
-                      ) : (
-                        <>
-                          <AiOutlineSync size={16} />
-                          Post
-                        </>
-                      )}
-                    </Button>
-                  </Tooltip>
-                )}
+                    {isOpen ? (
+                      <HiChevronUp size={18} className="text-gray-400" />
+                    ) : (
+                      <HiChevronDown size={18} className="text-gray-400" />
+                    )}
+                    {formatDate(day.date)}
+                  </button>
+                  <p className="pl-6 text-xs text-gray-400">
+                    {day.donations} donation{day.donations === 1 ? '' : 's'}
+                  </p>
+                </div>
+                <div className="col-span-2 text-right font-semibold text-success">
+                  {formatUsd(day.gross)}
+                </div>
+                <div className="col-span-2 text-right text-gray-500">
+                  {formatUsd(day.fees)}
+                </div>
+                <div className="col-span-2 text-right font-medium text-primary">
+                  {formatUsd(day.net)}
+                </div>
+                <div className="col-span-3 flex items-center justify-end">
+                  <StatusBadge status={day.status} />
+                </div>
               </div>
+
+              {isOpen ? (
+                <StripeGivingDayDetail
+                  email={email as string}
+                  day={day.date}
+                  orgTimeZone={data?.orgTimeZone}
+                />
+              ) : null}
             </div>
           )
         })}
       </div>
+
+      {totalPages > 1 ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 p-6">
+          <p className="text-xs text-gray-400">
+            Showing {(safePage - 1) * DAYS_PER_PAGE + 1}–
+            {Math.min(safePage * DAYS_PER_PAGE, days.length)} of {days.length}{' '}
+            days
+          </p>
+          <PaginationStripe
+            currentPage={safePage}
+            onPageChange={(next: number) => {
+              setPage(next)
+              // Collapse on the way out: an open panel would otherwise stay mounted and keep
+              // its day's fetch alive for a row the reader can no longer see.
+              setExpandedDay(null)
+            }}
+            totalPages={totalPages}
+            /* Not a page size - PaginationStripe treats this as the +/- radius of the
+               page-number window, so 2 shows at most five page buttons. */
+            itemPerPage={2}
+          />
+        </div>
+      ) : null}
     </div>
   )
 }
