@@ -7,6 +7,7 @@ import { useQuery } from 'react-query'
 import { useSelector } from 'react-redux'
 import { HiOutlinePrinter, HiOutlineQuestionMarkCircle } from 'react-icons/hi'
 import { Tooltip } from '@material-tailwind/react'
+import TransitionPanel from './TransitionPanel'
 
 // The endpoint returns dollars, so format directly (see DailyJournalEntries).
 const fm = new FormatMoney({ decimals: 2 })
@@ -36,21 +37,28 @@ const ClearingStatement: FC = () => {
     { staleTime: 60_000, refetchOnWindowFocus: false, enabled: !!email },
   )
 
-  const monthLabel = new Date(`${month}-01T00:00:00`).toLocaleDateString(undefined, {
-    month: 'long',
-    year: 'numeric',
-  })
+  const monthLabel = new Date(`${month}-01T00:00:00`).toLocaleDateString(
+    undefined,
+    {
+      month: 'long',
+      year: 'numeric',
+    },
+  )
 
   return (
     <section className="statement pt-10">
       <div className="flex flex-wrap items-end justify-between gap-4 border-b-2 pb-4">
         <div>
-          <h2 className="text-lg font-bold text-primary">Clearing account statement</h2>
+          <h2 className="text-lg font-bold text-primary">
+            Clearing account statement
+          </h2>
           <p className="max-w-2xl pt-1 text-sm text-gray-500">
             Everything Church Sync Pro posted to
-            {data?.clearingAccount?.name ? ` ${data.clearingAccount.name}` : ' your clearing account'}
-            {' '}this month, with the QuickBooks entry behind each line. Reconcile it against the
-            account&apos;s activity in QuickBooks at month end.
+            {data?.clearingAccount?.name
+              ? ` ${data.clearingAccount.name}`
+              : ' your clearing account'}{' '}
+            this month, with the QuickBooks entry behind each line. Reconcile it
+            against the account&apos;s activity in QuickBooks at month end.
           </p>
         </div>
         <div className="flex items-center gap-2 print:hidden">
@@ -77,37 +85,69 @@ const ClearingStatement: FC = () => {
         <p className="py-6 text-sm text-gray-400">Loading {monthLabel}…</p>
       ) : (
         <>
+          {data.transition && !data.transition.truedUpAt ? (
+            <TransitionPanel email={email} transition={data.transition} />
+          ) : null}
+
           <div className="grid grid-cols-2 gap-4 py-6 md:grid-cols-4">
             <div className="rounded-xl border border-gray-100 bg-slate-50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Opening</p>
-              <p className="pt-1 text-xl font-bold text-primary">{usd(data.opening)}</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                Opening
+              </p>
+              <p className="pt-1 text-xl font-bold text-primary">
+                {usd(data.opening)}
+              </p>
             </div>
             <div className="rounded-xl border border-gray-100 bg-slate-50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Net added in {monthLabel.split(' ')[0]}</p>
-              <p className="pt-1 text-xl font-bold text-success">{usd(data.totals.net)}</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                Net added in {monthLabel.split(' ')[0]}
+              </p>
+              <p className="pt-1 text-xl font-bold text-success">
+                {usd(data.totals.net)}
+              </p>
             </div>
             <div className="rounded-xl border border-gray-100 bg-slate-50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Closing (posted by CSP)</p>
-              <p className="pt-1 text-xl font-bold text-primary">{usd(data.closing)}</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                Closing (posted by CSP)
+              </p>
+              <p className="pt-1 text-xl font-bold text-primary">
+                {usd(data.closing)}
+              </p>
             </div>
             <div className="rounded-xl border border-gray-100 bg-slate-50 p-4">
               <div className="flex items-center gap-1">
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">In QuickBooks now</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                  In QuickBooks now
+                </p>
                 <Tooltip
                   content="The clearing account's live balance in QuickBooks. It is lower than CSP's closing figure by whatever your team has already reconciled against bank deposits."
                   className="max-w-xs bg-gray-800 text-xs"
                 >
-                  <span><HiOutlineQuestionMarkCircle size={14} className="text-gray-400" /></span>
+                  <span>
+                    <HiOutlineQuestionMarkCircle
+                      size={14}
+                      className="text-gray-400"
+                    />
+                  </span>
                 </Tooltip>
               </div>
               <p className="pt-1 text-xl font-bold text-primary">
                 {data.qboBalance === null ? '—' : usd(data.qboBalance)}
               </p>
               {data.difference === null ? (
-                <p className="pt-0.5 text-xs text-gray-400">Not readable from QuickBooks</p>
+                <p className="pt-0.5 text-xs text-gray-400">
+                  Not readable from QuickBooks
+                </p>
               ) : data.difference > 0 ? (
-                // QuickBooks is below CSP's figure: deposits have been reconciled out.
-                <p className="pt-0.5 text-xs text-gray-400">{usd(data.difference)} already reconciled</p>
+                // QuickBooks is below CSP's figure: money has been cleared out. During a
+                // switch-over that includes old-process money, which is NOT reconciliation -
+                // the transition panel above names the leftover.
+                <p className="pt-0.5 text-xs text-gray-400">
+                  {usd(data.difference)}{' '}
+                  {data.transition && !data.transition.truedUpAt
+                    ? 'cleared out — see the switch-over panel'
+                    : 'already reconciled'}
+                </p>
               ) : data.difference < 0 ? (
                 // QuickBooks is ABOVE CSP's figure: the account holds money CSP never posted —
                 // an opening balance, or a real bank account being used as the clearing account.
@@ -115,13 +155,17 @@ const ClearingStatement: FC = () => {
                   {usd(-data.difference)} in the account not posted by CSP
                 </p>
               ) : (
-                <p className="pt-0.5 text-xs text-gray-400">Matches CSP exactly</p>
+                <p className="pt-0.5 text-xs text-gray-400">
+                  Matches CSP exactly
+                </p>
               )}
             </div>
           </div>
 
           {data.lines.length === 0 ? (
-            <p className="py-4 text-sm text-gray-400">Nothing was posted in {monthLabel}.</p>
+            <p className="py-4 text-sm text-gray-400">
+              Nothing was posted in {monthLabel}.
+            </p>
           ) : (
             <div className="overflow-x-auto rounded-xl border border-gray-100">
               <table className="w-full min-w-[46rem] text-sm">
@@ -139,17 +183,34 @@ const ClearingStatement: FC = () => {
                 <tbody>
                   {data.lines.map((l) => (
                     <tr key={l.date} className="border-t border-gray-100">
-                      <td className="px-4 py-2 font-medium text-primary">{formatDate(l.date)}</td>
-                      <td className="px-4 py-2 text-right tabular-nums text-success">{usd(l.gross)}</td>
-                      <td className="px-4 py-2 text-right tabular-nums text-gray-500">{usd(l.fees)}</td>
+                      <td className="px-4 py-2 font-medium text-primary">
+                        {formatDate(l.date)}
+                      </td>
+                      <td className="px-4 py-2 text-right tabular-nums text-success">
+                        {usd(l.gross)}
+                      </td>
+                      <td className="px-4 py-2 text-right tabular-nums text-gray-500">
+                        {usd(l.fees)}
+                      </td>
                       <td className="px-4 py-2 text-right tabular-nums text-red-600">
                         {l.refundsGross ? `−${usd(l.refundsGross)}` : '—'}
                       </td>
-                      <td className="px-4 py-2 text-right tabular-nums font-medium text-primary">{usd(l.net)}</td>
-                      <td className="px-4 py-2 text-right tabular-nums text-gray-600">{usd(l.runningBalance)}</td>
+                      <td className="px-4 py-2 text-right tabular-nums font-medium text-primary">
+                        {usd(l.net)}
+                      </td>
+                      <td className="px-4 py-2 text-right tabular-nums text-gray-600">
+                        {usd(l.runningBalance)}
+                      </td>
                       <td className="px-4 py-2 font-mono text-xs text-gray-500">
-                        {l.qboEntryIds.length ? `#${l.qboEntryIds.join(', #')}` : '—'}
-                        {l.batchIds.length ? <span className="text-gray-300"> · PCO {l.batchIds.join(', ')}</span> : null}
+                        {l.qboEntryIds.length
+                          ? `#${l.qboEntryIds.join(', #')}`
+                          : '—'}
+                        {l.batchIds.length ? (
+                          <span className="text-gray-300">
+                            {' '}
+                            · PCO {l.batchIds.join(', ')}
+                          </span>
+                        ) : null}
                       </td>
                     </tr>
                   ))}
@@ -157,11 +218,23 @@ const ClearingStatement: FC = () => {
                 <tfoot className="border-t-2 bg-slate-50 font-semibold">
                   <tr>
                     <td className="px-4 py-3">Totals</td>
-                    <td className="px-4 py-3 text-right tabular-nums">{usd(data.totals.gross)}</td>
-                    <td className="px-4 py-3 text-right tabular-nums">{usd(data.totals.fees)}</td>
-                    <td className="px-4 py-3 text-right tabular-nums">{data.totals.refundsGross ? `−${usd(data.totals.refundsGross)}` : '—'}</td>
-                    <td className="px-4 py-3 text-right tabular-nums">{usd(data.totals.net)}</td>
-                    <td className="px-4 py-3 text-right tabular-nums">{usd(data.closing)}</td>
+                    <td className="px-4 py-3 text-right tabular-nums">
+                      {usd(data.totals.gross)}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums">
+                      {usd(data.totals.fees)}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums">
+                      {data.totals.refundsGross
+                        ? `−${usd(data.totals.refundsGross)}`
+                        : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums">
+                      {usd(data.totals.net)}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums">
+                      {usd(data.closing)}
+                    </td>
                     <td className="px-4 py-3" />
                   </tr>
                 </tfoot>
@@ -169,8 +242,9 @@ const ClearingStatement: FC = () => {
             </div>
           )}
           <p className="pt-3 text-xs text-gray-400">
-            Generated {new Date(data.generatedAt).toLocaleString()}. Figures are what Church Sync Pro posted;
-            the QuickBooks balance is read live and includes any reconciliation your team has done.
+            Generated {new Date(data.generatedAt).toLocaleString()}. Figures are
+            what Church Sync Pro posted; the QuickBooks balance is read live and
+            includes any reconciliation your team has done.
           </p>
         </>
       )}
