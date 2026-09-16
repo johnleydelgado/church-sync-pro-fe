@@ -52,6 +52,7 @@ const userRoutes = {
   getClearingStatement: '/user/getClearingStatement',
   getStripeGivingByDay: '/user/getStripeGivingByDay',
   postStripeGivingDay: '/user/postStripeGivingDay',
+  markTransitionTruedUp: '/user/markTransitionTruedUp',
   getStripeGivingDayDetail: '/user/getStripeGivingDayDetail',
 }
 

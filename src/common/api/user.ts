@@ -323,6 +323,19 @@ export interface ClearingStatementLine {
   batchIds: string[]
 }
 
+/** The mid-period switch-over. Dollars. Figures are null when an input could not be read. */
+export interface ClearingTransition {
+  goLiveDay: string
+  balanceAtGoLive: number | null
+  snapshotAt: string | null
+  postedSinceGoLive: number
+  qboBalance: number | null
+  released: number | null
+  inTransit: number | null
+  trueUp: number | null
+  truedUpAt: string | null
+}
+
 export interface ClearingStatementData {
   month: string
   clearingAccount: { value: string; name: string } | null
@@ -338,6 +351,7 @@ export interface ClearingStatementData {
   closing: number
   qboBalance: number | null
   difference: number | null
+  transition: ClearingTransition | null
   generatedAt: string
 }
 
@@ -435,6 +449,14 @@ const getClearingStatement = async (
   const res = await apiCall.get(
     url + `?email=${encodeURIComponent(email)}&month=${month}`,
   )
+  return res.data.data
+}
+
+const markTransitionTruedUp = async (
+  email: string,
+): Promise<{ truedUpAt: string }> => {
+  const url = userRoutes.markTransitionTruedUp
+  const res = await apiCall.post(url, JSON.stringify({ email }))
   return res.data.data
 }
 
@@ -814,6 +836,7 @@ export {
   toggleUserActiveStatusApi,
   getDailyJournalEntries,
   getClearingStatement,
+  markTransitionTruedUp,
   getStripeGivingByDay,
   postStripeGivingDay,
   getStripeGivingDayDetail,
