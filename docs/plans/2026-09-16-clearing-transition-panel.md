@@ -280,11 +280,14 @@ const withQboBalance = (balance: number | Error) =>
       balance instanceof Error ? cb(balance, null) : cb(null, { CurrentBalance: balance }),
   });
 
-const row = (gross: number, fee: number) => ({ toJSON: () => ({ postedGrossCents: gross, postedFeeCents: fee }) });
+const row = (gross: number, fee: number, day = '2026-09-15') => ({ toJSON: () => ({ day, postedGrossCents: gross, postedFeeCents: fee }) });
 
 beforeEach(() => {
   jest.clearAllMocks();
-  settings.findOne.mockResolvedValue({ settingBankData: [{ type: 'donation', value: '175000', label: 'Clearing' }] });
+  settings.findOne.mockResolvedValue({
+    settingBankData: [{ type: 'donation', value: '175000', label: 'Clearing' }],
+    startDateAutomationFund: '09-15-2026',
+  });
   settings.update.mockResolvedValue([1]);
 });
 
@@ -329,6 +332,24 @@ describe('captureClearingSnapshot', () => {
     ledger.findAll.mockResolvedValue([]);
     expect(await captureClearingSnapshot('a@b.test', 7)).toBeNull();
   });
+
+  test('a day posted before go-live stays inside the starting balance', async () => {
+    // "Post anyway" can put a pre-cutoff day into the account. The statement only adds back
+    // postings on or after go-live, so the snapshot must subtract only those - otherwise the
+    // old day is subtracted here and never added back, and every later figure drifts.
+    settings.findOne.mockResolvedValue({
+      settingBankData: [{ type: 'donation', value: '175000', label: 'Clearing' }],
+      startDateAutomationFund: '09-15-2026',
+    });
+    withQboBalance(1000);
+    ledger.findAll.mockResolvedValue([
+      { toJSON: () => ({ day: '2026-09-10', postedGrossCents: 20000, postedFeeCents: 0 }) },
+      { toJSON: () => ({ day: '2026-09-15', postedGrossCents: 80000, postedFeeCents: 0 }) },
+    ]);
+    // 100,000 in the account; only the 80,000 from 9/15 is "since go-live". The 9/10 posting is
+    // part of what the account held at go-live, so the snapshot is 20,000 - not 0.
+    expect(await captureClearingSnapshot('a@b.test', 7)).toBe(20000);
+  });
 });
 ```
 
@@ -345,6 +366,7 @@ Expected: FAIL — `Cannot find module '../clearingSnapshot'`
 import DailyJeSync from '../db/models/DailyJeSync';
 import UserSettings from '../db/models/userSettings';
 import quickBookApi from '../utils/quickBookApi';
+import { parseSyncStartDay } from './dailyDonationSync';
 import { getQboTokensForUser } from './qboClient';
 
 /** Net cents one ledger day added to clearing: gross, less fees, less anything refunded back out. */
@@ -393,8 +415,15 @@ export const captureClearingSnapshot = async (email: string, userId: number): Pr
     return null;
   }
 
+  // Only postings on or after go-live are subtracted - the same set the statement adds back.
+  // A pre-cutoff day someone posted on purpose is part of what the account held at go-live.
+  // No go-live date means nothing is subtracted, which is also what the statement assumes.
+  const goLiveDay = parseSyncStartDay(settings?.startDateAutomationFund);
   const rows = await DailyJeSync.findAll({ where: { userId } });
-  const postedCents = rows.reduce((sum: number, r: any) => sum + netCentsOf(r.toJSON()), 0);
+  const postedCents = rows
+    .map((r: any) => r.toJSON())
+    .filter((r: any) => !goLiveDay || String(r.day) >= goLiveDay)
+    .reduce((sum: number, r: any) => sum + netCentsOf(r), 0);
   const snapshotCents = Math.round(qboBalance * 100) - postedCents;
 
   await UserSettings.update(
