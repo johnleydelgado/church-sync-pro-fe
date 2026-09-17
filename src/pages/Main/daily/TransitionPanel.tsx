@@ -14,6 +14,8 @@ import { failNotification, successNotification } from '@/common/utils/toast'
 interface TransitionPanelProps {
   email: string
   transition: ClearingTransition
+  /** The church's own name for the mapped clearing account, so the entry below names it. */
+  clearingAccountName?: string | null
 }
 
 const fm = new FormatMoney({ decimals: 2 })
@@ -29,7 +31,11 @@ const usd = (n: number | null | undefined) =>
  * account, the account goes negative by exactly the old-process money, and that number is the
  * one-time adjusting entry. This panel just names it - and then gets out of the way.
  */
-const TransitionPanel: FC<TransitionPanelProps> = ({ email, transition }) => {
+const TransitionPanel: FC<TransitionPanelProps> = ({
+  email,
+  transition,
+  clearingAccountName,
+}) => {
   const queryClient = useQueryClient()
   const [confirming, setConfirming] = useState(false)
 
@@ -140,10 +146,42 @@ const TransitionPanel: FC<TransitionPanelProps> = ({ email, transition }) => {
               <p className="pt-1 text-sm text-gray-600">
                 {usd(transition.trueUp)} more has been cleared out of the
                 account than CSP ever put in. That is old-process money that
-                came through a Stripe deposit after go-live. Post one adjusting
-                entry for this amount, then mark the transition trued up. Read
-                this a few days after the last pre-go-live deposit landed —
-                anything of CSP&apos;s still in transit makes it read low.
+                came through a Stripe deposit after go-live.
+              </p>
+
+              {/* The entry itself, rather than the amount alone. The credit side is
+                  contribution income by the church's own accounting decision, and this last
+                  slice of old activity is recognised NET of fees - the Stripe fees inside it
+                  belong to gifts CSP never posted, so there is no fee line to split out. */}
+              <div className="mt-3 overflow-hidden rounded-md border border-gray-200">
+                <table className="w-full text-sm">
+                  <tbody>
+                    <tr className="border-b border-gray-100">
+                      <td className="px-3 py-2 text-gray-500">Debit</td>
+                      <td className="px-3 py-2 text-gray-700">
+                        {clearingAccountName || 'Clearing account'}
+                      </td>
+                      <td className="px-3 py-2 text-right font-medium tabular-nums text-primary">
+                        {usd(transition.trueUp)}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="px-3 py-2 text-gray-500">Credit</td>
+                      <td className="px-3 py-2 text-gray-700">
+                        Contribution / Giving income
+                      </td>
+                      <td className="px-3 py-2 text-right font-medium tabular-nums text-primary">
+                        {usd(transition.trueUp)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <p className="pt-3 text-sm text-gray-600">
+                Post that entry, then mark the transition trued up. Read this a
+                few days after the last pre-go-live deposit landed — anything of
+                CSP&apos;s still in transit makes it read low.
               </p>
             </div>
           ) : (

@@ -86,7 +86,11 @@ const ClearingStatement: FC = () => {
       ) : (
         <>
           {data.transition && !data.transition.truedUpAt ? (
-            <TransitionPanel email={email} transition={data.transition} />
+            <TransitionPanel
+              email={email}
+              transition={data.transition}
+              clearingAccountName={data.clearingAccount?.name}
+            />
           ) : null}
 
           <div className="grid grid-cols-2 gap-4 py-6 md:grid-cols-4">
