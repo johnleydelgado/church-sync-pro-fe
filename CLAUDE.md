@@ -17,7 +17,9 @@ npm test -- -t "name of test"     # run tests matching a name
 npm run lint:fix   # eslint --fix across the repo
 ```
 
-There is effectively no test suite yet (only the CRA boilerplate `src/App.test.tsx`). Don't assume tests gate changes.
+There is effectively no test suite yet (only the CRA boilerplate `src/App.test.tsx`). Don't assume tests gate changes. Verify with `npx tsc --noEmit`, `npx eslint <files>`, `CI=false npx craco build`, then the real page in a browser.
+
+**Local dev must run on port 3000.** The backend's CORS origin is `WEBSITE_URL`, defaulting to `http://localhost:3000`; start the frontend on another port and every request — including the login POST — is rejected by the browser with no visible error in the UI. If 3000 is held by another project, free it rather than moving CSP (or restart the backend with `WEBSITE_URL=http://localhost:<port>`).
 
 ### Deploy (Google Cloud Run, via Makefile)
 
@@ -27,6 +29,10 @@ make deploy-prd    # build DockerfilePRD, push to GCR, deploy csp-fe-prd
 ```
 
 Both deploy to project `church-sync-pro-385703`, region `us-central1`. Env vars are injected from `.env.staging` / `.env.production` at deploy time.
+
+Run `make deploy-*` **from the repo you mean to deploy**. The backend (`quickplan-connect`) has its own Makefile with the same target names; its `deploy-stg` also rebuilds SuperTokens (and gets rate-limited by `registry.supertokens.io`), so use `make deploy-stg-be` there. Backend `make deploy-prd` is backend-only. After a deploy, confirm the live bundle rather than trusting the message: `curl -s https://csp-fe-prd-n32ggvrsvq-uc.a.run.app/ | grep -o 'static/js/main\.[a-z0-9]*\.js'` then grep that file for a string you shipped. The `gcloud` account silently reverts to a different Google account; `export CLOUDSDK_CORE_ACCOUNT=johnley00@gmail.com` before any deploy or Artifact Registry pushes 403.
+
+Database migrations are NOT part of deploy. Run them first, from the backend repo: `NODE_ENV=staging npx sequelize-cli db:migrate` and `make migrate-prd`.
 
 ## Conventions that bite
 
@@ -76,9 +82,58 @@ Both systems coexist — server fetches go through react-query OR direct API cal
 
 Modals are managed through redux `common.openModals` (an array acting as a stack). Modal identifiers are string constants in `src/common/constant/modal.ts` (`MODALS_NAME`). Open/close via the `OPEN_MODAL`/`CLOSE_MODAL` actions from `src/redux/common.ts` rather than local component state.
 
+### The daily journal entry (the product's core job)
+
+The point of the app: pull each day's **online giving** from Planning Center and post
+one QuickBooks journal entry for it — crediting revenue, debiting Stripe fees, and
+debiting a clearing account for the net Stripe will deposit later. Cash, cheques and
+manually entered gifts are explicitly out of scope. Planning Center is the source of
+truth; the Stripe payout matters only when reconciling the clearing account.
+
+`src/pages/Main/daily/DailyJournalEntries.tsx` (route `/daily`, sidebar "Daily Sync")
+renders this: a clearing balance, automation status, and one expandable row per day.
+It reads `getDailyJournalEntries` — note that endpoint returns **dollars, not cents**,
+so the page formats directly rather than using the cents-based helper.
+
+The engine itself lives in the backend (`services/syncEngine.ts` in
+quickplan-connect). One entry per day; if donations for an already-posted day arrive
+later, it posts an *adjusting* entry rather than editing a posted transaction.
+
+**Stripe Giving** (`src/pages/Main/transaction/`, route `/transaction`, sidebar
+"Stripe Giving") is the manual side of the same engine. It lists each day's
+Stripe-processed giving read straight from Planning Center (`getStripeGivingByDay`),
+paged 15/day with an expandable per-gift detail (`StripeGivingDayDetail`), and a
+**Post** button per unposted day that runs the nightly engine for that one day
+(`postStripeGivingDay`). The old Batch / Stripe Payout tabs are switched off —
+batches hold cash and cheques, and the payout tab needed Stripe access CSP doesn't
+have. `BatchTable.tsx` and `StripePayoutTable.tsx` are kept but unmounted.
+
+The **sync start date** ("Only sync donations from … onward", stored as
+`UserSettings.startDateAutomationFund` in `MM-DD-YYYY`) is the church's go-live
+cutoff. Days before it show as *Not needed*, are hidden by default, and post only
+via **Post anyway** behind a confirm dialog. The same date bounds the nightly sweep.
+Saving it also snapshots the clearing account (see below).
+
+The **Clearing account statement** on `/daily` (`ClearingStatement.tsx`,
+`getClearingStatement`) is what the client's accountants reconcile against. It reads
+only `DailyJeSync` — CSP's own postings — plus the account's live QuickBooks balance;
+unsynced donations can never appear in it. CSP never *credits* the clearing account;
+clearing deposits out is the bookkeeper's job. The **switch-over panel**
+(`TransitionPanel.tsx`) handles a church going live mid-period: it shows the balance
+captured at go-live, what CSP posted since, what has been cleared out, and — once
+more has been cleared out than CSP put in — the one-time true-up entry (debit
+clearing, credit Contribution/Giving Income). It retires itself on "Mark as trued up";
+re-saving the start date re-opens it. Design and arithmetic:
+`docs/plans/2026-09-16-clearing-transition-panel.md`.
+
+**Two `formatUsd` helpers exist and they disagree.** `@/common/utils/helper`'s
+divides by 100 (cents in); the daily/statement/Stripe Giving pages define a local
+one that formats dollars directly, because those endpoints return dollars. Mixing
+them is a silent 100× error.
+
 ### Pages
 
-`src/pages/Main/*` are the app's feature areas: `transaction` (+ `view-details`, `view-detail-stripe`), `automation` (`mapping`, `archive`), `client` (client management table — actively being built, see git status), `settings` (sub-pages: Account/Integrations, Billing, Profile, Bookkeeper, Projects, Email), `dashboard`, `home`, `ask-us`, `quick-start-guide`, `accounts-token`. `src/pages/Auth/*` holds login/signup/password flows; `src/pages/Subscription/*` holds the Stripe subscription plan page. Feature-specific components live in a `components/` folder next to their page.
+`src/pages/Main/*` are the app's feature areas: `transaction` (now the Stripe Giving page; `view-details`, `view-detail-stripe` are legacy batch/payout views), `automation` (`mapping`, `archive`), `client` (client management table — actively being built, see git status), `settings` (sub-pages: Account/Integrations, Billing, Profile, Bookkeeper, Projects, Email), `dashboard`, `home`, `ask-us`, `quick-start-guide`, `accounts-token`. `src/pages/Auth/*` holds login/signup/password flows; `src/pages/Subscription/*` holds the Stripe subscription plan page. Feature-specific components live in a `components/` folder next to their page.
 
 ### Roles
 
@@ -90,3 +145,8 @@ Two user roles flow through the app: `client` and `bookkeeper` (see `UserInfo.ro
 - **Drag and drop** uses `react-dnd` with the HTML5 backend (provider in `App.tsx`) — used in the automation mapping UI.
 - **UI stack:** Tailwind + Material Tailwind + Flowbite React + Headless UI; toasts via `react-toastify`; icons via `react-icons`/`heroicons`.
 - Node **16** is the build/runtime target (see Dockerfiles); `npm ci --legacy-peer-deps` is used in CI/Docker because of peer-dep conflicts.
+- **Sessions ride on SuperTokens' global patches.** `apiCall` is a plain axios instance with no `withCredentials` and no SuperTokens interceptor, yet `verifySession()`-protected endpoints work — because `SuperTokens.init()` patches `fetch` *and* `XMLHttpRequest` globally. Don't "fix" the axios config on the assumption auth is broken; test it first.
+- **Guard `e.response` in API catch blocks.** A network failure produces an error with no `response`, so `return e.response.data` throws *inside* the catch and surfaces as an uncaught runtime error (this crashed the Mapping page). Use `e?.response?.data ?? null`.
+- The Mapping page **auto-saves** partial mappings (debounced, per-dropdown "Saving/Saved/Not saved" status); the explicit Save button still requires **every** fund to be mapped and toasts otherwise. Only *active* Planning Center funds are listed.
+- **API catch blocks that return a value on failure hide the failure.** `createSettings` and `setStartDataAutomation` used to return `[]` / the error message on a failed request, so callers reported success for writes that never landed. They now throw; keep it that way for anything a UI reports the outcome of.
+- **Both `n32ggvrsvq-uc.a.run.app` and `1000606180549.us-central1.run.app` Cloud Run URL forms work** for every service; the env files, Intuit redirect and scheduler targets all use the `n32ggvrsvq` form.
