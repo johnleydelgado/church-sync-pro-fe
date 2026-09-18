@@ -10,6 +10,7 @@ import {
 } from 'react-icons/hi'
 import { BiChurch } from 'react-icons/bi'
 import { emailPasswordSignUp } from 'supertokens-web-js/recipe/thirdpartyemailpassword'
+import { isEmailVerified } from 'supertokens-web-js/recipe/emailverification'
 
 import { shouldLoadRoute } from '@/common/utils/supertoken'
 import { failNotification } from '@/common/utils/toast'
@@ -47,8 +48,6 @@ import bgImageDone from '@/common/assets/bookkeeper-done-bg.png'
 import useLogoutHandler from '@/common/hooks/useLogoutHandler'
 
 interface SignUpProps {}
-
-const delay = (ms: any) => new Promise((res) => setTimeout(res, ms))
 
 const InviteLink: FC<SignUpProps> = () => {
   const reTriggerIsUserTokens = useSelector(
@@ -138,12 +137,14 @@ const InviteLink: FC<SignUpProps> = () => {
           }
         })
       } else {
-        // sendEmail()
-        await delay(2000)
+        // Accept first: the backend marks this address verified (the invite token was
+        // mailed to it) and links the row to our user. Then refresh the session's
+        // verification claim before the first verifySession()-protected call.
+        await updateInvitationStatus(bookkeeperEmail as string, invitationToken)
+        await isEmailVerified()
         const userData = await getUserRelated(email)
         const { id, role, firstName, lastName, churchName, img_url } =
           userData.data
-        await updateInvitationStatus(bookkeeperEmail as string, id, invitationToken)
 
         dispatch(
           setUserData({
@@ -206,11 +207,7 @@ const InviteLink: FC<SignUpProps> = () => {
 
   useEffect(() => {
     const update = async () => {
-      await updateInvitationStatus(
-        bookkeeperEmail as string,
-        userData.id,
-        invitationToken,
-      )
+      await updateInvitationStatus(bookkeeperEmail as string, invitationToken)
     }
     if (userData) update()
   }, [userData])
