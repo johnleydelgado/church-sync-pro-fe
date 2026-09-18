@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { TextInput, Button, Spinner } from 'flowbite-react'
 import { useFormik } from 'formik'
-import { FC, useCallback, useEffect, useState } from 'react'
+import { FC, useState } from 'react'
 import {
   HiOutlineMail,
   HiEye,
@@ -12,7 +12,7 @@ import { BiChurch } from 'react-icons/bi'
 
 import { emailPasswordSignUp } from 'supertokens-web-js/recipe/thirdpartyemailpassword'
 
-import { shouldLoadRoute } from '@/common/utils/supertoken'
+import { sendEmail } from '@/common/utils/supertoken'
 import { failNotification } from '@/common/utils/toast'
 import { AiOutlineUser } from 'react-icons/ai'
 import { route } from '@/common/constant/route'
@@ -23,11 +23,7 @@ import {
   signUpValidationSchema,
   signUpInitialValues,
 } from '@/common/constant/formik'
-import { useDispatch } from 'react-redux'
-import { setUserData } from '@/redux/common'
-import { storageKey } from '@/common/utils/storage'
-import { getUserRelated } from '@/common/api/user'
-import { useLocation } from 'react-router'
+import { useNavigate } from 'react-router-dom'
 import CommonTextField from '@/common/components/text-input/CommonTextField'
 
 import bgImage from '../../../common/assets/bg-registration.png'
@@ -37,18 +33,13 @@ import clientLogo from '../../../common/assets/client-logo.png'
 
 interface SignUpProps {}
 
-const delay = (ms: any) => new Promise((res) => setTimeout(res, ms))
-
 const SignUp: FC<SignUpProps> = () => {
   const { user } = useSelector((state: RootState) => state.common)
-  const location = useLocation()
-  // const userType = location.state?.type || 'bookkeeper'
+  const navigate = useNavigate()
   const [userType, setUserType] = useState<'bookkeeper' | 'client'>('client')
-  const dispatch = useDispatch()
 
   const [showPassword, setShowPassword] = useState<boolean>(false)
   const [isLoading, setIsLoading] = useState<boolean>(false)
-  const [signUpSuccess, setSignUpSuccess] = useState<boolean>(false)
 
   async function signUpClicked({
     churchName,
@@ -99,26 +90,12 @@ const SignUp: FC<SignUpProps> = () => {
           }
         })
       } else {
-        const { user: userDataF } = response
-        // sendEmail()
-        await delay(2000)
-        const userData = await getUserRelated(email)
-        const { id, role, firstName, lastName, churchName, img_url } =
-          userData.data
-        dispatch(
-          setUserData({
-            id,
-            role,
-            firstName,
-            lastName,
-            churchName,
-            email,
-            img_url,
-          }),
-        )
-        localStorage.setItem(storageKey.PERSONAL_TOKEN, role)
-        setSignUpSuccess(true)
-        window.location.reload()
+        // The backend refuses this session until the address is confirmed
+        // (EmailVerification REQUIRED), so nothing app-side is set up here:
+        // no PERSONAL_TOKEN, no redux user. The email is sent, and the account
+        // is picked up again by the login page once the link has been opened.
+        await sendEmail()
+        navigate(route.CHECK_INBOX, { state: { email } })
       }
     } catch (err: any) {
       console.log('err', err)
@@ -137,16 +114,6 @@ const SignUp: FC<SignUpProps> = () => {
   const userTypeHandler = (type: 'bookkeeper' | 'client') => {
     setUserType(type)
   }
-
-  const checkSession = useCallback(async () => {
-    if ((await shouldLoadRoute({ email: user.email })) && signUpSuccess) {
-      window.location.href = route.DAILY
-    }
-  }, [signUpSuccess, user.email])
-
-  useEffect(() => {
-    checkSession()
-  }, [checkSession])
 
   const formik = useFormik({
     initialValues: { ...signUpInitialValues, email: user.email },
