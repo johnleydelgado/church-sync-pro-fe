@@ -365,6 +365,9 @@ export interface StripeGivingDay {
   /** What CSP has done about the day: 'posted', 'failed', or 'pending' when no entry exists yet. */
   status: string
   postedGross: number
+  /** Stripe gifts dated this day that have not settled yet (ACH, mostly). Not in `gross`. */
+  inTransit: number
+  inTransitGross: number
 }
 
 export interface StripeGivingByDayData {
