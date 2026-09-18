@@ -34,6 +34,13 @@ Run `make deploy-*` **from the repo you mean to deploy**. The backend (`quickpla
 
 Database migrations are NOT part of deploy. Run them first, from the backend repo: `NODE_ENV=staging npx sequelize-cli db:migrate` and `make migrate-prd`.
 
+**Email verification is REQUIRED on the backend** (SuperTokens `EmailVerification`
+recipe, `quickplan-connect/src/supertokensConfig.ts`). Before the first deploy of that
+to any environment, run `scripts/verifyExistingUsers.ts` from the backend repo against
+that environment's SuperTokens core (the script header has the exact command) or every
+existing login is refused with "invalid claim". Not yet deployed anywhere as of
+2026-09-18 — tested locally only.
+
 ## Conventions that bite
 
 - **Path alias:** `@/` → `src/` (defined in both `craco.config.js` and `tsconfig.json`). Use `@/common/...` not deep relative paths.
@@ -54,6 +61,16 @@ Access control uses a custom guard system, **not** SuperTokens route components:
 - Guards are defined in `src/common/utils/routeGuards.ts` (`authGuard`, `unAuthGuard`, etc.). **Important gotcha:** guard objects are evaluated **once at module load** from `localStorage` values — they are not reactive. Auth state lives in localStorage tokens (see storage below).
 
 ### Auth & token storage
+
+- **Sign-up does not enter the app.** `signUp/index.tsx` sends the verification mail and
+  navigates to `route.CHECK_INBOX`; `PERSONAL_TOKEN` is written only by the login page
+  after `isEmailVerified()` says so (and by `InviteLink.tsx`, whose invitee is marked
+  verified server-side on accept). The link target is `route.VERIFY_EMAIL`
+  (`/auth/verify-email`) — `pages/Auth/verify-email/`. Locally the link is printed in
+  the backend log as `[email-verification] <email> -> <url>`.
+- **Never call SuperTokens' sign-up API from the browser to create someone else's
+  account.** It sets the *new* user's session cookies, so the caller silently becomes
+  that user. The Clients page uses the backend `createClientChurch` endpoint instead.
 
 - **SuperTokens** is initialized in `App.tsx` (`Session`, `ThirdPartyEmailPassword`, `EmailPassword` recipes; `apiBasePath: '/auth'`). Session existence is checked imperatively via `Session.doesSessionExist()`.
 - App-level tokens/flags are kept in `localStorage` through `src/common/utils/storage.ts`. Keys are namespaced by `REACT_APP_NAME_PROJECT` (`storageKey`: `PERSONAL_TOKEN`, `TOKENS`, `SETTINGS`, `QBQ_ACCESS_TOKEN`, `PC_ACCESS_TOKEN`). The presence of `PERSONAL_TOKEN` is what `authGuard`/`unAuthGuard` key off of.
