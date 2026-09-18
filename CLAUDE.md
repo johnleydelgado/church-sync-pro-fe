@@ -34,6 +34,29 @@ Run `make deploy-*` **from the repo you mean to deploy**. The backend (`quickpla
 
 Database migrations are NOT part of deploy. Run them first, from the backend repo: `NODE_ENV=staging npx sequelize-cli db:migrate` and `make migrate-prd`.
 
+**Look at what else is on the branch tip before you deploy.** More than one session
+works in these repos, so `make deploy-prd` from a branch tip ships whatever anyone else
+committed there too. On 2026-09-18 both tips carried unshipped email-verification work
+that refuses every existing login until a script runs (see below) — deploying a
+one-line UI change from the tip would have locked the live church out. Deploy from a
+worktree holding only what you mean to ship:
+
+```bash
+git worktree add ../<repo>-deploy <commit that is currently live> -b deploy/<thing>-<date>
+cd ../<repo>-deploy && git cherry-pick <your commits>
+cp ../<repo>/.env.production .            # gitignored, so the worktree has none
+cp ../<repo>/src/db/config/config.json .  # backend only, also gitignored
+export CLOUDSDK_CORE_ACCOUNT=johnley00@gmail.com && make deploy-prd
+```
+
+**Find out what is actually live rather than reading git.** For the frontend, fetch
+`/` and grep the hashed bundle for a string you shipped. For the backend, probe a route
+added by the commit in question — an unregistered path returns 404 while a registered
+one returns 401, but match the METHOD (a GET on a POST-only route also 404s, which
+briefly looked like a missing deploy). `gcloud run revisions describe <rev>
+--format='value(status.imageDigest)'` on the new and previous revisions confirms a real
+rebuild rather than a cached no-op.
+
 **Email verification is REQUIRED on the backend** (SuperTokens `EmailVerification`
 recipe, `quickplan-connect/src/supertokensConfig.ts`). Before the first deploy of that
 to any environment, run `scripts/verifyExistingUsers.ts` from the backend repo against
@@ -124,6 +147,21 @@ paged 15/day with an expandable per-gift detail (`StripeGivingDayDetail`), and a
 (`postStripeGivingDay`). The old Batch / Stripe Payout tabs are switched off —
 batches hold cash and cheques, and the payout tab needed Stripe access CSP doesn't
 have. `BatchTable.tsx` and `StripePayoutTable.tsx` are kept but unmounted.
+
+**Money still in transit, and topping a posted day up.** ACH settles days after the
+gift date, so a day can read *Posted* while more of its money is still on the way.
+`getStripeGivingByDay` reports `inTransit` / `inTransitGross` per day (from
+`isStripeInTransit` in the backend — `payment_status === 'pending'`, excluding failed
+and refunded), and the row shows them as "3 in transit · $487.60 not settled yet".
+They are deliberately NOT in `gross`, `fees` or `net`; only settled money is.
+
+When those gifts settle, Planning Center's total for the day outgrows `postedGross`
+and the row offers **Post the difference** (`unpostedDifference()` in
+`StripeGivingTable.tsx`). It calls the same `postStripeGivingDay`; the engine posts
+only the delta as an *adjusting* entry still dated the original day, leaving the first
+entry untouched. Before this, the button vanished the moment a day read Posted, so
+late ACH had no manual path at all — the bug Matt found on 2026-09-18. A day whose
+only giving is in transit shows no button, because there is nothing to post yet.
 
 The **sync start date** ("Only sync donations from … onward", stored as
 `UserSettings.startDateAutomationFund` in `MM-DD-YYYY`) is the church's go-live
