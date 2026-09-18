@@ -12,6 +12,8 @@ import {
 import { useNavigate } from 'react-router'
 import { getAuthorisationURLWithQueryParamsAndSetState } from 'supertokens-web-js/recipe/thirdpartyemailpassword'
 import { emailPasswordSignIn } from 'supertokens-web-js/recipe/thirdpartyemailpassword'
+import { isEmailVerified } from 'supertokens-web-js/recipe/emailverification'
+import { sendEmail } from '@/common/utils/supertoken'
 
 import bgImage from '../../../common/assets/bg-login.png'
 import logo from '../../../common/assets/logo.png'
@@ -107,8 +109,16 @@ const Login: FC<LoginProps> = () => {
         failNotification({ title: 'Please check email or password !' })
         setLoading(false)
       } else {
+        // Sign-in succeeded but REQUIRED mode means the backend will refuse every
+        // request until the address is confirmed - so do not set PERSONAL_TOKEN.
+        const { isVerified } = await isEmailVerified()
+        if (!isVerified) {
+          await sendEmail()
+          setLoading(false)
+          navigate(route.CHECK_INBOX, { state: { email } })
+          return
+        }
         const userData = await getUserRelated(email)
-        console.log('userData', userData)
         const { id, role, firstName, lastName, churchName, img_url } =
           userData.data
         dispatch(
