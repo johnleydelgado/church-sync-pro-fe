@@ -62,6 +62,21 @@ const UNAVAILABLE_COPY: Record<string, string> = {
     "Planning Center did not report your organisation's timezone, so days cannot be grouped reliably.",
 }
 
+/**
+ * How much a Posted day has grown since its entry was written, in dollars.
+ *
+ * Money arrives late: an ACH gift given on the 15th is still "in transit" when the 15th is
+ * posted and only settles days later. Once it does, Planning Center's total for the day is
+ * larger than what CSP posted, and that gap is what "Post the difference" sends - the engine
+ * posts only the delta, as an adjusting entry still dated the 15th. Zero for any day that is
+ * not posted, or that has not grown.
+ */
+const unpostedDifference = (day: StripeGivingDay): number => {
+  if ((day.status || '').toLowerCase() !== 'posted') return 0
+  const cents = Math.round((day.gross - (day.postedGross || 0)) * 100)
+  return cents > 0 ? cents / 100 : 0
+}
+
 const StatusBadge: FC<{ status: string; excluded?: boolean }> = ({
   status,
   excluded,
@@ -142,8 +157,13 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({ from, to }) => {
       onSettled: () => setPostingDay(null),
       onSuccess: (result, day) => {
         if (result?.postedDays?.length) {
+          const before = (data?.days ?? []).find((d) => d.date === day)
+          const difference = before ? unpostedDifference(before) : 0
           successNotification({
-            title: `Posted ${formatDate(day)} to QuickBooks`,
+            title:
+              difference > 0
+                ? `Posted the ${formatUsd(difference)} difference for ${formatDate(day)} as an adjusting entry`
+                : `Posted ${formatDate(day)} to QuickBooks`,
           })
         } else if (result?.failedDays?.length) {
           failNotification({ title: `Could not post ${formatDate(day)}` })
@@ -229,8 +249,19 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({ from, to }) => {
           posted:
             acc.posted + ((d.status || '').toLowerCase() === 'posted' ? 1 : 0),
           syncable: acc.syncable + (isExcluded(d.date) ? 0 : 1),
+          grown: acc.grown + (unpostedDifference(d) > 0 ? 1 : 0),
+          inTransit: acc.inTransit + (d.inTransit || 0),
         }),
-        { gross: 0, fees: 0, net: 0, donations: 0, posted: 0, syncable: 0 },
+        {
+          gross: 0,
+          fees: 0,
+          net: 0,
+          donations: 0,
+          posted: 0,
+          syncable: 0,
+          grown: 0,
+          inTransit: 0,
+        },
       ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [days, syncStartDay],
@@ -433,6 +464,24 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({ from, to }) => {
           {totals.posted < totals.syncable
             ? ' Post one here, or let the 8am run settle it.'
             : ''}
+          {totals.grown > 0 ? (
+            <>
+              {' '}
+              <span className="font-semibold text-amber-600">
+                {totals.grown} posted {totals.grown === 1 ? 'day has' : 'days have'}{' '}
+                giving that settled after posting
+              </span>
+              {' - post the difference to bring QuickBooks up to date.'}
+            </>
+          ) : null}
+          {totals.inTransit > 0 ? (
+            <>
+              {' '}
+              {totals.inTransit} gift{totals.inTransit === 1 ? ' is' : 's are'}{' '}
+              still in transit and will be posted once Stripe settles{' '}
+              {totals.inTransit === 1 ? 'it' : 'them'}.
+            </>
+          ) : null}
         </p>
       ) : (
         // Every visible day is excluded, so "0 of 0 days have been posted" would be both true
@@ -457,6 +506,11 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({ from, to }) => {
           const excluded = isExcluded(day.date)
           const isPosting = postingDay === day.date
           const isPosted = (day.status || '').toLowerCase() === 'posted'
+          const difference = unpostedDifference(day)
+          // A posted day that has grown gets its button back; a day with only in-transit
+          // giving has nothing to post yet, so it gets none.
+          const canPost = !isPosted || difference > 0
+          const nothingToPostYet = !isPosted && day.donations === 0
           return (
             <div key={day.date} className="border-t border-gray-100">
               {/* The row is a div, not a button: it contains the Post button, and a button
@@ -485,6 +539,18 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({ from, to }) => {
                   <p className="pl-6 text-xs text-gray-400">
                     {day.donations} donation{day.donations === 1 ? '' : 's'}
                   </p>
+                  {day.inTransit > 0 ? (
+                    <p className="pl-6 text-xs font-medium text-amber-600">
+                      {day.inTransit} in transit · {formatUsd(day.inTransitGross)}{' '}
+                      not settled yet
+                    </p>
+                  ) : null}
+                  {difference > 0 ? (
+                    <p className="pl-6 text-xs font-medium text-amber-600">
+                      {formatUsd(day.postedGross)} posted ·{' '}
+                      {formatUsd(difference)} settled since
+                    </p>
+                  ) : null}
                 </div>
                 <div className="col-span-2 text-right font-semibold text-success">
                   {formatUsd(day.gross)}
@@ -497,11 +563,13 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({ from, to }) => {
                 </div>
                 <div className="col-span-3 flex items-center justify-end gap-3">
                   <StatusBadge status={day.status} excluded={excluded} />
-                  {isPosted ? null : (
+                  {!canPost || nothingToPostYet ? null : (
                     <Tooltip
                       content={
                         <span className="block max-w-xs text-xs leading-snug">
-                          {excluded
+                          {difference > 0
+                            ? `${formatUsd(difference)} settled after this day was posted. Post it as a second, adjusting entry dated ${formatDate(day.date)}. The original entry is not touched.`
+                            : excluded
                             ? "This day is before your sync start date. You'll be asked to confirm."
                             : "Post this day's journal entry to QuickBooks now, without waiting for the 8am run."}
                         </span>
@@ -513,7 +581,7 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({ from, to }) => {
                         disabled={isPosting || !email}
                         onClick={() => requestPost(day.date)}
                         className={`flex items-center gap-2 whitespace-nowrap normal-case ${
-                          excluded
+                          excluded && difference === 0
                             ? 'border border-gray-300 bg-white text-gray-600 shadow-none'
                             : 'bg-yellow'
                         }`}
@@ -526,7 +594,11 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({ from, to }) => {
                         ) : (
                           <>
                             <AiOutlineSync size={16} />
-                            {excluded ? 'Post anyway' : 'Post'}
+                            {difference > 0
+                              ? 'Post the difference'
+                              : excluded
+                              ? 'Post anyway'
+                              : 'Post'}
                           </>
                         )}
                       </Button>
