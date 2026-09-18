@@ -11,6 +11,8 @@ import {
   SubscriptionPage,
 } from './Auth'
 import GoogleCallBack from './Auth/callback/GoogleCallBack'
+import CheckInbox from './Auth/verify-email/CheckInbox'
+import VerifyEmail from './Auth/verify-email/VerifyEmail'
 
 import PrivateRoute from '@/common/components/Route/PrivateRoute'
 import ErrorPage from '@/common/components/Route/ErrorPage'
@@ -168,6 +170,14 @@ const MainPage: FC<indexProps> = () => {
         <Route
           path={route.RESET_PASSWORD}
           element={<PrivateRoute Component={ResetPasswordPage} guards={[]} />}
+        />
+        <Route
+          path={route.CHECK_INBOX}
+          element={<PrivateRoute Component={CheckInbox} guards={[]} />}
+        />
+        <Route
+          path={route.VERIFY_EMAIL}
+          element={<PrivateRoute Component={VerifyEmail} guards={[]} />}
         />
         <Route
           path={route.SUBSCRIPTION_PLAN}

@@ -12,6 +12,8 @@ export const route = {
   NOMINATE_PASSWORD: '/nominate-password',
   INVITE_LINK: 'invite-bookkeeper',
   SUBSCRIPTION_PLAN: 'subscription/plan',
+  CHECK_INBOX: '/check-your-inbox',
+  VERIFY_EMAIL: '/auth/verify-email',
 }
 
 export const mainRoute = {

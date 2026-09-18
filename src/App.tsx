@@ -44,6 +44,7 @@ function App() {
       Session.init(),
       ThirdPartyEmailPassword.init(),
       EmailPassword.init(),
+      EmailVerification.init(),
     ],
   })
 
