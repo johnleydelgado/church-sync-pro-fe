@@ -1,5 +1,5 @@
 import { pcHandleRegistrationEvents } from '@/common/api/planning-center'
-import { getUserRelated, sendEmailInvitation } from '@/common/api/user'
+import { createClientChurch } from '@/common/api/user'
 import Loading from '@/common/components/loading/Loading'
 import CommonTextField from '@/common/components/text-input/CommonTextField'
 import { MODALS_NAME } from '@/common/constant/modal'
@@ -10,12 +10,10 @@ import { CLOSE_MODAL } from '@/redux/common'
 import { RootState } from '@/redux/store'
 import { Dialog, Transition } from '@headlessui/react'
 import { Button } from '@material-tailwind/react'
-import { debounce } from 'lodash'
 import React, { FC, Fragment, useState, useEffect } from 'react'
 import { MdChurch, MdPeopleAlt } from 'react-icons/md'
 import { useQueryClient } from 'react-query'
 import { useDispatch, useSelector } from 'react-redux'
-import { emailPasswordSignUp } from 'supertokens-web-js/recipe/thirdpartyemailpassword'
 
 interface ModalRegistrationProps {
   refetch?: () => void
@@ -50,17 +48,6 @@ const AddUpdateClientModalRegistration: FC<ModalRegistrationProps> = ({
 
   const isOpen = openModals.includes(MODALS_NAME.modalClientRegistration)
 
-  const sendEmailInvitationDebounced = debounce(
-    (name: string, email: string, clientId: number) => {
-      return new Promise<void>((resolve, reject) => {
-        sendEmailInvitation(name, email, clientId, true, user.id)
-          .then(() => resolve())
-          .catch(reject) // Propagate any errors to the caller
-      })
-    },
-    2000,
-  )
-
   const handleAddOrUpdateRegistration = async () => {
     setIsSending(true)
     try {
@@ -69,34 +56,12 @@ const AddUpdateClientModalRegistration: FC<ModalRegistrationProps> = ({
         return
       }
 
-      const formattedEmail = `${churchName.toLowerCase().replace(/ /g, '-')}-${
-        user.email
-      }`
-
-      const response = await emailPasswordSignUp({
-        formFields: [
-          { id: 'churchName', value: churchName },
-          { id: 'firstName', value: 'N/A' },
-          { id: 'lastName', value: 'N/A' },
-          { id: 'email', value: formattedEmail },
-          { id: 'password', value: 'csp@2024' },
-          { id: 'isSubscribe', value: '0' },
-          { id: 'role', value: 'client' },
-        ],
-      })
-
-      if (response.status === 'FIELD_ERROR') {
-        response.formFields.forEach((formField) => {
-          failNotification({ title: formField.error })
-        })
+      if (!user.id) {
+        failNotification({ title: 'Please sign in again.' })
         return
       }
 
-      const userData = await getUserRelated(formattedEmail)
-      const { id: clientId } = userData.data
-
-      await sendEmailInvitationDebounced('N/A', formattedEmail, clientId || 0)
-      await new Promise((resolve) => setTimeout(resolve, 3000))
+      await createClientChurch(churchName, user.id)
 
       // Invalidate and force refetch of the query
       queryClient.invalidateQueries(['bookkeeperListSidebar', user.role])
@@ -107,8 +72,11 @@ const AddUpdateClientModalRegistration: FC<ModalRegistrationProps> = ({
           : 'Client created successfully!',
       })
       handleCloseModals()
-    } catch (e) {
-      failNotification({ title: 'An error occurred. Please try again.' })
+    } catch (e: any) {
+      failNotification({
+        title:
+          e?.response?.data?.message || 'An error occurred. Please try again.',
+      })
       console.error('Error:', e)
     } finally {
       setIsSending(false)

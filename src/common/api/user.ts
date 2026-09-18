@@ -365,6 +365,9 @@ export interface StripeGivingDay {
   /** What CSP has done about the day: 'posted', 'failed', or 'pending' when no entry exists yet. */
   status: string
   postedGross: number
+  /** Stripe gifts dated this day that have not settled yet (ACH, mostly). Not in `gross`. */
+  inTransit: number
+  inTransitGross: number
 }
 
 export interface StripeGivingByDayData {
@@ -547,6 +550,18 @@ const deleteUserToken = async (id: number) => {
   }
 }
 
+// A bookkeeper adding a church. Done through the backend rather than the browser
+// sign-up API: that API sets the NEW user's session cookies, so the bookkeeper's tab
+// would silently carry on as the church. Throws on failure (409 = church exists).
+const createClientChurch = async (churchName: string, bookkeeperId: number) => {
+  const url = userRoutes.createClientChurch
+  const response = await apiCall.post(
+    url,
+    JSON.stringify({ churchName, bookkeeperId }),
+  )
+  return response.data.data as { clientId: number; email: string }
+}
+
 const sendEmailInvitation = async (
   name: string,
   email: string,
@@ -665,13 +680,12 @@ const bookkeeperList = async ({
 
 const updateInvitationStatus = async (
   email: string,
-  bookkeeperId?: number,
   invitationToken?: string | null,
 ) => {
   const url = userRoutes.updateInvitationStatus
   // The backend requires the token: it is the only credential the invitee has
-  // before their session exists.
-  const data = JSON.stringify({ email, bookkeeperId, invitationToken })
+  // before their session exists. It derives the user id from the email itself.
+  const data = JSON.stringify({ email, invitationToken })
 
   try {
     if (email) {
@@ -806,6 +820,7 @@ const toggleUserActiveStatusApi = async ({
 }
 
 export {
+  createClientChurch,
   updateUser,
   createUser,
   addTokenInUser,
