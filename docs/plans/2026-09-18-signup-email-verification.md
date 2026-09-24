@@ -1366,3 +1366,23 @@ Screenshots: scratchpad `check-inbox.png`, `verified.png`, `invitee-in-app.png`.
 One false alarm during testing: the first run "crashed" — a second `ts-node index.ts` was still holding :8080 (EADDRINUSE from an earlier session), so a nodemon restart died and mails after the first were served by the stale process. Killing every backend process and starting one fresh cleared it; not a code issue.
 
 Not deployed. Before staging/prod: run the script against that core first (CLAUDE.md, Deploy).
+
+## Verification log — 2026-09-25, STAGING (live)
+
+Staging core: `scripts/verifyExistingUsers.ts` → `1 accounts checked, 2 newly marked verified`.
+Backend `csp-be-00018-p55` (branch tip), frontend `csp-fe-00012-d4t` then `csp-fe-00013` (encoding fix). Verify endpoint 404 → 401; bundle carries the new pages.
+
+| Check | Result |
+|---|---|
+| `/auth/verify-email?token=bogus` | "This link has expired" |
+| Sign up `johnley00+csp-stg-client@gmail.com` (real SendGrid mail) | `/check-your-inbox`, no token; `/daily` bounces; unverified login → `/check-your-inbox` (second mail) |
+| Open the link (minted via the SDK — same URL the mail carries) | "Email confirmed"; core reports `verified: true` |
+| Login after verifying | **"Oops! Something went wrong"** — a `+` in the address reached Express as a space via `?email=${email}` → fixed (`6508841`, `2e73cc3`), redeployed → `/quick-start-guide`, token `client` |
+| Bookkeeper sign-up → verify → login | token `bookkeeper`, Clients page loads |
+| Clients page: add "Staging Regression Church" | row appears; after reload still the bookkeeper; DB: `Users` 4 (client) ↔ bookkeeper 3, `inviteAccepted t`; duplicate → "A church with this name already exists" |
+| Client invites `johnley00+csp-stg-invitee@gmail.com` | mail sent, `bookkeeper` row with token |
+| Invitee opens the **raw** link (as the backend built it) | **broken** — `+` parsed as a space → "invalid or expired". Fixed in the link builder (`13f1c43`), backend redeploying |
+| Invitee opens the encoded link, signs up | no inbox stop; lands on `/daily` as "Staging Invitee · Bookkeeper account · Staging Verify Church"; row `userId 5, inviteAccepted t` |
+| Google sign-in | untested (no localhost/staging OAuth client); untouched code path |
+
+Two real bugs surfaced by testing with a plus-address, both pre-existing and both fixed. Production untouched.
