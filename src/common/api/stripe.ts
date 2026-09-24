@@ -23,7 +23,7 @@ const getStripePayouts = async (
   try {
     const response = await apiCall.get(
       url +
-        `?email=${email}&selectedDate=${selectedDate}&cPage=${page}&lastObjectId=${lastObjectId}`,
+        `?email=${encodeURIComponent(email)}&selectedDate=${selectedDate}&cPage=${page}&lastObjectId=${lastObjectId}`,
     )
     return response.data.data
   } catch (e) {
