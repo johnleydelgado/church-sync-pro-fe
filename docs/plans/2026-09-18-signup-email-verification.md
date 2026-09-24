@@ -40,7 +40,7 @@
 **Interfaces:**
 - Produces: `buildVerificationMessage({ to, link }): SendGridMessage` and `sendVerificationEmail({ to, link }): Promise<void>` — consumed by Task 2.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 // quickplan-connect/src/services/__tests__/verificationEmail.test.ts
@@ -93,12 +93,12 @@ describe('sendVerificationEmail', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd /Volumes/T7/OtherProject/quickplan-connect && npx jest src/services/__tests__/verificationEmail.test.ts`
 Expected: FAIL — `Cannot find module '../verificationEmail'`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 ```ts
 // quickplan-connect/src/services/verificationEmail.ts
@@ -137,12 +137,12 @@ export const sendVerificationEmail = async ({ to, link }: { to: string; link: st
 };
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx jest src/services/__tests__/verificationEmail.test.ts`
 Expected: PASS, 4 tests, `Test Suites: 1 passed`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 cd /Volumes/T7/OtherProject/quickplan-connect
@@ -163,12 +163,12 @@ git commit -m "Send the email-verification mail through SendGrid like the other 
 - Consumes: `sendVerificationEmail` (Task 1).
 - Produces: `buildSupertokensConfig(): TypeInput` (the object passed to `supertokens.init`) and `emailVerificationConfig` — reused by the script in Task 5.
 
-- [ ] **Step 1: Confirm the delivery-input field names in the installed SDK**
+- [x] **Step 1: Confirm the delivery-input field names in the installed SDK**
 
 Run: `grep -n "emailVerifyLink\|EMAIL_VERIFICATION" node_modules/supertokens-node/lib/build/recipe/emailverification/types.d.ts`
 Expected: a type with `type: "EMAIL_VERIFICATION"`, `user: { id: string; email: string }`, `emailVerifyLink: string`. If the field is named differently, use that name in Steps 2–4.
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 ```ts
 // quickplan-connect/src/__tests__/supertokensConfig.test.ts
@@ -229,12 +229,12 @@ describe('emailVerificationConfig.emailDelivery', () => {
 });
 ```
 
-- [ ] **Step 3: Run test to verify it fails**
+- [x] **Step 3: Run test to verify it fails**
 
 Run: `npx jest src/__tests__/supertokensConfig.test.ts`
 Expected: FAIL — `Cannot find module '../supertokensConfig'`.
 
-- [ ] **Step 4: Create the config module** (this is `app.ts:33-146` moved verbatim, plus the new recipe)
+- [x] **Step 4: Create the config module** (this is `app.ts:33-146` moved verbatim, plus the new recipe)
 
 ```ts
 // quickplan-connect/src/supertokensConfig.ts
@@ -302,7 +302,7 @@ export const buildSupertokensConfig = () => ({
 
 The two `// ...` comments above mean: cut those exact lines out of `app.ts` and paste them; do not retype them. The `ResultObject` interface moves with them.
 
-- [ ] **Step 5: Point `app.ts` at it**
+- [x] **Step 5: Point `app.ts` at it**
 
 Replace `app.ts:7-146` (the requires of `Session`/`ThirdPartyEmailPassword`, the `EmailPassword`/`EmailVerification`/`User`/`formFields` imports, the domain constants, `ResultObject`, the boot log and the whole `supertokens.init({...})` call) with:
 
@@ -319,18 +319,18 @@ supertokens.init(buildSupertokensConfig());
 
 Keep the `getallUsers` import if anything below still references it (it is only in a commented cron today — remove the import if eslint flags it as unused).
 
-- [ ] **Step 6: Run the test and the whole suite**
+- [x] **Step 6: Run the test and the whole suite**
 
 Run: `npx jest src/__tests__/supertokensConfig.test.ts && npx tsc --noEmit && npx jest 2>&1 | grep -E "^(Tests|Test Suites):"`
 Expected: new suite PASS (2 tests); tsc clean; `Test Suites: 26 passed` (24 existing + Task 1 + this).
 
-- [ ] **Step 7: Boot the backend locally and confirm the recipe is live**
+- [x] **Step 7: Boot the backend locally and confirm the recipe is live**
 
 Run: `docker compose up -d && WEBSITE_URL=http://localhost:3000 npm run dev` (in a second terminal), then
 `curl -s -X POST http://localhost:8080/auth/user/email/verify/token -H 'rid: emailverification' -o /dev/null -w '%{http_code}\n'`
 Expected: `401` (the endpoint exists and wants a session). Before this task it returned `404`.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add src/supertokensConfig.ts src/app.ts src/__tests__/supertokensConfig.test.ts
@@ -350,12 +350,12 @@ git commit -m "Require email verification: register the EmailVerification recipe
 - Produces: `markEmailVerified(email: string): Promise<number>` (number of SuperTokens users marked) — reused by Task 5.
 - Changes: `updateInvitationStatus` no longer reads `bookkeeperId` from the body; it derives the `Users.id` from the invited email.
 
-- [ ] **Step 1: Confirm the SDK function names**
+- [x] **Step 1: Confirm the SDK function names**
 
 Run: `grep -n "static getUsersByEmail\|static createEmailVerificationToken\|static verifyEmailUsingToken" node_modules/supertokens-node/lib/build/recipe/thirdpartyemailpassword/index.d.ts node_modules/supertokens-node/lib/build/recipe/emailverification/index.d.ts`
 Expected: all three present. (`createEmailVerificationToken(userId, email?)`, `verifyEmailUsingToken(token)` were confirmed at `emailverification/index.d.ts:9-25`.)
 
-- [ ] **Step 2: Write the failing tests**
+- [x] **Step 2: Write the failing tests**
 
 ```ts
 // quickplan-connect/src/controller/__tests__/updateInvitationStatus.test.ts
@@ -439,12 +439,12 @@ it('still accepts the invite when no Users row exists yet (sign-up override has 
 
 Check `user.ts`'s imports first: if the controller imports other models at module load (it does — `UserSettings`, `tokens`, etc.), add a `jest.mock` for each one that throws on load, following the pattern in `stripeGivingSyncStartDay.test.ts` (`qboClient`, `quickBookApi` if pulled in).
 
-- [ ] **Step 3: Run tests to verify they fail**
+- [x] **Step 3: Run tests to verify they fail**
 
 Run: `npx jest src/controller/__tests__/updateInvitationStatus.test.ts`
 Expected: FAIL — `Cannot find module '../../services/emailVerification'` (or suite loads and the 3rd/4th tests fail on `update` args).
 
-- [ ] **Step 4: Write the service**
+- [x] **Step 4: Write the service**
 
 ```ts
 // quickplan-connect/src/services/emailVerification.ts
@@ -472,7 +472,7 @@ export const markEmailVerified = async (email: string): Promise<number> => {
 };
 ```
 
-- [ ] **Step 5: Rewrite `updateInvitationStatus`**
+- [x] **Step 5: Rewrite `updateInvitationStatus`**
 
 ```ts
 export const updateInvitationStatus = async (req: Request, res: Response) => {
@@ -513,12 +513,12 @@ export const updateInvitationStatus = async (req: Request, res: Response) => {
 
 Add `import { markEmailVerified } from '../services/emailVerification';` at the top of `controller/user.ts`.
 
-- [ ] **Step 6: Run tests, tsc, whole suite**
+- [x] **Step 6: Run tests, tsc, whole suite**
 
 Run: `npx jest src/controller/__tests__/updateInvitationStatus.test.ts && npx tsc --noEmit && npx jest 2>&1 | grep -E "^(Tests|Test Suites):"`
 Expected: 4 PASS; tsc clean; `Test Suites: 27 passed`.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/services/emailVerification.ts src/controller/user.ts src/controller/__tests__/updateInvitationStatus.test.ts
@@ -544,12 +544,12 @@ git commit -m "Accepting an invitation marks the invitee's email verified and de
 
 Why: today the modal calls SuperTokens' sign-up API from the browser (`modal.tsx:75-84`). That API sets the *new* user's session cookies, so the bookkeeper's tab silently continues on the client's session. With REQUIRED mode that session is unverified and every following request 403s. Creating the user with the backend SDK (`ThirdPartyEmailPassword.emailPasswordSignUp`) creates no session. The password becomes random: nobody is meant to log in as a synthetic `church-slug-bookkeeper@…` address, and it removes the shared `csp@2024` already flagged to the client.
 
-- [ ] **Step 1: Check the `Users` columns the sign-up override writes**
+- [x] **Step 1: Check the `Users` columns the sign-up override writes**
 
 Run: `grep -n "isSubscribe\|isActive\|firstName\|lastName\|churchName\|role" src/db/models/user.ts | head -12`
 Expected: those attributes exist; note `isSubscribe`'s type (string `'0'` is what the form sends today).
 
-- [ ] **Step 2: Write the failing tests**
+- [x] **Step 2: Write the failing tests**
 
 ```ts
 // quickplan-connect/src/controller/__tests__/createClientChurch.test.ts
@@ -634,12 +634,12 @@ it('rejects a missing church name or unknown bookkeeper', async () => {
 
 Check how `responseSuccess` shapes its JSON (`src/utils/response.ts` or wherever `grep -rn "export const responseSuccess" src/utils` points) and adjust the last `expect` in the first test to match its actual envelope.
 
-- [ ] **Step 3: Run tests to verify they fail**
+- [x] **Step 3: Run tests to verify they fail**
 
 Run: `npx jest src/controller/__tests__/createClientChurch.test.ts`
 Expected: FAIL — `createClientChurch` is not exported.
 
-- [ ] **Step 4: Write the controller**
+- [x] **Step 4: Write the controller**
 
 Add to `quickplan-connect/src/controller/user.ts` (imports at top: `import crypto from 'crypto';` and `const ThirdPartyEmailPassword = require('supertokens-node/recipe/thirdpartyemailpassword');` if not already present):
 
@@ -700,24 +700,24 @@ export const createClientChurch = async (req: Request, res: Response) => {
 
 If `isSubscribe` is not a string column (Step 1), use the model's type.
 
-- [ ] **Step 5: Route it**
+- [x] **Step 5: Route it**
 
 `src/constant/routes.ts` — in `userRoutes`: `createClientChurch: '/user/createClientChurch',`
 `src/routes/routers.ts` — next to line 114: `routers.post(userRoutes.createClientChurch, verifySession(), createClientChurch);` and add `createClientChurch` to the import from `../controller/user`.
 
-- [ ] **Step 6: Run tests, tsc, suite**
+- [x] **Step 6: Run tests, tsc, suite**
 
 Run: `npx jest src/controller/__tests__/createClientChurch.test.ts && npx tsc --noEmit && npx jest 2>&1 | grep -E "^(Tests|Test Suites):"`
 Expected: 3 PASS; tsc clean; `Test Suites: 28 passed`.
 
-- [ ] **Step 7: Commit backend**
+- [x] **Step 7: Commit backend**
 
 ```bash
 git add src/controller/user.ts src/constant/routes.ts src/routes/routers.ts src/controller/__tests__/createClientChurch.test.ts
 git commit -m "Create client churches server-side so the bookkeeper keeps their own session"
 ```
 
-- [ ] **Step 8: Frontend API client**
+- [x] **Step 8: Frontend API client**
 
 `church-sync-pro/src/common/constant/routes-api.ts` — in `userRoutes`: `createClientChurch: '/user/createClientChurch',`
 
@@ -736,7 +736,7 @@ const createClientChurch = async (churchName: string, bookkeeperId: number) => {
 
 (Match the envelope you confirmed in Step 2 — if `responseSuccess` returns `{ data }`, `response.data.data` is right. This throws on failure, per the CLAUDE.md rule on API catch blocks.) Add it to the file's export list.
 
-- [ ] **Step 9: Rewire the modal**
+- [x] **Step 9: Rewire the modal**
 
 In `modal.tsx`:
 - Replace the import on line 2 with `import { createClientChurch } from '@/common/api/user'`.
@@ -763,12 +763,12 @@ Keep the `invalidateQueries`, `successNotification`, `handleCloseModals`, `catch
     }
 ```
 
-- [ ] **Step 10: Type-check, lint**
+- [x] **Step 10: Type-check, lint**
 
 Run: `cd /Volumes/T7/OtherProject/church-sync-pro && npx tsc --noEmit && npx eslint src/pages/Main/client/components/modal.tsx src/common/api/user.ts`
 Expected: clean (`getUserRelated`/`sendEmailInvitation` no longer imported in the modal; `debounce` import removed if now unused).
 
-- [ ] **Step 11: Commit frontend**
+- [x] **Step 11: Commit frontend**
 
 ```bash
 git add src/common/constant/routes-api.ts src/common/api/user.ts src/pages/Main/client/components/modal.tsx
@@ -788,7 +788,7 @@ git commit -m "Clients page creates churches through the backend instead of sign
 
 Why: `REQUIRED` mode applies to every session, including accounts created before the recipe existed. Without this, Matt's production login stops working the moment the backend deploys. The script is idempotent (already-verified users are skipped inside `markEmailVerified`).
 
-- [ ] **Step 1: Write the script**
+- [x] **Step 1: Write the script**
 
 ```ts
 // quickplan-connect/scripts/verifyExistingUsers.ts
@@ -831,16 +831,16 @@ main()
 
 Check the NODE_ENV names against `config/config.json` (the memory says `uat` / `uat-prd` map to staging / prod in `package.json` scripts) and correct the header comment if they differ.
 
-- [ ] **Step 2: Run it locally**
+- [x] **Step 2: Run it locally**
 
 Run: `NODE_ENV=development DOTENV_CONFIG_PATH=.env npx ts-node -r dotenv/config scripts/verifyExistingUsers.ts`
 Expected: `N accounts checked, N newly marked verified` (first run), then re-run → `N accounts checked, 0 newly marked verified`.
 
-- [ ] **Step 3: Prove it worked**
+- [x] **Step 3: Prove it worked**
 
 Log in on `localhost:3000` with an account that existed before this work. Expected: reaches `/quick-start-guide` as before (Task 8's login change is not in yet, so this is the pre-existing flow — the point is `verifySession()` no longer 403s).
 
-- [ ] **Step 4: Document the deploy precondition**
+- [x] **Step 4: Document the deploy precondition**
 
 Add to the Deploy section of `church-sync-pro/CLAUDE.md` (the file that documents both deploys):
 
@@ -850,7 +850,7 @@ environment, run `scripts/verifyExistingUsers.ts` against that environment's Sup
 core (see the script header) or every existing login is refused.
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add scripts/verifyExistingUsers.ts
@@ -873,7 +873,7 @@ git add CLAUDE.md && git commit -m "Document the verify-existing-users precondit
 **Interfaces:**
 - Produces: `route.CHECK_INBOX = '/check-your-inbox'` (navigate with `state: { email }`) and `route.VERIFY_EMAIL = '/auth/verify-email'` (the SDK-built link: `${websiteDomain}/auth/verify-email?token=…&rid=emailverification`).
 
-- [ ] **Step 1: Register the recipe**
+- [x] **Step 1: Register the recipe**
 
 `App.tsx` recipeList becomes:
 
@@ -888,7 +888,7 @@ git add CLAUDE.md && git commit -m "Document the verify-existing-users precondit
 
 (`EmailVerification` is already imported on line 12.)
 
-- [ ] **Step 2: Add the routes**
+- [x] **Step 2: Add the routes**
 
 `route.ts`, inside `route`:
 
@@ -897,7 +897,7 @@ git add CLAUDE.md && git commit -m "Document the verify-existing-users precondit
   VERIFY_EMAIL: '/auth/verify-email',
 ```
 
-- [ ] **Step 3: The "check your inbox" page**
+- [x] **Step 3: The "check your inbox" page**
 
 ```tsx
 // church-sync-pro/src/pages/Auth/verify-email/CheckInbox.tsx
@@ -984,7 +984,7 @@ const CheckInbox: FC = () => {
 export default CheckInbox
 ```
 
-- [ ] **Step 4: The link-target page**
+- [x] **Step 4: The link-target page**
 
 ```tsx
 // church-sync-pro/src/pages/Auth/verify-email/VerifyEmail.tsx
@@ -1086,7 +1086,7 @@ const VerifyEmail: FC = () => {
 export default VerifyEmail
 ```
 
-- [ ] **Step 5: Mount them**
+- [x] **Step 5: Mount them**
 
 In `MainPage.tsx`, import both and add after the `route.RESET_PASSWORD` route:
 
@@ -1101,13 +1101,13 @@ In `MainPage.tsx`, import both and add after the `route.RESET_PASSWORD` route:
         />
 ```
 
-- [ ] **Step 6: Type-check, lint, smoke**
+- [x] **Step 6: Type-check, lint, smoke**
 
 Run: `npx tsc --noEmit && npx eslint src/App.tsx src/common/constant/route.ts src/pages/Auth/verify-email src/pages/MainPage.tsx`
 Then with the dev server on :3000, open `http://localhost:3000/auth/verify-email?token=bogus&rid=emailverification` in ego-browser.
 Expected: "This link has expired" card with a "Go to sign in" button (the SDK returned `EMAIL_VERIFICATION_INVALID_TOKEN_ERROR`).
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/App.tsx src/common/constant/route.ts src/pages/Auth/verify-email src/pages/MainPage.tsx
@@ -1124,7 +1124,7 @@ git commit -m "Add the check-your-inbox and verify-email pages and register the 
 **Interfaces:**
 - Consumes: `route.CHECK_INBOX` (Task 6), `sendEmail` (existing util).
 
-- [ ] **Step 1: Replace the success branch** (lines 101-122)
+- [x] **Step 1: Replace the success branch** (lines 101-122)
 
 ```tsx
       } else {
@@ -1137,18 +1137,18 @@ git commit -m "Add the check-your-inbox and verify-email pages and register the 
       }
 ```
 
-- [ ] **Step 2: Remove what the old flow needed**
+- [x] **Step 2: Remove what the old flow needed**
 
 - Delete the `checkSession` callback and its `useEffect` (lines 141-149), the `signUpSuccess` state (line 51), the `delay` helper (line 40), and the imports of `shouldLoadRoute`, `setUserData`, `storageKey`, `getUserRelated`, `useLocation`, `useDispatch`, `useCallback`, `useEffect` if now unused.
 - Add `import { useNavigate } from 'react-router-dom'` and `import { sendEmail } from '@/common/utils/supertoken'`; inside the component `const navigate = useNavigate()`.
 - Keep the `user.email` read from redux (it pre-fills the form) — `useSelector` stays.
 
-- [ ] **Step 3: Type-check, lint**
+- [x] **Step 3: Type-check, lint**
 
 Run: `npx tsc --noEmit && npx eslint src/pages/Auth/signUp/index.tsx`
 Expected: clean.
 
-- [ ] **Step 4: Verify in the browser**
+- [x] **Step 4: Verify in the browser**
 
 With backend (`WEBSITE_URL=http://localhost:3000 npm run dev`) and frontend running, in ego-browser:
 1. Open `http://localhost:3000/signup`, choose Client, fill church name / names / a fresh email `verify-test-<timestamp>@example.com` / password `Testing123!`, submit.
@@ -1159,7 +1159,7 @@ With backend (`WEBSITE_URL=http://localhost:3000 npm run dev`) and frontend runn
 
 Screenshot steps 2 and 5 to the scratchpad (`scale: "css"`).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/pages/Auth/signUp/index.tsx
@@ -1173,7 +1173,7 @@ git commit -m "Sign-up sends the confirmation email and stops at check-your-inbo
 **Files:**
 - Modify: `church-sync-pro/src/pages/Auth/login/index.tsx:109-129`
 
-- [ ] **Step 1: Gate on the claim before touching app state**
+- [x] **Step 1: Gate on the claim before touching app state**
 
 Replace the start of the success branch (line 109 `} else {`) with:
 
@@ -1193,18 +1193,18 @@ Replace the start of the success branch (line 109 `} else {`) with:
 
 Imports: `import { isEmailVerified } from 'supertokens-web-js/recipe/emailverification'`, `import { sendEmail } from '@/common/utils/supertoken'`, `useNavigate` from `react-router-dom` (check whether the file already has `navigate`; add `const navigate = useNavigate()` if not), and `route` from `@/common/constant/route` if not imported.
 
-- [ ] **Step 2: Type-check, lint**
+- [x] **Step 2: Type-check, lint**
 
 Run: `npx tsc --noEmit && npx eslint src/pages/Auth/login/index.tsx`
 
-- [ ] **Step 3: Verify in the browser**
+- [x] **Step 3: Verify in the browser**
 
 1. Sign up a second fresh email (Task 7 flow) but do **not** open the link. Click "Back to sign in".
 2. Log in with it. Expected: `/check-your-inbox`, a second `[email-verification]` line in the backend log, no `PERSONAL_TOKEN`.
 3. Open the new link → "Email confirmed" → sign in again. Expected: lands on `/quick-start-guide` with `PERSONAL_TOKEN=client`.
 4. Log in with the pre-existing local account (verified by Task 5). Expected: straight to `/quick-start-guide`.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/pages/Auth/login/index.tsx
@@ -1221,7 +1221,7 @@ git commit -m "Login sends an unconfirmed account back to check-your-inbox inste
 
 Why: the invitee signs up in the browser, so their session is created *unverified*. Task 3 marks them verified on accept, but the session's claim was cached as `false` and stays that way for up to 10 s (`refetchTimeOnFalseInSeconds`). Calling `isEmailVerified()` after accepting hits `isEmailVerifiedGET`, which `fetchAndSetClaim`s — so the very next `getUserRelated` (behind `verifySession()`) passes.
 
-- [ ] **Step 1: Reorder the success branch**
+- [x] **Step 1: Reorder the success branch**
 
 Replace lines 140-162 (`// sendEmail()` through `window.location.reload()`) with:
 
@@ -1257,7 +1257,7 @@ Replace lines 140-162 (`// sendEmail()` through `window.location.reload()`) with
 
 Add `import { isEmailVerified } from 'supertokens-web-js/recipe/emailverification'`. Remove the `delay` helper if nothing else uses it.
 
-- [ ] **Step 2: Simplify the API client**
+- [x] **Step 2: Simplify the API client**
 
 ```ts
 const updateInvitationStatus = async (
@@ -1272,11 +1272,11 @@ const updateInvitationStatus = async (
 
 (keep the rest of the function). Fix every other caller: `grep -rn "updateInvitationStatus(" src` and drop the middle argument.
 
-- [ ] **Step 3: Type-check, lint**
+- [x] **Step 3: Type-check, lint**
 
 Run: `npx tsc --noEmit && npx eslint src/pages/Main/invite-link/InviteLink.tsx src/common/api/user.ts`
 
-- [ ] **Step 4: Verify in the browser**
+- [x] **Step 4: Verify in the browser**
 
 1. Logged in as a local client, Settings → Bookkeeper → invite `invite-test-<timestamp>@example.com`.
 2. Backend log / local DB: `select "invitationToken" from bookkeeper where email='invite-test-…'`. Build `http://localhost:3000/invite-bookkeeper?bookkeeperEmail=<email>&invitationToken=<token>`.
@@ -1284,7 +1284,7 @@ Run: `npx tsc --noEmit && npx eslint src/pages/Main/invite-link/InviteLink.tsx s
 4. Expected: no "check your inbox"; page reloads into the app with `PERSONAL_TOKEN=bookkeeper`; the church shows in the NavBar switcher. Backend log shows no 403 `invalid claim`.
 5. Local DB: `select "userId","inviteAccepted" from bookkeeper where email='invite-test-…'` → `userId` set, `inviteAccepted = true`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/pages/Main/invite-link/InviteLink.tsx src/common/api/user.ts
@@ -1295,36 +1295,36 @@ git commit -m "Invite acceptance runs before the first protected call so the ver
 
 ### Task 10: Full local regression and wrap-up
 
-- [ ] **Step 1: Backend gates**
+- [x] **Step 1: Backend gates**
 
 Run: `cd /Volumes/T7/OtherProject/quickplan-connect && npx tsc --noEmit && npx jest 2>&1 | grep -E "^(Tests|Test Suites):"`
 Expected: `Test Suites: 28 passed`, all tests passed.
 
-- [ ] **Step 2: Frontend gates**
+- [x] **Step 2: Frontend gates**
 
 Run: `cd /Volumes/T7/OtherProject/church-sync-pro && npx tsc --noEmit && npx eslint src && CI=false npx craco build 2>&1 | tail -5`
 Expected: clean; build succeeds.
 
-- [ ] **Step 3: Clients page (the flow REQUIRED mode would have broken)**
+- [x] **Step 3: Clients page (the flow REQUIRED mode would have broken)**
 
 Logged in locally as a bookkeeper: Client Management → Add client "Regression Church".
 Expected: success toast, church appears in the sidebar/NavBar list, and the bookkeeper is **still themselves** — reload the page, `PERSONAL_TOKEN=bookkeeper`, NavBar shows the bookkeeper's name, no 403s in the network log. Local DB: `select email, role from "Users" where "churchName"='Regression Church'` → `regression-church-<bk email>`, `client`.
 
 Then try adding "Regression Church" again. Expected: toast "A church with this name already exists".
 
-- [ ] **Step 4: Bookkeeper works on the new church**
+- [x] **Step 4: Bookkeeper works on the new church**
 
 Switch to "Regression Church" in the NavBar and open Settings → Integrations. Expected: page loads (the effective email resolves to the synthetic client; `getUserRelated`/settings calls succeed).
 
-- [ ] **Step 5: Google sign-in unaffected**
+- [x] **Step 5: Google sign-in unaffected**
 
 Not testable locally without the OAuth redirect configured for localhost — note as untested in the summary; SuperTokens marks provider-verified emails as verified, so the Google flows need no change.
 
-- [ ] **Step 6: Record what was verified**
+- [x] **Step 6: Record what was verified**
 
 Append to the plan's own "Verification log" section (create it at the bottom): date, each browser check from Tasks 6-10 with pass/fail, screenshot paths.
 
-- [ ] **Step 7: Push both branches (no deploy)**
+- [x] **Step 7: Push both branches (no deploy)**
 
 ```bash
 cd /Volumes/T7/OtherProject/quickplan-connect && git push
