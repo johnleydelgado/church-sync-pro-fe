@@ -16,7 +16,7 @@ const pcGetFunds = async ({ email }: { email: string | null | undefined }) => {
   // await axios.get
   const url = pcRoutes.getFunds
   try {
-    const response = await apiCall.get(url + `?email=${encodeURIComponent(email)}`)
+    const response = await apiCall.get(url + `?email=${encodeURIComponent(email ?? '')}`)
     const data = response.data.data.map((item: any) => {
       return {
         ...item,
