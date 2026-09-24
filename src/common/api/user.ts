@@ -271,7 +271,9 @@ const getUserRelated = async (email: string) => {
   // await axios.get
   const url = userRoutes.getUserRelated
   try {
-    const response = await apiCall.get(url + `?email=${email}`)
+    // Encoded: a '+' in an address would otherwise reach Express as a space and
+    // the user would not be found.
+    const response = await apiCall.get(url + `?email=${encodeURIComponent(email)}`)
     return response.data
   } catch (e: any) {
     return []
@@ -467,7 +469,7 @@ const getDailyJournalEntries = async (
   email: string,
 ): Promise<DailyJournalEntriesData> => {
   const url = userRoutes.getDailyJournalEntries
-  const res = await apiCall.get(url + `?email=${email}`)
+  const res = await apiCall.get(url + `?email=${encodeURIComponent(email)}`)
   return res.data.data
 }
 
