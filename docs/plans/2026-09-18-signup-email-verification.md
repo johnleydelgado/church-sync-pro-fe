@@ -1386,3 +1386,17 @@ Backend `csp-be-00018-p55` (branch tip), frontend `csp-fe-00012-d4t` then `csp-f
 | Google sign-in | untested (no localhost/staging OAuth client); untouched code path |
 
 Two real bugs surfaced by testing with a plus-address, both pre-existing and both fixed. Production untouched.
+
+## Repeatable staging run — `quickplan-connect/scripts/staging-e2e/run.sh` (2026-09-25)
+
+Drives the whole flow on staging through ego-browser (watchable live in Ego Lite, task
+space "CSP staging E2E <tag>") and prints a PASS/FAIL table: bogus link, client sign-up,
+bounce, unverified login, verify, login, bookkeeper sign-up/verify/login, Clients page
+(add, reload, duplicate, DB row), invitation (send, DB row), acceptance (form, no inbox
+stop, lands on the inviting church, DB row). `run.sh <tag> <stage>` resumes a run.
+Run 064559: **25 passed, 0 failed** on csp-be-00020 / csp-fe-00013.
+
+The first automated run found `Users.churchName` was VARCHAR(32): a 36-character name
+failed the insert after the SuperTokens login existed. Fixed by migration
+20260925000004 (churchName 256, first/last 64) and a rollback in `createClientChurch`
+that deletes the SuperTokens login if the church rows fail.
