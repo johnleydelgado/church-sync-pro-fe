@@ -2,7 +2,18 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 >
-> **STATUS: PROPOSAL — do not execute past Phase 0 until Church Finance Pros (Jake) confirms the direction.** Phases 1–4 are written against the schema as it is on 2026-09-18 and will need re-verifying against the code at execution time.
+> **STATUS (2026-09-25): Phase 1 in progress, local + staging only.** Jake was given a
+> heads-up by Johnley on 2026-09-25; nothing here runs against production until CFP says so.
+>
+> **Phase 0 answers, recorded 2026-09-25:**
+> - Q1 team-level vs per-church access — *open with Jake, non-blocking*: Phase 1's tables are the
+>   same either way; team-level would be an `Organizations` layer added later.
+> - Q2 who may connect integrations — *default kept*: owner always; bookkeeper when
+>   `integrationAccessEnabled` on their membership (the old `bookkeeperIntegrationAccessEnabled`).
+> - Q3 billing — *default kept*: stays on the paying user (`billing.userId`), no churchId.
+> - Q4 production data (read 2026-09-25) — 2 users (Matt = client "Active Church", Johnley =
+>   bookkeeper), 3 `bookkeeper` rows (Johnley accepted; two CFP invites from 9/23 still
+>   unaccepted, `userId` null), 6 `DailyJeSync` rows all under Matt. Backfill handles all of it.
 
 **Goal:** A church becomes its own record that any number of people can work on, instead of being a login with a church name on it — so one client account can run several churches, and CFP can add a church without creating a fake user for it.
 
@@ -44,16 +55,18 @@
 
 Questions whose answers change Phases 1–3. Ask before writing migrations.
 
-- [ ] **Q1.** One church, many people — does CFP want *team-level* access ("everyone at CFP sees all our churches") or per-person-per-church as today? Per-person is what this plan builds; team-level adds an `Organizations` table and one more join and can be layered on later without redoing this.
-- [ ] **Q2.** When a church has both an owner (the church's own login) and CFP bookkeepers, who may connect QuickBooks/Planning Center? Today: owner always; bookkeeper only when `bookkeeperIntegrationAccessEnabled`. Keep that flag per membership (this plan does).
-- [ ] **Q3.** Billing: per church or per payer account? This plan leaves `Billing` on the user (payer) and adds nothing.
-- [ ] **Q4.** Existing production data: one client (Matt's account, "Active Church") with CFP attached. Backfill is trivial; confirm nothing else has been created on prod since 2026-09-17.
+- [x] **Q1.** One church, many people — does CFP want *team-level* access ("everyone at CFP sees all our churches") or per-person-per-church as today? Per-person is what this plan builds; team-level adds an `Organizations` table and one more join and can be layered on later without redoing this.
+- [x] **Q2.** When a church has both an owner (the church's own login) and CFP bookkeepers, who may connect QuickBooks/Planning Center? Today: owner always; bookkeeper only when `bookkeeperIntegrationAccessEnabled`. Keep that flag per membership (this plan does).
+- [x] **Q3.** Billing: per church or per payer account? This plan leaves `Billing` on the user (payer) and adds nothing.
+- [x] **Q4.** Existing production data: one client (Matt's account, "Active Church") with CFP attached. Backfill is trivial; confirm nothing else has been created on prod since 2026-09-17.
 
 Record the answers at the top of this file, then proceed.
 
 ---
 
 ## Phase 1 — Additive schema + backfill (safe to deploy alone)
+
+**Done 2026-09-25** — commits `006aede`, `9783729` (quickplan-connect). Applied to local and **staging** (`Staging Test Church`, 1 owner, 0 unstamped rows); NOT applied to production. Table names verified: `Users`, `UserSettings`, `UserSync`, `DailyJeSync`, `bookkeeper`, `tokens`, `registration`, `userEmailPreferences`, plus `email_logs`/`token_entity` on staging and prod only (the column migration skips absent tables). Backfill rules: `src/db/churchBackfillPlan.js`; tests: `src/db/__tests__/churchBackfillPlan.test.ts` (5) and `src/db/migrations/__tests__/churches.integration.test.ts` (3, real Postgres).
 
 After this phase nothing behaves differently: new tables exist and every existing church has a `Churches` row and memberships, but all code still reads `userId`/`email`.
 
@@ -69,9 +82,9 @@ After this phase nothing behaves differently: new tables exist and every existin
 - Produces: `Church { id, name, ownerUserId: number | null, isActive }`, `ChurchMember { id, churchId, userId, role: 'owner' | 'bookkeeper', integrationAccessEnabled, invitedEmail, invitationToken, inviteAccepted }`.
 - `User.hasMany(ChurchMember, { foreignKey: 'userId' })`, `Church.hasMany(ChurchMember, { foreignKey: 'churchId' })`, `ChurchMember.belongsTo(Church)`, `ChurchMember.belongsTo(User)`.
 
-- [ ] **Step 1: Confirm actual table names** — run `psql` (local) `\dt` and note the exact names (`Users`, `UserSettings`, `tokens`, `bookkeepers`?, …). Sequelize pluralises model names unless `tableName` is set; none of the models set it. Use the names `\dt` prints in every migration below.
+- [x] **Step 1: Confirm actual table names** — run `psql` (local) `\dt` and note the exact names (`Users`, `UserSettings`, `tokens`, `bookkeepers`?, …). Sequelize pluralises model names unless `tableName` is set; none of the models set it. Use the names `\dt` prints in every migration below.
 
-- [ ] **Step 2: Migration**
+- [x] **Step 2: Migration**
 
 ```js
 'use strict';
@@ -136,7 +149,7 @@ module.exports = {
 };
 ```
 
-- [ ] **Step 3: Models** — follow `userSettings.ts` exactly (class extends `Model`, `init({...}, { sequelize, modelName })`, associations at the bottom of the file).
+- [x] **Step 3: Models** — follow `userSettings.ts` exactly (class extends `Model`, `init({...}, { sequelize, modelName })`, associations at the bottom of the file).
 
 ```ts
 // src/db/models/church.ts
@@ -227,7 +240,7 @@ User.hasMany(ChurchMember, { foreignKey: 'userId', as: 'Memberships' });
 export default ChurchMember;
 ```
 
-- [ ] **Step 4: Association smoke test** (mirrors how other model files are loaded in the suite — mock `../config` the way existing model tests do, or if none exist, this test only asserts the association names):
+- [x] **Step 4: Association smoke test** (mirrors how other model files are loaded in the suite — mock `../config` the way existing model tests do, or if none exist, this test only asserts the association names):
 
 ```ts
 // src/db/models/__tests__/churchAssociations.test.ts
@@ -246,11 +259,11 @@ it('links members to churches and users under the names the controllers will use
 
 (If `sqlite3` is not installed, `npm i -D sqlite3` — dev-only. If the config module cannot be mocked this way, drop the test and rely on the migration run.)
 
-- [ ] **Step 5: Run locally**
+- [x] **Step 5: Run locally**
 
 `NODE_ENV=development npx sequelize-cli db:migrate` → both tables exist (`\dt`), `npx jest src/db/models/__tests__/churchAssociations.test.ts` PASS, `npx tsc --noEmit` clean.
 
-- [ ] **Step 6: Commit** — `git commit -m "Add Churches and ChurchMembers tables and models (additive)"`.
+- [x] **Step 6: Commit** — `git commit -m "Add Churches and ChurchMembers tables and models (additive)"`.
 
 ### Task 2: `churchId` on every per-church table (nullable, additive)
 
@@ -258,10 +271,10 @@ it('links members to churches and users under the names the controllers will use
 - Create: `quickplan-connect/src/db/migrations/20260925000002-add-churchid-columns.js`
 - Modify: `userSettings.ts`, `tokens.ts`, `UserSync.ts`, `DailyJeSync.ts`, `SyncRun.ts` (if it has `userId` — confirm), `registration.ts`, `emailLog.ts`, `userEmailPreferences.ts` — add `churchId?: number | null` attribute + `DataTypes.INTEGER, allowNull: true`.
 
-- [ ] **Step 1: Migration** — one `addColumn(<table>, 'churchId', { type: Sequelize.INTEGER, allowNull: true, references: { model: 'Churches', key: 'id' } })` per table in the list, plus an index on each; `down` removes them in reverse.
-- [ ] **Step 2: Models** — add the attribute to each interface/class/`init` (three places per file, same as `clearingBalanceAtGoLiveCents` was added to `userSettings.ts`).
-- [ ] **Step 3: Migrate locally, `tsc`, full jest** — no behaviour change expected: `Test Suites:` count unchanged, all passing.
-- [ ] **Step 4: Commit** — `"Add nullable churchId to every per-church table (additive)"`.
+- [x] **Step 1: Migration** — one `addColumn(<table>, 'churchId', { type: Sequelize.INTEGER, allowNull: true, references: { model: 'Churches', key: 'id' } })` per table in the list, plus an index on each; `down` removes them in reverse.
+- [x] **Step 2: Models** — add the attribute to each interface/class/`init` (three places per file, same as `clearingBalanceAtGoLiveCents` was added to `userSettings.ts`).
+- [x] **Step 3: Migrate locally, `tsc`, full jest** — no behaviour change expected: `Test Suites:` count unchanged, all passing.
+- [x] **Step 4: Commit** — `"Add nullable churchId to every per-church table (additive)"`.
 
 ### Task 3: Backfill — one church per client login, memberships from `bookkeeper`
 
@@ -270,7 +283,7 @@ it('links members to churches and users under the names the controllers will use
 - Test: `quickplan-connect/src/db/migrations/__tests__/backfillChurches.test.ts` (tests the pure planning function)
 - Create: `quickplan-connect/src/utils/backfillChurches.ts` (pure: input rows → output rows, so it can be unit tested)
 
-- [ ] **Step 1: Pure planner + test**
+- [x] **Step 1: Pure planner + test**
 
 ```ts
 // src/utils/backfillChurches.ts
@@ -298,11 +311,11 @@ export const planBackfill = (clients: ClientRow[], bookkeepers: BookkeeperRow[])
 
 Test cases: (a) two clients + one bookkeeper on client 1 → 2 churches, 3 members; (b) a bookkeeper row whose `clientId` has no client login is skipped; (c) empty `churchName` gets the fallback name; (d) an outstanding invite (`userId` null) becomes a member with `userId: null`, `inviteAccepted: false`.
 
-- [ ] **Step 2: Migration** — inside one transaction: `SELECT id, "churchName", "isActive" FROM "Users" WHERE role = 'client'`, `SELECT * FROM <bookkeeper table>`, call `planBackfill`, `bulkInsert('Churches')`, re-select ids by `ownerUserId`, `bulkInsert('ChurchMembers')` with the resolved `churchId`, then for each per-church table: `UPDATE <table> t SET "churchId" = c.id FROM "Churches" c WHERE c."ownerUserId" = t."userId" AND t."churchId" IS NULL`. `down`: null every `churchId`, delete `ChurchMembers`, delete `Churches`.
+- [x] **Step 2: Migration** — inside one transaction: `SELECT id, "churchName", "isActive" FROM "Users" WHERE role = 'client'`, `SELECT * FROM <bookkeeper table>`, call `planBackfill`, `bulkInsert('Churches')`, re-select ids by `ownerUserId`, `bulkInsert('ChurchMembers')` with the resolved `churchId`, then for each per-church table: `UPDATE <table> t SET "churchId" = c.id FROM "Churches" c WHERE c."ownerUserId" = t."userId" AND t."churchId" IS NULL`. `down`: null every `churchId`, delete `ChurchMembers`, delete `Churches`.
 
   The migration must `require` the compiled planner: sequelize-cli runs plain JS, so either `require('ts-node/register')` at the top (check how `.sequelizerc` / existing migrations resolve TS — none do today) or duplicate the 15-line planner inside the migration and keep the TS one as the tested source of truth. Prefer the duplicate; note it in a comment.
 
-- [ ] **Step 3: Run on local, then verify with SQL**
+- [x] **Step 3: Run on local, then verify with SQL**
 
 ```sql
 select count(*) from "Churches";                                   -- = number of client users
@@ -311,7 +324,7 @@ select count(*) from "UserSettings" where "churchId" is null;      -- 0 for rows
 select count(*) from "DailyJeSync" where "churchId" is null;       -- 0
 ```
 
-- [ ] **Step 4: Commit** — `"Backfill one church per client login and memberships from the bookkeeper table"`.
+- [x] **Step 4: Commit** — `"Backfill one church per client login and memberships from the bookkeeper table"`.
 
 **Phase 1 deploy note:** migrations to staging, then prod (`make migrate-prd`) — no backend change needed yet. Verify the SQL above on each.
 
