@@ -215,13 +215,13 @@ re-saving the start date re-opens it. Design and arithmetic:
 `docs/plans/2026-09-16-clearing-transition-panel.md`.
 
 **Two `formatUsd` helpers exist and they disagree.** `@/common/utils/helper`'s
-divides by 100 (cents in); the daily/statement/Stripe Giving pages define a local
+divides by 100 (cents in); the Clearing/statement/Daily Giving pages define a local
 one that formats dollars directly, because those endpoints return dollars. Mixing
 them is a silent 100× error.
 
 ### Pages
 
-`src/pages/Main/*` are the app's feature areas: `transaction` (now the Stripe Giving page; `view-details`, `view-detail-stripe` are legacy batch/payout views), `automation` (`mapping`, `archive`), `client` (client management table — actively being built, see git status), `settings` (sub-pages: Account/Integrations, Billing, Profile, Bookkeeper, Projects, Email), `dashboard`, `home`, `ask-us`, `quick-start-guide`, `accounts-token`. `src/pages/Auth/*` holds login/signup/password flows; `src/pages/Subscription/*` holds the Stripe subscription plan page. Feature-specific components live in a `components/` folder next to their page.
+`src/pages/Main/*` are the app's feature areas: `transaction` (now the Daily Giving page; `view-details`, `view-detail-stripe` are legacy batch/payout views), `automation` (`mapping`, `archive`), `client` (client management table — actively being built, see git status), `settings` (sub-pages: Account/Integrations, Billing, Profile, Bookkeeper, Projects, Email), `dashboard`, `home`, `ask-us`, `quick-start-guide`, `accounts-token`. `src/pages/Auth/*` holds login/signup/password flows; `src/pages/Subscription/*` holds the Stripe subscription plan page. Feature-specific components live in a `components/` folder next to their page.
 
 ### Roles
 

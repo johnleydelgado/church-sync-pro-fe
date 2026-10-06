@@ -69,7 +69,7 @@ const UNAVAILABLE_COPY: Record<string, string> = {
  *
  * Money arrives late: an ACH gift given on the 15th is still "in transit" when the 15th is
  * posted and only settles days later. Once it does, Planning Center's total for the day is
- * larger than what CSP posted, and that gap is what "Post the difference" sends - the engine
+ * larger than what CSP posted, and that gap is what the "Add $X" button sends - the engine
  * posts only the delta, as an adjusting entry still dated the 15th. Zero for any day that is
  * not posted, or that has not grown.
  */
