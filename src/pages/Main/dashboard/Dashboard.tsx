@@ -5,7 +5,7 @@ import { Navigate } from 'react-router-dom'
 interface DashboardProps {}
 
 const Dashboard: FC<DashboardProps> = ({}) => {
-  return <Navigate to={mainRoute.DAILY} replace />
+  return <Navigate to={mainRoute.TRANSACTION} replace />
 }
 
 export default Dashboard

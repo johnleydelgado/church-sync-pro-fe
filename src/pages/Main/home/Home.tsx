@@ -5,7 +5,7 @@ import { Navigate } from 'react-router-dom'
 interface HomeProps {}
 
 const Home: FC<HomeProps> = ({}) => {
-  return <Navigate to={mainRoute.DAILY} replace />
+  return <Navigate to={mainRoute.TRANSACTION} replace />
 }
 
 export default Home

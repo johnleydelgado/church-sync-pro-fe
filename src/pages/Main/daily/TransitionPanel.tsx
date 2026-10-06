@@ -2,6 +2,8 @@ import React, { FC, useState } from 'react'
 import { useMutation, useQueryClient } from 'react-query'
 import { Button } from '@material-tailwind/react'
 import {
+  HiChevronDown,
+  HiChevronUp,
   HiOutlineExclamationCircle,
   HiOutlineCheckCircle,
 } from 'react-icons/hi'
@@ -38,6 +40,9 @@ const TransitionPanel: FC<TransitionPanelProps> = ({
 }) => {
   const queryClient = useQueryClient()
   const [confirming, setConfirming] = useState(false)
+  // Folded by default: a once-only job, and the true-up is the riskiest figure on the page to
+  // act on without reading the explanation that goes with it.
+  const [open, setOpen] = useState(false)
 
   const trueUp = useMutation(async () => markTransitionTruedUp(email), {
     onSuccess: () => {
@@ -53,14 +58,51 @@ const TransitionPanel: FC<TransitionPanelProps> = ({
   const unreadable = transition.qboBalance === null
   const hasTrueUp = (transition.trueUp ?? 0) > 0
 
+  const summary = notCaptured || unreadable
+    ? 'figures unavailable'
+    : hasTrueUp
+    ? `one-time true-up ${usd(transition.trueUp)}`
+    : 'nothing to true up yet'
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-expanded={false}
+        className="mt-8 flex w-full flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-left print:hidden"
+      >
+        <span className="text-sm font-semibold text-amber-800">
+          Switch-over to CSP on {formatDate(transition.goLiveDay)} ·{' '}
+          <span className="font-normal">{summary}</span>
+        </span>
+        <span className="flex items-center gap-1 text-sm font-semibold text-amber-800">
+          Show details
+          <HiChevronDown size={18} />
+        </span>
+      </button>
+    )
+  }
+
   return (
-    <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-5 print:hidden">
+    <div className="mt-8 rounded-xl border border-amber-200 bg-amber-50 p-5 print:hidden">
+      <button
+        type="button"
+        onClick={() => setOpen(false)}
+        aria-expanded
+        className="flex w-full items-center justify-between gap-2 pb-2 text-left"
+      >
+        <span className="text-sm font-semibold text-amber-800">
+          Switch-over to CSP on {formatDate(transition.goLiveDay)}
+        </span>
+        <span className="flex items-center gap-1 text-sm font-semibold text-amber-800">
+          Hide
+          <HiChevronUp size={18} />
+        </span>
+      </button>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold text-amber-800">
-            Switching to CSP on {formatDate(transition.goLiveDay)}
-          </p>
-          <p className="max-w-2xl pt-1 text-sm text-amber-900/80">
+          <p className="max-w-2xl text-sm text-amber-900/80">
             Until the last Stripe deposit from before that date has landed,
             deposits will mix old-process money with money CSP posted. Clear
             each deposit in full against the clearing account anyway — the
@@ -105,7 +147,7 @@ const TransitionPanel: FC<TransitionPanelProps> = ({
         <p className="flex items-center gap-2 pt-4 text-sm text-red-600">
           <HiOutlineExclamationCircle size={16} />
           The clearing balance at go-live was not captured (QuickBooks could not
-          be read at the time). Re-save the start date on the Stripe Giving page
+          be read at the time). Re-save the start date on the Daily Giving page
           to capture it.
         </p>
       ) : unreadable ? (
@@ -145,8 +187,8 @@ const TransitionPanel: FC<TransitionPanelProps> = ({
               </p>
               <p className="pt-1 text-sm text-gray-600">
                 {usd(transition.trueUp)} more has been cleared out of the
-                account than CSP ever put in. That is old-process money that
-                came through a Stripe deposit after go-live.
+                account than CSP ever put in. Usually that is giving from
+                before go-live that came through a Stripe deposit afterwards.
               </p>
 
               {/* The entry itself, rather than the amount alone. The credit side is
@@ -177,6 +219,21 @@ const TransitionPanel: FC<TransitionPanelProps> = ({
                   </tbody>
                 </table>
               </div>
+
+              {/* CSP cannot see inside a deposit, so it cannot tell giving from event money in
+                  this leftover - and Planning Center pays both out in the same deposit. */}
+              <p className="mt-3 flex gap-2 rounded-md bg-amber-50 p-3 text-sm text-amber-900">
+                <HiOutlineExclamationCircle
+                  size={18}
+                  className="mt-0.5 shrink-0 text-amber-700"
+                />
+                <span>
+                  Check before posting: if your Stripe deposits also carry event
+                  or registration payments, part of this amount is event income,
+                  not giving. CSP doesn&apos;t record those, so they end up here
+                  too. Split that part out first.
+                </span>
+              </p>
 
               <p className="pt-3 text-sm text-gray-600">
                 Post that entry, then mark the transition trued up. Read this a

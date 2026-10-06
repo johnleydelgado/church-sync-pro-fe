@@ -17,6 +17,18 @@ const usd = (n: number | null | undefined) =>
 const thisMonth = () => new Date().toISOString().slice(0, 7)
 
 /**
+ * The month the statement opens on. Month-end close happens in the first days of the next
+ * month, so until the 10th it opens on LAST month - the one being closed - rather than a
+ * month that has barely started.
+ */
+const defaultMonth = () => {
+  const now = new Date()
+  if (now.getDate() > 10) return thisMonth()
+  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+  return `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`
+}
+
+/**
  * Monthly clearing-account statement. This is what the client's accounting team
  * reconciles against at month end: every line is something Church Sync Pro posted,
  * with the QuickBooks entry and Planning Center batch behind it. The closing
@@ -26,7 +38,7 @@ const thisMonth = () => new Date().toISOString().slice(0, 7)
 const ClearingStatement: FC = () => {
   const { user } = useSelector((state: RootState) => state.common)
   const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
-  const [month, setMonth] = useState<string>(thisMonth())
+  const [month, setMonth] = useState<string>(defaultMonth())
 
   const email =
     user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
@@ -44,21 +56,26 @@ const ClearingStatement: FC = () => {
       year: 'numeric',
     },
   )
+  const monthName = monthLabel.split(' ')[0]
+  // The QuickBooks balance is read live. Against the current month's running total the
+  // difference is what has been cleared out; against a past month's it mixes two dates (that
+  // month's postings, today's balance) and means nothing, so it is not shown.
+  const isCurrentMonth = month === thisMonth()
 
   return (
     <section className="statement pt-10">
       <div className="flex flex-wrap items-end justify-between gap-4 border-b-2 pb-4">
         <div>
           <h2 className="text-lg font-bold text-primary">
-            Clearing account statement
+            Monthly statement
           </h2>
           <p className="max-w-2xl pt-1 text-sm text-gray-500">
-            Everything Church Sync Pro posted to
+            Everything CSP posted to
             {data?.clearingAccount?.name
               ? ` ${data.clearingAccount.name}`
               : ' your clearing account'}{' '}
-            this month, with the QuickBooks entry behind each line. Reconcile it
-            against the account&apos;s activity in QuickBooks at month end.
+            in {monthLabel}, with the QuickBooks entry behind each line.
+            Reconcile it against the account in QuickBooks.
           </p>
         </div>
         <div className="flex items-center gap-2 print:hidden">
@@ -85,18 +102,10 @@ const ClearingStatement: FC = () => {
         <p className="py-6 text-sm text-gray-400">Loading {monthLabel}…</p>
       ) : (
         <>
-          {data.transition && !data.transition.truedUpAt ? (
-            <TransitionPanel
-              email={email}
-              transition={data.transition}
-              clearingAccountName={data.clearingAccount?.name}
-            />
-          ) : null}
-
           <div className="grid grid-cols-2 gap-4 py-6 md:grid-cols-4">
             <div className="rounded-xl border border-gray-100 bg-slate-50 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-                Opening
+                Posted before {monthName}
               </p>
               <p className="pt-1 text-xl font-bold text-primary">
                 {usd(data.opening)}
@@ -104,7 +113,7 @@ const ClearingStatement: FC = () => {
             </div>
             <div className="rounded-xl border border-gray-100 bg-slate-50 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-                Net added in {monthLabel.split(' ')[0]}
+                Posted in {monthName}
               </p>
               <p className="pt-1 text-xl font-bold text-success">
                 {usd(data.totals.net)}
@@ -112,7 +121,7 @@ const ClearingStatement: FC = () => {
             </div>
             <div className="rounded-xl border border-gray-100 bg-slate-50 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-                Closing (posted by CSP)
+                Posted through {monthName}
               </p>
               <p className="pt-1 text-xl font-bold text-primary">
                 {usd(data.closing)}
@@ -121,10 +130,10 @@ const ClearingStatement: FC = () => {
             <div className="rounded-xl border border-gray-100 bg-slate-50 p-4">
               <div className="flex items-center gap-1">
                 <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-                  In QuickBooks now
+                  QuickBooks balance today
                 </p>
                 <Tooltip
-                  content="The clearing account's live balance in QuickBooks. It is lower than CSP's closing figure by whatever your team has already reconciled against bank deposits."
+                  content="The clearing account's live balance in QuickBooks, today - not at the end of the month. It is lower than what CSP posted by whatever has been cleared against bank deposits."
                   className="max-w-xs bg-gray-800 text-xs"
                 >
                   <span>
@@ -142,6 +151,11 @@ const ClearingStatement: FC = () => {
                 <p className="pt-0.5 text-xs text-gray-400">
                   Not readable from QuickBooks
                 </p>
+              ) : !isCurrentMonth ? (
+                <p className="pt-0.5 text-xs text-gray-400">
+                  Today&apos;s balance, not the balance at the end of{' '}
+                  {monthName}
+                </p>
               ) : data.difference > 0 ? (
                 // QuickBooks is below CSP's figure: money has been cleared out. During a
                 // switch-over that includes old-process money, which is NOT reconciliation -
@@ -149,8 +163,8 @@ const ClearingStatement: FC = () => {
                 <p className="pt-0.5 text-xs text-gray-400">
                   {usd(data.difference)}{' '}
                   {data.transition && !data.transition.truedUpAt
-                    ? 'cleared out — see the switch-over panel'
-                    : 'already reconciled'}
+                    ? 'cleared out — see the switch-over below'
+                    : 'cleared against deposits'}
                 </p>
               ) : data.difference < 0 ? (
                 // QuickBooks is ABOVE CSP's figure: the account holds money CSP never posted —
@@ -177,10 +191,10 @@ const ClearingStatement: FC = () => {
                   <tr>
                     <th className="px-4 py-3 text-left">Date</th>
                     <th className="px-4 py-3 text-right">Giving</th>
-                    <th className="px-4 py-3 text-right">Fees</th>
+                    <th className="px-4 py-3 text-right">Stripe fees</th>
                     <th className="px-4 py-3 text-right">Refunds</th>
-                    <th className="px-4 py-3 text-right">Net to clearing</th>
-                    <th className="px-4 py-3 text-right">Running balance</th>
+                    <th className="px-4 py-3 text-right">To clearing</th>
+                    <th className="px-4 py-3 text-right">Running total</th>
                     <th className="px-4 py-3 text-left">QuickBooks entries</th>
                   </tr>
                 </thead>
@@ -190,19 +204,19 @@ const ClearingStatement: FC = () => {
                       <td className="px-4 py-2 font-medium text-primary">
                         {formatDate(l.date)}
                       </td>
-                      <td className="px-4 py-2 text-right tabular-nums text-success">
+                      <td className="px-4 py-2 whitespace-nowrap text-right tabular-nums text-success">
                         {usd(l.gross)}
                       </td>
-                      <td className="px-4 py-2 text-right tabular-nums text-gray-500">
+                      <td className="px-4 py-2 whitespace-nowrap text-right tabular-nums text-gray-500">
                         {usd(l.fees)}
                       </td>
-                      <td className="px-4 py-2 text-right tabular-nums text-red-600">
+                      <td className="px-4 py-2 whitespace-nowrap text-right tabular-nums text-red-600">
                         {l.refundsGross ? `−${usd(l.refundsGross)}` : '—'}
                       </td>
-                      <td className="px-4 py-2 text-right tabular-nums font-medium text-primary">
+                      <td className="px-4 py-2 whitespace-nowrap text-right tabular-nums font-medium text-primary">
                         {usd(l.net)}
                       </td>
-                      <td className="px-4 py-2 text-right tabular-nums text-gray-600">
+                      <td className="px-4 py-2 whitespace-nowrap text-right tabular-nums text-gray-600">
                         {usd(l.runningBalance)}
                       </td>
                       <td className="px-4 py-2 font-mono text-xs text-gray-500">
@@ -222,21 +236,21 @@ const ClearingStatement: FC = () => {
                 <tfoot className="border-t-2 bg-slate-50 font-semibold">
                   <tr>
                     <td className="px-4 py-3">Totals</td>
-                    <td className="px-4 py-3 text-right tabular-nums">
+                    <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums">
                       {usd(data.totals.gross)}
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums">
+                    <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums">
                       {usd(data.totals.fees)}
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums">
+                    <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums">
                       {data.totals.refundsGross
                         ? `−${usd(data.totals.refundsGross)}`
                         : '—'}
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums">
+                    <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums">
                       {usd(data.totals.net)}
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums">
+                    <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums">
                       {usd(data.closing)}
                     </td>
                     <td className="px-4 py-3" />
@@ -247,9 +261,19 @@ const ClearingStatement: FC = () => {
           )}
           <p className="pt-3 text-xs text-gray-400">
             Generated {new Date(data.generatedAt).toLocaleString()}. Figures are
-            what Church Sync Pro posted; the QuickBooks balance is read live and
-            includes any reconciliation your team has done.
+            what CSP posted; the QuickBooks balance is read live and includes
+            any reconciliation your team has done.
           </p>
+
+          {/* The one-time switch-over. Below the statement, folded away: it is a once-only job,
+              and its figure is the riskiest number on the page to act on unread. */}
+          {data.transition && !data.transition.truedUpAt ? (
+            <TransitionPanel
+              email={email}
+              transition={data.transition}
+              clearingAccountName={data.clearingAccount?.name}
+            />
+          ) : null}
         </>
       )}
     </section>
