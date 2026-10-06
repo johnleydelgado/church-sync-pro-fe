@@ -21,6 +21,33 @@ There is effectively no test suite yet (only the CRA boilerplate `src/App.test.t
 
 **Local dev must run on port 3000.** The backend's CORS origin is `WEBSITE_URL`, defaulting to `http://localhost:3000`; start the frontend on another port and every request — including the login POST — is rejected by the browser with no visible error in the UI. If 3000 is held by another project, free it rather than moving CSP (or restart the backend with `WEBSITE_URL=http://localhost:<port>`).
 
+### Branches: `main` is production, `develop` is staging
+
+The same rule holds in the backend repo (`quickplan-connect`), set up 2026-10-06.
+
+- **`main` is what runs in production**, nothing more. `make deploy-prd` (and the
+  backend's `make migrate-prd`) refuse to run unless the checkout is on `main`, clean,
+  and equal to `origin/main`.
+- **`develop` is what runs on staging.** Everything lands there first. Work not ready
+  for the live church — sign-up email verification, churches-as-entities — stays on
+  `develop` only until it is released on purpose.
+- **Start new work from `main`, not `develop`:** `git switch -c feat/<thing> origin/main`.
+  Merge it into `develop` to try it on staging; merge it into `main` when it should
+  ship. A branch cut from `develop` drags all of develop's unreleased work with it and
+  can never ship alone. The exception is work that builds on develop-only code
+  (anything touching email verification or churches): it ships together with that work.
+- **Hotfix:** branch from `main`, merge into `main`, deploy, then merge `main` into
+  `develop`.
+- **Deploy production from `../church-sync-pro-prod`** (and `../quickplan-connect-prod`
+  for the backend): permanent worktrees that stay on `main` and already hold the
+  gitignored `.env.production` (backend: `config.json` too, and a `node_modules` symlink
+  to the main checkout's for `make migrate-prd`). `git pull --ff-only` there, then
+  `make deploy-prd`. Never switch those worktrees to another branch.
+
+Before this, production was deployed from hand-made cherry-pick worktrees that were
+never pushed, so GitHub had no record of what was live, and `main`/`develop` were
+years stale.
+
 ### Deploy (Google Cloud Run, via Makefile)
 
 ```bash
