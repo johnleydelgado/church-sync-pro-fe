@@ -189,7 +189,7 @@ and refunded), and the row shows them as "3 in transit · $487.60 not settled ye
 They are deliberately NOT in `gross`, `fees` or `net`; only settled money is.
 
 When those gifts settle, Planning Center's total for the day outgrows `postedGross`
-and the row offers **Post the difference** (`unpostedDifference()` in
+and the row reads *Partly in QuickBooks* with an **Add $X** button (`unpostedDifference()` in
 `StripeGivingTable.tsx`). It calls the same `postStripeGivingDay`; the engine posts
 only the delta as an *adjusting* entry still dated the original day, leaving the first
 entry untouched. Before this, the button vanished the moment a day read Posted, so
