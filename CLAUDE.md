@@ -59,20 +59,17 @@ Both deploy to project `church-sync-pro-385703`, region `us-central1`. Env vars 
 
 Run `make deploy-*` **from the repo you mean to deploy**. The backend (`quickplan-connect`) has its own Makefile with the same target names; its `deploy-stg` also rebuilds SuperTokens (and gets rate-limited by `registry.supertokens.io`), so use `make deploy-stg-be` there. Backend `make deploy-prd` is backend-only. After a deploy, confirm the live bundle rather than trusting the message: `curl -s https://csp-fe-prd-n32ggvrsvq-uc.a.run.app/ | grep -o 'static/js/main\.[a-z0-9]*\.js'` then grep that file for a string you shipped. The `gcloud` account silently reverts to a different Google account; `export CLOUDSDK_CORE_ACCOUNT=johnley00@gmail.com` before any deploy or Artifact Registry pushes 403.
 
-Database migrations are NOT part of deploy. Run them first, from the backend repo: `NODE_ENV=staging npx sequelize-cli db:migrate` and `make migrate-prd`.
+Database migrations are NOT part of deploy. Run them first, from the backend repo: `NODE_ENV=staging npx sequelize-cli db:migrate` and `make migrate-prd` (from `../quickplan-connect-prod`).
 
-**Look at what else is on the branch tip before you deploy.** More than one session
-works in these repos, so `make deploy-prd` from a branch tip ships whatever anyone else
-committed there too. On 2026-09-18 both tips carried unshipped email-verification work
-that refuses every existing login until a script runs (see below) — deploying a
-one-line UI change from the tip would have locked the live church out. Deploy from a
-worktree holding only what you mean to ship:
+**Never deploy production from a branch tip.** More than one session works in these
+repos, so a tip carries whatever anyone else committed there too. On 2026-09-18 both
+tips carried unshipped email-verification work that refuses every existing login until
+a script runs (see below) — deploying a one-line UI change from the tip would have
+locked the live church out. That is why production now ships only from `main`, from the
+`../<repo>-prod` worktrees (see Branches above):
 
 ```bash
-git worktree add ../<repo>-deploy <commit that is currently live> -b deploy/<thing>-<date>
-cd ../<repo>-deploy && git cherry-pick <your commits>
-cp ../<repo>/.env.production .            # gitignored, so the worktree has none
-cp ../<repo>/src/db/config/config.json .  # backend only, also gitignored
+cd ../church-sync-pro-prod && git pull --ff-only
 export CLOUDSDK_CORE_ACCOUNT=johnley00@gmail.com && make deploy-prd
 ```
 
