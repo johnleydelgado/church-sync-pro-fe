@@ -86,14 +86,16 @@ export const dropdownArrLinkSettings: DropdownLink[] = [
 ]
 
 const pages: PageProps[] = [
+  // One job per page: Daily Giving is the daily work (what's posted, what's waiting), Clearing
+  // is month-end (the balance and the statement). They used to list the same days twice.
   {
-    name: 'Daily Sync',
-    link: mainRoute.DAILY,
+    name: 'Daily Giving',
+    link: mainRoute.TRANSACTION,
     icon: <BiCalendarCheck size={30} />,
   },
   {
-    name: 'Stripe Giving',
-    link: '/transaction',
+    name: 'Clearing',
+    link: mainRoute.DAILY,
     icon: <HiOutlineDocumentText size={30} />,
   },
   {

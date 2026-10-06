@@ -154,17 +154,26 @@ debiting a clearing account for the net Stripe will deposit later. Cash, cheques
 manually entered gifts are explicitly out of scope. Planning Center is the source of
 truth; the Stripe payout matters only when reconciling the clearing account.
 
-`src/pages/Main/daily/DailyJournalEntries.tsx` (route `/daily`, sidebar "Daily Sync")
-renders this: a clearing balance, automation status, and one expandable row per day.
-It reads `getDailyJournalEntries` — note that endpoint returns **dollars, not cents**,
-so the page formats directly rather than using the cents-based helper.
+**One job per page** (2026-10-06 — the two pages used to list the same days twice, in
+different words): **Daily Giving** is the daily work, **Clearing** is month-end. Login
+lands on Daily Giving. Use the same words on both: *Giving*, *Stripe fees*, *To clearing*.
+
+**Clearing** (`src/pages/Main/daily/DailyJournalEntries.tsx`, route `/daily`, sidebar
+"Clearing") shows the live QuickBooks clearing balance with what it means in words
+(including why it can go negative), the monthly statement (`ClearingStatement.tsx`,
+opens on LAST month until the 10th), and the switch-over panel folded below it. It reads
+`getDailyJournalEntries` — note that endpoint returns **dollars, not cents**, so the
+page formats directly rather than using the cents-based helper.
 
 The engine itself lives in the backend (`services/syncEngine.ts` in
 quickplan-connect). One entry per day; if donations for an already-posted day arrive
 later, it posts an *adjusting* entry rather than editing a posted transaction.
 
-**Stripe Giving** (`src/pages/Main/transaction/`, route `/transaction`, sidebar
-"Stripe Giving") is the manual side of the same engine. It lists each day's
+**Daily Giving** (`src/pages/Main/transaction/`, route `/transaction`, sidebar
+"Daily Giving") is the manual side of the same engine, and says whether auto-sync is
+on. Each day has one state: *In QuickBooks*, *Partly in QuickBooks* (with an
+"Add $X" button for giving that settled after posting), *Not posted*, *Waiting to
+settle*, or *Not needed*. It lists each day's
 Stripe-processed giving read straight from Planning Center (`getStripeGivingByDay`),
 paged 15/day with an expandable per-gift detail (`StripeGivingDayDetail`), and a
 **Post** button per unposted day that runs the nightly engine for that one day

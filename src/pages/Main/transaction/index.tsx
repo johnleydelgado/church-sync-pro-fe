@@ -98,6 +98,11 @@ const Dashboard: FC<DashboardProps> = () => {
   )
 
   const hasMapping = !isEmpty(userData?.data?.UserSetting?.settingsData)
+  // Whether the 8am run posts days on its own. When it is off, nothing reaches QuickBooks
+  // until someone presses Post - the page used to promise the 8am run regardless.
+  const autoSyncOn: boolean | null = userData?.data?.UserSetting
+    ? !!userData.data.UserSetting.isAutomationEnable
+    : null
 
   return (
     <MainLayout>
@@ -108,16 +113,38 @@ const Dashboard: FC<DashboardProps> = () => {
             <div className="flex items-center gap-2">
               <BiSync size={28} className="text-blue-400" />
               <span className="text-lg font-bold text-primary">
-                Stripe Giving
+                Daily Giving
               </span>
             </div>
             <p className="max-w-3xl pt-1 text-sm text-gray-500">
-              Every day&apos;s online giving that Stripe processed, read
-              straight from Planning Center, and whether its journal entry has
-              reached QuickBooks yet. Open a day to see the gifts behind it, or
-              post one without waiting for the 8am run. Cash and cheques are not
-              shown — Stripe never handles them.
+              Each day&apos;s online giving from Planning Center, and whether
+              it&apos;s in QuickBooks yet. Open a day to see its gifts. Cash and
+              cheques aren&apos;t shown — Stripe never handles them.
             </p>
+            {autoSyncOn === null ? null : (
+              <p className="flex items-center gap-2 pt-3 text-sm">
+                <span
+                  className={`h-2.5 w-2.5 rounded-full ${
+                    autoSyncOn ? 'bg-success' : 'bg-gray-300'
+                  }`}
+                />
+                {autoSyncOn ? (
+                  <span className="text-gray-600">
+                    <span className="font-semibold text-success">
+                      Auto-sync is on.
+                    </span>{' '}
+                    Each morning at 8am, yesterday is posted to QuickBooks.
+                  </span>
+                ) : (
+                  <span className="text-gray-600">
+                    <span className="font-semibold text-gray-700">
+                      Auto-sync is off.
+                    </span>{' '}
+                    A day reaches QuickBooks only when you press Post.
+                  </span>
+                )}
+              </p>
+            )}
           </div>
 
           {/* Range picker. The batch tab that used to sit here is switched off:
@@ -187,7 +214,7 @@ const Dashboard: FC<DashboardProps> = () => {
               <p className="text-lg font-thin text-gray-500">{rangeError}</p>
             </div>
           ) : (
-            <StripeGivingTable from={from} to={to} />
+            <StripeGivingTable from={from} to={to} autoSyncOn={autoSyncOn} />
           )}
         </div>
       </div>

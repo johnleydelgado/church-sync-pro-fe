@@ -143,9 +143,9 @@ const StripeGivingDayDetail: FC<StripeGivingDayDetailProps> = ({
               <th className="py-2 pr-4 font-semibold">Time</th>
               <th className="py-2 pr-4 font-semibold">Fund</th>
               <th className="py-2 pr-4 font-semibold">Method</th>
-              <th className="py-2 pr-4 text-right font-semibold">Gross</th>
-              <th className="py-2 pr-4 text-right font-semibold">Fee</th>
-              <th className="py-2 text-right font-semibold">Net</th>
+              <th className="py-2 pr-4 text-right font-semibold">Gift</th>
+              <th className="py-2 pr-4 text-right font-semibold">Stripe fee</th>
+              <th className="py-2 text-right font-semibold">To clearing</th>
             </tr>
           </thead>
           <tbody>

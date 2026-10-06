@@ -35,9 +35,11 @@ interface StripeGivingTableProps {
   /** Inclusive day range, YYYY-MM-DD. */
   from: string
   to: string
+  /** Whether the 8am run posts days on its own; null while unknown. */
+  autoSyncOn?: boolean | null
 }
 
-// The endpoint returns dollars, matching the Daily Sync contract - so format dollars directly
+// The endpoint returns dollars, like the Clearing page's - so format dollars directly
 // rather than reusing helper.formatUsd, which divides by 100.
 const fm = new FormatMoney({ decimals: 2 })
 const formatUsd = (amount: number | undefined | null) =>
@@ -77,52 +79,72 @@ const unpostedDifference = (day: StripeGivingDay): number => {
   return cents > 0 ? cents / 100 : 0
 }
 
-const StatusBadge: FC<{ status: string; excluded?: boolean }> = ({
-  status,
-  excluded,
-}) => {
+/**
+ * Where a day stands in QuickBooks - one state per day, so a reader never has to combine a
+ * badge with a line of small print to work it out.
+ */
+const StatusBadge: FC<{
+  status: string
+  excluded?: boolean
+  /** Settled since the day was posted, not yet in QuickBooks. */
+  toAdd?: number
+  /** The day has giving, but all of it is still settling. */
+  onlySettling?: boolean
+}> = ({ status, excluded, toAdd = 0, onlySettling }) => {
   const normalized = (status || '').toLowerCase()
   // Excluded outranks "not posted": a day before the church's start date is not outstanding
   // work, it is giving they have decided not to bring across. Saying "not posted yet" about it
   // turns the table into a to-do list of things nobody intends to do.
   if (excluded && normalized !== 'posted') {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-400">
+      <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-400">
         <HiOutlineMinusCircle size={16} />
         Not needed
       </span>
     )
   }
+  if (normalized === 'posted' && toAdd > 0) {
+    return (
+      <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+        <HiOutlineExclamationCircle size={16} />
+        Partly in QuickBooks
+      </span>
+    )
+  }
   if (normalized === 'posted') {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-3 py-1 text-xs font-semibold text-success">
+      <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-success/10 px-3 py-1 text-xs font-semibold text-success">
         <HiOutlineCheckCircle size={16} />
-        Posted
+        In QuickBooks
       </span>
     )
   }
   if (normalized === 'failed') {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-600">
+      <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-600">
         <HiOutlineExclamationCircle size={16} />
         Failed
       </span>
     )
   }
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-500">
+    <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-500">
       <HiOutlineClock size={16} />
-      Not posted yet
+      {onlySettling ? 'Waiting to settle' : 'Not posted'}
     </span>
   )
 }
 
-const StripeGivingTable: FC<StripeGivingTableProps> = ({ from, to }) => {
+const StripeGivingTable: FC<StripeGivingTableProps> = ({
+  from,
+  to,
+  autoSyncOn,
+}) => {
   const queryClient = useQueryClient()
   const user = useSelector((state: RootState) => state.common.user)
   const bookkeeper = useSelector((state: RootState) => state.common.bookkeeper)
   const [page, setPage] = useState(1)
-  // Single-open accordion, matching the Daily Sync page.
+  // Single-open accordion.
   const [expandedDay, setExpandedDay] = useState<string | null>(null)
   const [postingDay, setPostingDay] = useState<string | null>(null)
   // The excluded day awaiting confirmation, if any.
@@ -162,7 +184,7 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({ from, to }) => {
           successNotification({
             title:
               difference > 0
-                ? `Posted the ${formatUsd(difference)} difference for ${formatDate(day)} as an adjusting entry`
+                ? `Added ${formatUsd(difference)} to ${formatDate(day)} as an adjusting entry`
                 : `Posted ${formatDate(day)} to QuickBooks`,
           })
         } else if (result?.failedDays?.length) {
@@ -247,7 +269,11 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({ from, to }) => {
           net: acc.net + d.net,
           donations: acc.donations + d.donations,
           posted:
-            acc.posted + ((d.status || '').toLowerCase() === 'posted' ? 1 : 0),
+            acc.posted +
+            ((d.status || '').toLowerCase() === 'posted' &&
+            unpostedDifference(d) === 0
+              ? 1
+              : 0),
           syncable: acc.syncable + (isExcluded(d.date) ? 0 : 1),
           grown: acc.grown + (unpostedDifference(d) > 0 ? 1 : 0),
           inTransit: acc.inTransit + (d.inTransit || 0),
@@ -381,7 +407,7 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({ from, to }) => {
       {/* Range summary - the same three figures as a day's journal entry, for the whole range. */}
       <div className="grid grid-cols-1 gap-4 pb-6 md:grid-cols-3">
         <div className="rounded-xl border border-gray-100 bg-slate-50 p-5">
-          <p className="text-sm font-semibold text-gray-500">Gross giving</p>
+          <p className="text-sm font-semibold text-gray-500">Giving</p>
           <p className="pt-1 text-2xl font-bold text-success">
             {formatUsd(totals.gross)}
           </p>
@@ -395,7 +421,7 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({ from, to }) => {
           <p className="pt-1 text-2xl font-bold text-gray-600">
             {formatUsd(totals.fees)}
           </p>
-          <p className="pt-1 text-xs text-gray-400">What Stripe took</p>
+          <p className="pt-1 text-xs text-gray-400">What Stripe kept</p>
         </div>
         <div className="rounded-xl border border-gray-100 bg-slate-50 p-5">
           <p className="text-sm font-semibold text-gray-500">To clearing</p>
@@ -403,7 +429,7 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({ from, to }) => {
             {formatUsd(totals.net)}
           </p>
           <p className="pt-1 text-xs text-gray-400">
-            What Stripe deposits to the bank
+            What Stripe will deposit in your bank
           </p>
         </div>
       </div>
@@ -459,27 +485,28 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({ from, to }) => {
           <span className="font-semibold text-primary">
             {totals.posted} of {totals.syncable}
           </span>{' '}
-          {totals.syncable === 1 ? 'day has' : 'days have'} been posted to
+          {totals.syncable === 1 ? 'day is' : 'days are'} fully in
           QuickBooks.
-          {totals.posted < totals.syncable
-            ? ' Post one here, or let the 8am run settle it.'
+          {totals.posted + totals.grown < totals.syncable
+            ? autoSyncOn
+              ? ' The rest post at 8am, or press Post.'
+              : ' Press Post to send a day.'
             : ''}
           {totals.grown > 0 ? (
             <>
               {' '}
-              <span className="font-semibold text-amber-600">
-                {totals.grown} posted {totals.grown === 1 ? 'day has' : 'days have'}{' '}
-                giving that settled after posting
+              <span className="font-semibold text-amber-700">
+                {totals.grown} {totals.grown === 1 ? 'day has' : 'days have'}{' '}
+                newly settled giving to add.
               </span>
-              {' - post the difference to bring QuickBooks up to date.'}
             </>
           ) : null}
           {totals.inTransit > 0 ? (
             <>
               {' '}
               {totals.inTransit} gift{totals.inTransit === 1 ? ' is' : 's are'}{' '}
-              still in transit and will be posted once Stripe settles{' '}
-              {totals.inTransit === 1 ? 'it' : 'them'}.
+              still settling, and can be posted once{' '}
+              {totals.inTransit === 1 ? 'it clears' : 'they clear'}.
             </>
           ) : null}
         </p>
@@ -495,10 +522,10 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({ from, to }) => {
       <div className="overflow-hidden rounded-xl border border-gray-100">
         <div className="grid grid-cols-12 gap-2 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-400">
           <div className="col-span-3">Date</div>
-          <div className="col-span-2 text-right">Gross</div>
+          <div className="col-span-2 text-right">Giving</div>
           <div className="col-span-2 text-right">Stripe fees</div>
           <div className="col-span-2 text-right">To clearing</div>
-          <div className="col-span-3 text-right">Status</div>
+          <div className="col-span-3 text-right">QuickBooks</div>
         </div>
 
         {pagedDays.map((day) => {
@@ -539,16 +566,28 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({ from, to }) => {
                   <p className="pl-6 text-xs text-gray-400">
                     {day.donations} donation{day.donations === 1 ? '' : 's'}
                   </p>
-                  {day.inTransit > 0 ? (
-                    <p className="pl-6 text-xs font-medium text-amber-600">
-                      {day.inTransit} in transit · {formatUsd(day.inTransitGross)}{' '}
-                      not settled yet
+                  {/* Each phrase stays on one line - wrapped, "$ 1,000.00" broke after the "$". */}
+                  {difference > 0 ? (
+                    <p className="pl-6 text-xs font-medium text-amber-700">
+                      <span className="whitespace-nowrap">
+                        {formatUsd(day.postedGross)} in QuickBooks
+                      </span>{' '}
+                      ·{' '}
+                      <span className="whitespace-nowrap">
+                        {formatUsd(difference)} to add
+                      </span>
                     </p>
                   ) : null}
-                  {difference > 0 ? (
-                    <p className="pl-6 text-xs font-medium text-amber-600">
-                      {formatUsd(day.postedGross)} posted ·{' '}
-                      {formatUsd(difference)} settled since
+                  {day.inTransit > 0 ? (
+                    <p className="flex flex-wrap items-center gap-x-1 pl-6 text-xs text-gray-500">
+                      <HiOutlineClock size={12} />
+                      <span className="whitespace-nowrap">
+                        {formatUsd(day.inTransitGross)} still settling
+                      </span>
+                      <span className="whitespace-nowrap">
+                        ({day.inTransit} {day.donations > 0 ? 'more ' : ''}
+                        {day.inTransit === 1 ? 'gift' : 'gifts'})
+                      </span>
                     </p>
                   ) : null}
                 </div>
@@ -558,20 +597,30 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({ from, to }) => {
                 <div className="col-span-2 text-right text-gray-500">
                   {formatUsd(day.fees)}
                 </div>
-                <div className="col-span-2 text-right font-medium text-primary">
+                <div className="col-span-2 min-w-0 text-right font-medium text-primary">
                   {formatUsd(day.net)}
                 </div>
-                <div className="col-span-3 flex items-center justify-end gap-3">
-                  <StatusBadge status={day.status} excluded={excluded} />
+                {/* Wraps rather than overflowing: with a badge and a button side by side the
+                    content is wider than the column, and justify-end used to push it left over
+                    the "To clearing" amount. */}
+                <div className="col-span-3 flex min-w-0 flex-wrap items-center justify-end gap-2">
+                  <StatusBadge
+                    status={day.status}
+                    excluded={excluded}
+                    toAdd={difference}
+                    onlySettling={nothingToPostYet && day.inTransit > 0}
+                  />
                   {!canPost || nothingToPostYet ? null : (
                     <Tooltip
                       content={
                         <span className="block max-w-xs text-xs leading-snug">
                           {difference > 0
-                            ? `${formatUsd(difference)} settled after this day was posted. Post it as a second, adjusting entry dated ${formatDate(day.date)}. The original entry is not touched.`
+                            ? `${formatUsd(difference)} settled after this day was posted. It goes in as a second, adjusting entry dated ${formatDate(day.date)}; the first entry is not touched.`
                             : excluded
                             ? "This day is before your sync start date. You'll be asked to confirm."
-                            : "Post this day's journal entry to QuickBooks now, without waiting for the 8am run."}
+                            : autoSyncOn
+                            ? "Post this day's journal entry to QuickBooks now, without waiting for the 8am run."
+                            : "Post this day's journal entry to QuickBooks now."}
                         </span>
                       }
                       placement="top"
@@ -595,7 +644,7 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({ from, to }) => {
                           <>
                             <AiOutlineSync size={16} />
                             {difference > 0
-                              ? 'Post the difference'
+                              ? `Add ${formatUsd(difference)}`
                               : excluded
                               ? 'Post anyway'
                               : 'Post'}
