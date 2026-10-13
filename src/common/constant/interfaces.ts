@@ -1,4 +1,5 @@
 import { BankAccountProps } from '@/redux/common'
+import type { RegistrationMappingV2 } from '@/common/api/user'
 
 // Base interfaces for common structures
 interface Account {
@@ -39,7 +40,9 @@ interface BankCharges {
 interface UserSetting {
   id: number // User setting ID
   settingsData: Fund[] // Array of funds
-  settingRegistrationData: Registration[] // Array of registrations
+  // The Stripe-era array of registrations, or - once the payout-report mapping is saved - its
+  // versioned object. Check Array.isArray before treating it as a list.
+  settingRegistrationData: Registration[] | RegistrationMappingV2 | null
   settingBankData: BankAccountProps[] | null // Array of bank data
   settingBankCharges: BankCharges // Bank charges structure
   isAutomationEnable?: boolean // Boolean for automation enablement

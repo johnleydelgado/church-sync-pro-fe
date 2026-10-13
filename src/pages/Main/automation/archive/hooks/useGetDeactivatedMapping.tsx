@@ -52,16 +52,20 @@ const useGetDeactivatedMapping = () => {
       const email =
         user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
       if (email && userData?.UserSetting) {
-        const filteredDataFromRegistration =
-          userData?.UserSetting?.settingRegistrationData
-            ?.filter((a) => a.isActive === false) // Include only if isActive is false
-            .map((a): Archive => {
-              return {
-                name: a.registration,
-                category: 'stripe',
-                // Add other required properties
-              }
-            }) || []
+        // Only the Stripe-era list holds archived registrations; the payout-report mapping is
+        // an object, and calling .filter on it threw - losing the archived funds below too.
+        const registrations = userData?.UserSetting?.settingRegistrationData
+        const filteredDataFromRegistration = (
+          Array.isArray(registrations) ? registrations : []
+        )
+          .filter((a) => a.isActive === false) // Include only if isActive is false
+          .map((a): Archive => {
+            return {
+              name: a.registration,
+              category: 'stripe',
+              // Add other required properties
+            }
+          })
 
         // Get filtered data from settingsData
         const filteredDataFromSettings =

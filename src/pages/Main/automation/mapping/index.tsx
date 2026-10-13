@@ -46,7 +46,7 @@ import { format, parseISO } from 'date-fns'
 import TransactionDateModal from './component/TransactionDateModal'
 import Dropdown, { components } from 'react-select'
 import DatePicker from 'react-datepicker'
-import Registration from './component/Registration'
+import RegistrationMapping from './component/RegistrationMapping'
 import { getStripeList } from '@/common/api/stripe'
 import { setReduxStripeData } from '@/redux/stripe'
 import { FundAttProps, UserSettingsProps } from '@/common/constant/interfaces'
@@ -102,7 +102,7 @@ function classNames(...classes: string[]) {
 
 const tabSubtitles: Record<string, string> = {
   Donation: 'Giving funds from Planning Center',
-  Registration: 'Event / registration payments from Stripe',
+  Registration: 'Event and registration payments (from your payout report)',
   Bank: 'Your clearing & fee accounts',
 }
 
@@ -544,9 +544,7 @@ const Mapping: FC<SettingsProps> = () => {
                 key={2}
                 className={classNames('rounded-xl bg-white p-4 px-8')}
               >
-                {isStripeEventsLoading ? (
-                  <Loading />
-                ) : isEmpty(qboData) ? (
+                {isEmpty(qboData) ? (
                   <div className="flex flex-col items-center justify-center h-96">
                     <p className="text-2xl text-center font-thin">
                       Please set up your accounts in order to continue with the
@@ -559,72 +557,13 @@ const Mapping: FC<SettingsProps> = () => {
                       Click Here !
                     </Link>
                   </div>
-                ) : stripeEvents && stripeEvents.length > 0 ? (
-                  <div>
-                    <div className="flex justify-between">
-                      <div className="flex gap-4 items-center">
-                        <div className="flex flex-col gap-2">
-                          <button
-                            className="border-[1px] p-4 rounded-lg w-82 flex items-center gap-2 justify-center mb-4 cursor-pointer hover:border-yellow hover:border-1"
-                            onClick={() =>
-                              enableDisableAutomation('registration')
-                            }
-                          >
-                            <AiOutlineCloudSync
-                              size={22}
-                              color={
-                                isAutomationRegistration ? 'black' : 'gray'
-                              }
-                            />
-                            <p className="font-thin">
-                              Auto-sync is now{' '}
-                              {isAutomationRegistration ? (
-                                <span className="font-medium text-black">
-                                  on
-                                </span>
-                              ) : (
-                                <span className="font-medium text-red-400">
-                                  off
-                                </span>
-                              )}
-                            </p>
-                            <p className="text-yellow">Registration</p>
-                          </button>
-                        </div>
-
-                        <div className="flex flex-col gap-1 pb-8">
-                          <p className="font-light">Select start date</p>
-                          <DatePicker
-                            selected={
-                              startDates.startDateRegistration
-                                ? new Date(startDates.startDateRegistration)
-                                : new Date()
-                            }
-                            className="rounded-xl border-gray-200 h-88"
-                            onChange={(e) =>
-                              handleStartDateChange(
-                                'startDateRegistration',
-                                e?.toDateString(),
-                              )
-                            }
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <Registration
-                      stripeEvents={stripeEvents || []}
-                      userData={userData}
-                    />
-                  </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center h-96">
-                    <p className="max-w-lg text-center text-xl font-thin text-gray-500">
-                      No event/registration payments found. This tab is only
-                      needed if you collect event or registration payments
-                      through Stripe.
-                    </p>
-                  </div>
+                  // Keyed by church: a bookkeeper switching client gets a fresh form.
+                  <RegistrationMapping
+                    key={userData?.id ?? 'loading'}
+                    userData={userData}
+                    qboData={qboData}
+                  />
                 )}
               </Tab.Panel>
 
