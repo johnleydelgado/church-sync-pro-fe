@@ -55,6 +55,13 @@ const userRoutes = {
   postStripeGivingDay: '/user/postStripeGivingDay',
   markTransitionTruedUp: '/user/markTransitionTruedUp',
   getStripeGivingDayDetail: '/user/getStripeGivingDayDetail',
+  payoutReportPreview: '/user/payoutReport/preview',
+  payoutReportImport: '/user/payoutReport/import',
+  payoutReportStatus: '/user/payoutReport/status',
+  payoutReportReview: '/user/payoutReport/review',
+  payoutReportResolve: '/user/payoutReport/resolve',
+  payoutReportRecheckGiving: '/user/payoutReport/recheckGiving',
+  payoutReportSignups: '/user/payoutReport/signups',
 }
 
 export { pcRoutes, userRoutes, qboRoutes, stripeRoutes }

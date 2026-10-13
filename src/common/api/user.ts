@@ -53,6 +53,28 @@ export interface qboRegistrationSettings {
   isActive?: boolean
 }
 
+/** A QuickBooks account or class as a mapping stores it. */
+export interface QboChoice {
+  value: string
+  label?: string
+}
+
+/**
+ * How registration (event) payments from the payout report are coded: one default account and
+ * class, plus per-event overrides. Stored in `settingRegistrationData`, which still holds the
+ * Stripe-era array for some churches - `version: 2` is what tells the two apart, so never write
+ * this without it.
+ */
+export interface RegistrationMappingV2 {
+  version: 2
+  default: { account: QboChoice | null; class: QboChoice | null }
+  events: {
+    signup: string
+    account: QboChoice | null
+    class: QboChoice | null
+  }[]
+}
+
 export interface SettingQBOProps {
   email: string
   settingsData?: qboSettings[]
@@ -154,7 +176,7 @@ const updateRegisterSettings = async ({
   data,
   email,
 }: {
-  data: qboRegistrationSettings[] | null
+  data: qboRegistrationSettings[] | RegistrationMappingV2 | null
   email: string
 }) => {
   const url = userRoutes.updateRegisterSettings
@@ -164,7 +186,13 @@ const updateRegisterSettings = async ({
     const response = await apiCall.post(url, obj)
     return response.data
   } catch (e: any) {
-    throw new Error(e)
+    // The server's reason. `new Error(e)` used to stringify the whole axios error, so the page
+    // could only ever say "AxiosError: Request failed with status code 500".
+    throw new Error(
+      e?.response?.data?.error ??
+        e?.response?.data?.message ??
+        'The registration mapping could not be saved.',
+    )
   }
 }
 
@@ -312,7 +340,19 @@ export interface DailyJournalEntriesData {
   entries: DailyJournalEntry[]
 }
 
-export interface ClearingStatementLine {
+/**
+ * Registration (event) money posted from the payout report. `gross`, `fees` and `refundsGross`
+ * stay giving-only; `net` already includes these. Optional: a backend older than the
+ * payout-report import doesn't send them, and they count as 0 then.
+ */
+export interface ClearingStatementRegistrations {
+  registrations?: number
+  registrationFees?: number
+  /** Registration refunds, gross. */
+  registrationRefunds?: number
+}
+
+export interface ClearingStatementLine extends ClearingStatementRegistrations {
   date: string
   gross: number
   fees: number
@@ -343,7 +383,7 @@ export interface ClearingStatementData {
   clearingAccount: { value: string; name: string } | null
   opening: number
   lines: ClearingStatementLine[]
-  totals: {
+  totals: ClearingStatementRegistrations & {
     gross: number
     fees: number
     refundsGross: number
@@ -473,6 +513,240 @@ const getDailyJournalEntries = async (
   const url = userRoutes.getDailyJournalEntries
   const res = await apiCall.get(url + `?email=${encodeURIComponent(email)}`)
   return res.data.data
+}
+
+/*
+ * Planning Center's payout report (registrations import). Every amount below is DOLLARS, signed:
+ * refunds are negative. Dates are YYYY-MM-DD.
+ */
+
+/** One journal entry the import would post (preview) or did post (import). */
+export interface PayoutEntry {
+  day: string
+  kind: 'charge' | 'refund'
+  docNumber: string
+  count: number
+  gross: number
+  fees: number
+  net: number
+  /** Set once QuickBooks has accepted the entry. */
+  qboEntryId?: string
+  /** QuickBooks refused the entry. Its rows are retried on the next upload. */
+  error?: string
+}
+
+export interface PayoutSummary {
+  file: { rows: number; firstDay: string | null; lastDay: string | null }
+  registrations: {
+    toPost: { count: number; gross: number; fees: number; net: number }
+    alreadyRecorded: number
+    beforeStart: { count: number; net: number }
+  }
+  entries: PayoutEntry[]
+  giving: {
+    covered: number
+    notPosted: { day: string; count: number; net: number; reason: string }[]
+  }
+  held: {
+    line: number
+    day: string
+    type: string
+    source: string
+    fundOrSignup: string
+    net: number
+    reason: string
+  }[]
+}
+
+export type PayoutImportResult = PayoutSummary & { uploadId: number }
+
+export interface PayoutStatus {
+  lastUpload: {
+    id: number
+    fileName: string | null
+    uploadedAt: string
+    firstDay: string | null
+    lastDay: string | null
+    uploadedBy: string | null
+  } | null
+  /** Held rows plus postings that were interrupted. */
+  needsReview: number
+  givingNotPosted: number
+  registrationStartDay: string | null
+  /** False while setup is missing; `notReadyReason` says what to set up. */
+  ready: boolean
+  notReadyReason: string | null
+}
+
+export interface PayoutReviewRow {
+  id: number
+  status: 'held' | 'giving_not_posted' | 'posting_interrupted'
+  reason: string | null
+  line: number | null
+  day: string
+  type: string
+  source: string
+  name: string | null
+  fundOrSignup: string | null
+  description: string | null
+  gross: number
+  fee: number
+  net: number
+  accountRef: string | null
+  classRef: string | null
+  uploadedAt: string
+}
+
+export interface PayoutReview {
+  held: PayoutReviewRow[]
+  givingNotPosted: PayoutReviewRow[]
+  postingInterrupted: PayoutReviewRow[]
+}
+
+/** What the review list can do to one row. */
+export type PayoutResolveRequest =
+  | {
+      id: number
+      action: 'post'
+      account: { value: string; label: string }
+      class?: { value: string; label: string } | null
+    }
+  | { id: number; action: 'dismiss'; note: string }
+  | { id: number; action: 'mark_posted'; qboEntryId: string }
+  | { id: number; action: 'post_now' }
+
+export interface PayoutResolveResult {
+  id: number
+  status: string
+  qboEntryId?: string
+  docNumber?: string
+}
+
+export interface PayoutRecheckResult {
+  checked: number
+  nowCovered: number
+  stillNotPosted: number
+}
+
+/**
+ * A failed payout-report call. `message` is the server's own words (400: not a payout report,
+ * 409: setup missing, 404: not found) for the page to show as-is; `status` is the HTTP status,
+ * absent when the server was never reached.
+ */
+export type PayoutReportError = Error & { status?: number }
+
+const payoutReportError = (e: any, fallback: string): PayoutReportError => {
+  const data = e?.response?.data
+  const said = data?.message ?? data?.error
+  const message =
+    typeof said === 'string' && said
+      ? said
+      : e?.response?.status === 413
+      ? 'That file is too large to upload.'
+      : e?.response
+      ? fallback
+      : 'Could not reach Church Sync Pro. Check your connection and try again.'
+  const err: PayoutReportError = new Error(message)
+  err.status = e?.response?.status
+  return err
+}
+
+/** What importing the file would do. Writes nothing. */
+const previewPayoutReport = async (
+  email: string,
+  fileName: string,
+  csvText: string,
+): Promise<PayoutSummary> => {
+  try {
+    const res = await apiCall.post(
+      userRoutes.payoutReportPreview,
+      JSON.stringify({ email, fileName, csvText }),
+    )
+    return res.data.data
+  } catch (e: any) {
+    throw payoutReportError(e, 'Could not read the payout report.')
+  }
+}
+
+/** Stores the file's rows and posts the new registration entries to QuickBooks. */
+const importPayoutReport = async (
+  email: string,
+  fileName: string,
+  csvText: string,
+): Promise<PayoutImportResult> => {
+  try {
+    const res = await apiCall.post(
+      userRoutes.payoutReportImport,
+      JSON.stringify({ email, fileName, csvText }),
+    )
+    return res.data.data
+  } catch (e: any) {
+    throw payoutReportError(e, 'Could not record the payout report.')
+  }
+}
+
+const getPayoutReportStatus = async (email: string): Promise<PayoutStatus> => {
+  try {
+    const res = await apiCall.get(
+      userRoutes.payoutReportStatus + `?email=${encodeURIComponent(email)}`,
+    )
+    return res.data.data
+  } catch (e: any) {
+    throw payoutReportError(e, 'Could not check your payout reports.')
+  }
+}
+
+const getPayoutReview = async (email: string): Promise<PayoutReview> => {
+  try {
+    const res = await apiCall.get(
+      userRoutes.payoutReportReview + `?email=${encodeURIComponent(email)}`,
+    )
+    return res.data.data
+  } catch (e: any) {
+    throw payoutReportError(e, 'Could not load the review list.')
+  }
+}
+
+const resolvePayoutRow = async (
+  email: string,
+  request: PayoutResolveRequest,
+): Promise<PayoutResolveResult> => {
+  try {
+    const res = await apiCall.post(
+      userRoutes.payoutReportResolve,
+      JSON.stringify({ email, ...request }),
+    )
+    return res.data.data
+  } catch (e: any) {
+    throw payoutReportError(e, 'Could not update that line.')
+  }
+}
+
+/** Re-runs the giving check for the giving lines that were not in QuickBooks yet. */
+const recheckPayoutGiving = async (
+  email: string,
+): Promise<PayoutRecheckResult> => {
+  try {
+    const res = await apiCall.post(
+      userRoutes.payoutReportRecheckGiving,
+      JSON.stringify({ email }),
+    )
+    return res.data.data
+  } catch (e: any) {
+    throw payoutReportError(e, 'Could not check the giving again.')
+  }
+}
+
+/** Registration (signup) names seen in uploaded payout reports, sorted. */
+const getPayoutSignups = async (email: string): Promise<string[]> => {
+  try {
+    const res = await apiCall.get(
+      userRoutes.payoutReportSignups + `?email=${encodeURIComponent(email)}`,
+    )
+    return res.data.data
+  } catch (e: any) {
+    throw payoutReportError(e, 'Could not load your event names.')
+  }
 }
 
 const deleteBookeeper = async (id: string) => {
@@ -859,4 +1133,11 @@ export {
   getStripeGivingByDay,
   postStripeGivingDay,
   getStripeGivingDayDetail,
+  previewPayoutReport,
+  importPayoutReport,
+  getPayoutReportStatus,
+  getPayoutReview,
+  resolvePayoutRow,
+  recheckPayoutGiving,
+  getPayoutSignups,
 }

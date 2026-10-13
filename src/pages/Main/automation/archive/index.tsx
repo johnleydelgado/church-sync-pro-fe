@@ -85,13 +85,19 @@ const Index: FC<indexProps> = ({}) => {
         },
       )
 
-      const updatedSettingRegistrationData =
-        userData?.UserSetting?.settingRegistrationData?.map((item) => {
-          if (item.registration === registration && type === 'stripe') {
-            return { ...item, isActive: true } // Set isActive to true for 'stripe'
-          }
-          return item
-        })
+      // Only the Stripe-era list holds archived registrations. The payout-report mapping is an
+      // object: calling .map on it threw here, which also stopped funds being re-activated.
+      const registrations = userData?.UserSetting?.settingRegistrationData
+      const updatedSettingRegistrationData = Array.isArray(registrations)
+        ? registrations.map((item) => {
+            if (item.registration === registration && type === 'stripe') {
+              return { ...item, isActive: true } // Set isActive to true for 'stripe'
+            }
+            return item
+          })
+        : undefined
+      // Nothing to re-activate, and the mapping object must never be overwritten from here.
+      if (type === 'stripe' && !updatedSettingRegistrationData) return
 
       const email =
         user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
