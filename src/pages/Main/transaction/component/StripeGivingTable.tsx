@@ -178,6 +178,24 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({
       },
       onSettled: () => setPostingDay(null),
       onSuccess: (result, day) => {
+        // Gifts whose fund has no QuickBooks account are left out entirely. Say so - by fund and
+        // amount - instead of calling the day up to date (Active, Legacy Offering, 2026-10-10).
+        const unmapped = (result?.unmapped ?? []).filter((u) => u.day === day)
+        const unmappedText = unmapped
+          .map((u) => `${u.fundName} (${formatUsd(u.amountCents / 100)})`)
+          .join(', ')
+        if (unmapped.length && !result?.postedDays?.length) {
+          failNotification({
+            title: `Nothing posted for ${formatDate(day)}: ${unmappedText} has no QuickBooks account. Map it on the Mapping page, then press the button again.`,
+          })
+          queryClient.invalidateQueries(queryKey)
+          return
+        }
+        if (unmapped.length) {
+          failNotification({
+            title: `Posted ${formatDate(day)}, but left out ${unmappedText}: that fund has no QuickBooks account yet. Map it on the Mapping page, then post the day again.`,
+          })
+        }
         if (result?.postedDays?.length) {
           const before = (data?.days ?? []).find((d) => d.date === day)
           const difference = before ? unpostedDifference(before) : 0
