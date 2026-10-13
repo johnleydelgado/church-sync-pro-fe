@@ -279,6 +279,26 @@ const Mapping: FC<SettingsProps> = () => {
     Bank: [],
   })
 
+  // One value drives both the selected tab and the subtitle under the tabs. They used to read
+  // different sources - the tab came from a ?tab= link, the subtitle from the tab remembered last
+  // time - so a link to the Registration tab showed the Donation tab's subtitle.
+  const tabCount = Object.keys(categories).length
+  const tabFromLink = Number(searchParams.get('tab')) - 1 // links number tabs from 1
+  const linkedTab =
+    Number.isInteger(tabFromLink) && tabFromLink >= 0 && tabFromLink < tabCount
+      ? tabFromLink
+      : null
+  const [selectedTab, setSelectedTab] = useState<number>(
+    linkedTab ?? mappingNumber ?? 0,
+  )
+  useEffect(() => {
+    if (linkedTab !== null) setSelectedTab(linkedTab)
+  }, [linkedTab])
+  // Remember the tab a link opened too, so the next plain visit lands on it.
+  useEffect(() => {
+    if (selectedTab !== mappingNumber) dispatch(setMappingNumber(selectedTab))
+  }, [selectedTab, mappingNumber, dispatch])
+
   const mutation = useMutation(
     (newData: {
       email: string
@@ -440,14 +460,7 @@ const Mapping: FC<SettingsProps> = () => {
             </div>
           </div>
 
-          <Tab.Group
-            defaultIndex={
-              searchParams.get('tab')
-                ? Number(searchParams.get('tab')) - 1
-                : mappingNumber ?? 0
-            }
-            onChange={(index) => dispatch(setMappingNumber(index))}
-          >
+          <Tab.Group selectedIndex={selectedTab} onChange={setSelectedTab}>
             <div className="flex flex-col">
               <Tab.List className="flex space-x-1 rounded-xl bg-transparent px-4 py-2 w-96">
                 {Object.keys(categories).map((category, index: number) => (
@@ -473,9 +486,7 @@ const Mapping: FC<SettingsProps> = () => {
                 ))}
               </Tab.List>
               <p className="px-4 pb-2 text-xs font-light text-gray-400">
-                {tabSubtitles[
-                  Object.keys(categories)[mappingNumber ?? 0] || ''
-                ] || ''}
+                {tabSubtitles[Object.keys(categories)[selectedTab] || ''] || ''}
               </p>
             </div>
 
