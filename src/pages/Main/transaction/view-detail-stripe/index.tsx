@@ -30,6 +30,10 @@ import { usePagination } from '@/common/context/PaginationProvider'
 import ConfirmActionModal from '@/common/components/modal/ConfirmActionModal'
 import { MODALS_NAME } from '@/common/constant/modal'
 import { OPEN_MODAL } from '@/redux/common'
+
+// The Stripe-era registration list, or [] once the church has saved the v2 mapping (an object)
+// on the new Registration tab - `.find` on that would crash this page.
+const stripeEraRegistrations = (raw: unknown): any[] => (Array.isArray(raw) ? raw : [])
 interface indexProps {}
 
 interface FinalDataProps {
@@ -247,7 +251,7 @@ const ViewDetails: FC<indexProps> = ({}) => {
               const fundName = filterFundName[index]
 
               const registrationFund =
-                userData.data.UserSetting.settingRegistrationData.find(
+                stripeEraRegistrations(userData.data.UserSetting.settingRegistrationData).find(
                   (item: any) => item.registration === regName,
                 )
 
@@ -473,7 +477,7 @@ const ViewDetails: FC<indexProps> = ({}) => {
                   const descriptionFinal = extractCategory(item.description)
 
                   const registrationFund =
-                    userData.data.UserSetting.settingRegistrationData.find(
+                    stripeEraRegistrations(userData.data.UserSetting.settingRegistrationData).find(
                       (settingItem: any) =>
                         settingItem.registration === descriptionFinal,
                     )
@@ -509,7 +513,7 @@ const ViewDetails: FC<indexProps> = ({}) => {
     }
 
     if (
-      !isEmpty(userData?.data?.UserSetting?.settingRegistrationData) &&
+      !isEmpty(stripeEraRegistrations(userData?.data?.UserSetting?.settingRegistrationData)) &&
       !isEmpty(fundData)
     ) {
       fetchData()
