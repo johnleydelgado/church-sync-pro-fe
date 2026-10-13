@@ -188,7 +188,13 @@ const Mapping: FC<SettingsProps> = () => {
       { staleTime: Infinity },
     )
 
-  const { data: fundData, isLoading } = useQuery<FundAttProps[]>(
+  const {
+    data: fundData,
+    isLoading,
+    isError: fundsFailed,
+    isFetching: isFetchingFunds,
+    refetch: refetchFunds,
+  } = useQuery<FundAttProps[]>(
     ['getFunds', bookkeeper, userData], // Same query key as on the first page
     async () => {
       const email =
@@ -196,7 +202,7 @@ const Mapping: FC<SettingsProps> = () => {
 
       if (!isEmpty(userData?.UserSetting?.settingsData)) {
         if (email) {
-          const res = (await pcGetFunds({ email })) as FundAttProps[]
+          const res = (await pcGetFunds({ email, throwOnError: true })) as FundAttProps[]
           // Apply the filter and return the filtered array
           const filteredFunds = res.filter((a) => {
             // Find fund with matching name and ensure isActive is either true or undefined
@@ -213,7 +219,7 @@ const Mapping: FC<SettingsProps> = () => {
           return filteredFunds // Return the filtered array
         }
       } else {
-        const res = (await pcGetFunds({ email })) as FundAttProps[]
+        const res = (await pcGetFunds({ email, throwOnError: true })) as FundAttProps[]
         return res
       }
 
@@ -478,7 +484,25 @@ const Mapping: FC<SettingsProps> = () => {
                 key={1}
                 className={classNames('rounded-xl bg-white p-4 px-8')}
               >
-                {isEmpty(fundData) ? (
+                {fundsFailed ? (
+                  <div className="flex flex-col items-center justify-center gap-3 h-96">
+                    <p className="text-2xl text-center font-thin">
+                      Couldn&apos;t load your funds from Planning Center.
+                    </p>
+                    <p className="text-center text-sm text-gray-500">
+                      This usually clears up within a minute. Nothing has been
+                      changed.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => refetchFunds()}
+                      disabled={isFetchingFunds}
+                      className="rounded-lg bg-yellow px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+                    >
+                      {isFetchingFunds ? 'Trying again…' : 'Try again'}
+                    </button>
+                  </div>
+                ) : isEmpty(fundData) ? (
                   <div className="flex flex-col items-center justify-center h-96">
                     <p className="text-2xl text-center font-thin">
                       Please set up your accounts in order to continue with the
