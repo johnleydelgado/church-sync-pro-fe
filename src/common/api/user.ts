@@ -340,7 +340,19 @@ export interface DailyJournalEntriesData {
   entries: DailyJournalEntry[]
 }
 
-export interface ClearingStatementLine {
+/**
+ * Registration (event) money posted from the payout report. `gross`, `fees` and `refundsGross`
+ * stay giving-only; `net` already includes these. Optional: a backend older than the
+ * payout-report import doesn't send them, and they count as 0 then.
+ */
+export interface ClearingStatementRegistrations {
+  registrations?: number
+  registrationFees?: number
+  /** Registration refunds, gross. */
+  registrationRefunds?: number
+}
+
+export interface ClearingStatementLine extends ClearingStatementRegistrations {
   date: string
   gross: number
   fees: number
@@ -371,7 +383,7 @@ export interface ClearingStatementData {
   clearingAccount: { value: string; name: string } | null
   opening: number
   lines: ClearingStatementLine[]
-  totals: {
+  totals: ClearingStatementRegistrations & {
     gross: number
     fees: number
     refundsGross: number

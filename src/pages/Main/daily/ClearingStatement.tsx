@@ -14,6 +14,24 @@ const fm = new FormatMoney({ decimals: 2 })
 const usd = (n: number | null | undefined) =>
   fm.from(Number(n ?? 0), { symbol: '$ ' })?.toString() || '$ 0.00'
 
+/**
+ * Stripe fees and refunds for a line (or the totals) across giving AND registrations. The
+ * backend keeps `fees` and `refundsGross` giving-only and sends registrations separately - or
+ * not at all, before the payout-report import, when they count as 0. Refunds are displayed as
+ * a positive amount behind a minus sign, so abs() keeps that right whichever sign arrives.
+ * Number(), because `+` would concatenate an amount that arrived as a string.
+ */
+const withRegistrations = (x: {
+  fees: number
+  refundsGross: number
+  registrationFees?: number
+  registrationRefunds?: number
+}) => ({
+  fees: Number(x.fees ?? 0) + Number(x.registrationFees ?? 0),
+  refunds:
+    Number(x.refundsGross ?? 0) + Math.abs(Number(x.registrationRefunds ?? 0)),
+})
+
 const thisMonth = () => new Date().toISOString().slice(0, 7)
 
 /**
@@ -61,6 +79,9 @@ const ClearingStatement: FC = () => {
   // difference is what has been cleared out; against a past month's it mixes two dates (that
   // month's postings, today's balance) and means nothing, so it is not shown.
   const isCurrentMonth = month === thisMonth()
+  const totalsWithRegistrations = data
+    ? withRegistrations(data.totals)
+    : { fees: 0, refunds: 0 }
 
   return (
     <section className="statement pt-10">
@@ -186,11 +207,12 @@ const ClearingStatement: FC = () => {
             </p>
           ) : (
             <div className="overflow-x-auto rounded-xl border border-gray-100">
-              <table className="w-full min-w-[46rem] text-sm">
+              <table className="w-full min-w-[52rem] text-sm">
                 <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-gray-400">
                   <tr>
                     <th className="px-4 py-3 text-left">Date</th>
                     <th className="px-4 py-3 text-right">Giving</th>
+                    <th className="px-4 py-3 text-right">Registrations</th>
                     <th className="px-4 py-3 text-right">Stripe fees</th>
                     <th className="px-4 py-3 text-right">Refunds</th>
                     <th className="px-4 py-3 text-right">To clearing</th>
@@ -199,39 +221,47 @@ const ClearingStatement: FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.lines.map((l) => (
-                    <tr key={l.date} className="border-t border-gray-100">
-                      <td className="px-4 py-2 font-medium text-primary">
-                        {formatDate(l.date)}
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap text-right tabular-nums text-success">
-                        {usd(l.gross)}
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap text-right tabular-nums text-gray-500">
-                        {usd(l.fees)}
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap text-right tabular-nums text-red-600">
-                        {l.refundsGross ? `−${usd(l.refundsGross)}` : '—'}
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap text-right tabular-nums font-medium text-primary">
-                        {usd(l.net)}
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap text-right tabular-nums text-gray-600">
-                        {usd(l.runningBalance)}
-                      </td>
-                      <td className="px-4 py-2 font-mono text-xs text-gray-500">
-                        {l.qboEntryIds.length
-                          ? `#${l.qboEntryIds.join(', #')}`
-                          : '—'}
-                        {l.batchIds.length ? (
-                          <span className="text-gray-300">
-                            {' '}
-                            · PCO {l.batchIds.join(', ')}
-                          </span>
-                        ) : null}
-                      </td>
-                    </tr>
-                  ))}
+                  {data.lines.map((l) => {
+                    const { fees, refunds } = withRegistrations(l)
+                    return (
+                      <tr key={l.date} className="border-t border-gray-100">
+                        <td className="px-4 py-2 font-medium text-primary">
+                          {formatDate(l.date)}
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-right tabular-nums text-success">
+                          {usd(l.gross)}
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-right tabular-nums text-success">
+                          {Number(l.registrations ?? 0)
+                            ? usd(l.registrations)
+                            : '—'}
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-right tabular-nums text-gray-500">
+                          {usd(fees)}
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-right tabular-nums text-red-600">
+                          {refunds ? `−${usd(refunds)}` : '—'}
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-right tabular-nums font-medium text-primary">
+                          {usd(l.net)}
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-right tabular-nums text-gray-600">
+                          {usd(l.runningBalance)}
+                        </td>
+                        <td className="px-4 py-2 font-mono text-xs text-gray-500">
+                          {l.qboEntryIds.length
+                            ? `#${l.qboEntryIds.join(', #')}`
+                            : '—'}
+                          {l.batchIds.length ? (
+                            <span className="text-gray-300">
+                              {' '}
+                              · PCO {l.batchIds.join(', ')}
+                            </span>
+                          ) : null}
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
                 <tfoot className="border-t-2 bg-slate-50 font-semibold">
                   <tr>
@@ -240,11 +270,16 @@ const ClearingStatement: FC = () => {
                       {usd(data.totals.gross)}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums">
-                      {usd(data.totals.fees)}
+                      {Number(data.totals.registrations ?? 0)
+                        ? usd(data.totals.registrations)
+                        : '—'}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums">
-                      {data.totals.refundsGross
-                        ? `−${usd(data.totals.refundsGross)}`
+                      {usd(totalsWithRegistrations.fees)}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums">
+                      {totalsWithRegistrations.refunds
+                        ? `−${usd(totalsWithRegistrations.refunds)}`
                         : '—'}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums">
