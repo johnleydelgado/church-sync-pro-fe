@@ -88,7 +88,8 @@ const PayoutReports: FC = () => {
             <Button
               size="sm"
               onClick={() => setUploading(true)}
-              disabled={!email || blocked}
+              // Off while still checking, so it never flashes on for a church that isn't set up.
+              disabled={!email || isLoading || blocked}
               className="flex items-center gap-2 bg-yellow normal-case"
             >
               <HiOutlineUpload size={16} />

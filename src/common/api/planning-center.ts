@@ -12,8 +12,16 @@ const apiCall = axios.create({
   },
 })
 
-const pcGetFunds = async ({ email }: { email: string | null | undefined }) => {
-  // await axios.get
+const pcGetFunds = async ({
+  email,
+  throwOnError = false,
+}: {
+  email: string | null | undefined
+  // The Mapping page needs to know the call failed: an empty list there reads as "set up your
+  // accounts", which sends a church to reconnect over a passing Planning Center hiccup. The old
+  // payout views still treat [] as "no funds yet".
+  throwOnError?: boolean
+}) => {
   const url = pcRoutes.getFunds
   try {
     const response = await apiCall.get(url + `?email=${encodeURIComponent(email ?? '')}`)
@@ -27,6 +35,13 @@ const pcGetFunds = async ({ email }: { email: string | null | undefined }) => {
     })
     return data
   } catch (e: any) {
+    if (throwOnError) {
+      throw new Error(
+        e?.response
+          ? "Planning Center didn't return your funds."
+          : 'Could not reach Church Sync Pro.',
+      )
+    }
     return []
   }
 }
