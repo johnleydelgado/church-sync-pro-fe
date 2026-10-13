@@ -440,6 +440,8 @@ const postStripeGivingDay = async (
   postedDays: string[]
   failedDays: string[]
   reason?: string
+  /** Gifts left out because their fund has no QuickBooks account. Cents. */
+  unmapped?: { day: string; fundName: string; amountCents: number; count: number }[]
 }> => {
   const url = userRoutes.postStripeGivingDay
   const res = await apiCall.post(url, JSON.stringify({ email, day }))
