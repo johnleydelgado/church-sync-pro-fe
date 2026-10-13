@@ -1322,3 +1322,84 @@ Preconditions: Matt has run September on staging and is happy; the branch is rev
    (≈$321.10 net, in the Oct 1–2 deposits) to show as **before your start date** — they get the
    manual Sept 30 entry. Check the Clearing statement and the switch-over panel afterwards.
 6. Update memory: what shipped, revisions, and anything Matt changes.
+
+---
+
+## 6. API contract (fixed 2026-10-13, before building Tasks 8–15)
+
+Every endpoint answers `200 { success: true, data }`; failures answer `{ success: false, message }`
+with **400** (bad input or not a payout report — show `message` inline), **409** (setup missing —
+`message` says what to set up), **404** (user or row not found), **500** ("Could not read the payout
+report"). Frontend: show `e?.response?.data?.message`. All amounts in responses are **dollars**
+(signed: refunds negative). Dates are `YYYY-MM-DD`.
+
+```ts
+// POST /user/payoutReport/preview  { email, fileName, csvText }  -> PayoutSummary   (no writes)
+// POST /user/payoutReport/import   { email, fileName, csvText }  -> PayoutSummary & { uploadId: number }
+interface PayoutSummary {
+  file: { rows: number; firstDay: string | null; lastDay: string | null }
+  registrations: {
+    toPost: { count: number; gross: number; fees: number; net: number }
+    alreadyRecorded: number
+    beforeStart: { count: number; net: number }
+  }
+  entries: { day: string; kind: 'charge' | 'refund'; docNumber: string; count: number; gross: number; fees: number; net: number; qboEntryId?: string; error?: string }[]
+  giving: { covered: number; notPosted: { day: string; count: number; net: number; reason: string }[] }
+  held: { line: number; day: string; type: string; source: string; fundOrSignup: string; net: number; reason: string }[]
+}
+
+// GET /user/payoutReport/status?email=
+interface PayoutStatus {
+  lastUpload: { id: number; fileName: string | null; uploadedAt: string; firstDay: string | null; lastDay: string | null; uploadedBy: string | null } | null
+  needsReview: number      // held + posting_interrupted
+  givingNotPosted: number
+  registrationStartDay: string | null
+  ready: boolean           // false when setup is missing
+  notReadyReason: string | null
+}
+
+// GET /user/payoutReport/review?email=
+interface PayoutReviewRow {
+  id: number
+  status: 'held' | 'giving_not_posted' | 'posting_interrupted'
+  reason: string | null
+  line: number | null; day: string; type: string; source: string
+  name: string | null; fundOrSignup: string | null; description: string | null
+  gross: number; fee: number; net: number
+  accountRef: string | null; classRef: string | null
+  uploadedAt: string
+}
+interface PayoutReview { held: PayoutReviewRow[]; givingNotPosted: PayoutReviewRow[]; postingInterrupted: PayoutReviewRow[] }
+
+// POST /user/payoutReport/resolve
+//   { email, id, action: 'post', account: {value,label}, class?: {value,label} | null }
+//       held row -> posts it alone (charge if gross > 0; refund if gross < 0 and fee 0).
+//       Refused (400) when the amounts don't add up, or a refund carries a fee: record it
+//       yourself and use 'dismiss'.
+//   { email, id, action: 'dismiss', note }            held or giving_not_posted row -> 'dismissed' (note required)
+//   { email, id, action: 'mark_posted', qboEntryId }  posting_interrupted row -> 'posted' (entry found in QuickBooks)
+//   { email, id, action: 'post_now' }                 posting_interrupted row -> posts it (QuickBooks has none)
+//   -> { id, status, qboEntryId?: string, docNumber?: string }
+
+// POST /user/payoutReport/recheckGiving { email } -> { checked: number; nowCovered: number; stillNotPosted: number }
+// GET  /user/payoutReport/signups?email=          -> string[]   (registration signup names seen, sorted)
+```
+
+Reason codes and the words to show:
+
+| code | words |
+|---|---|
+| `unrecognised_type` | Planning Center listed a transaction type CSP doesn't know |
+| `unrecognised_source` | Not from Giving or Registrations |
+| `amounts_do_not_add_up` | Gross minus fee doesn't equal net |
+| `unexpected_sign` | A charge below zero, or a refund above zero |
+| `refund_with_fee` | A refund that returns a fee |
+| `no_account_mapped` | No income account set for this event |
+| `day_not_posted` | That day isn't in QuickBooks yet |
+| `day_partly_posted` | That day is only partly in QuickBooks |
+| `not_in_planning_center` | Planning Center doesn't list this gift on that day |
+| `planning_center_unreachable` | Couldn't reach Planning Center to check |
+| `posting_interrupted` | Posting was interrupted — check QuickBooks for this entry |
+
+Clearing statement (Task 6): each line and `totals` gain `registrations`, `registrationFees`,
+`registrationRefunds` (dollars); `qboEntryIds` include the `CSP-E`/`CSP-ER` entry ids.
