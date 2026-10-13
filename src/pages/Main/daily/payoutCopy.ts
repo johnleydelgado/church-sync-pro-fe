@@ -29,6 +29,9 @@ const REASON_WORDS: Record<string, string> = {
 export const reasonWords = (code: string | null | undefined) =>
   code ? REASON_WORDS[code] ?? code.replace(/_/g, ' ') : ''
 
+/** The review list's element id, so the card's "need review" line can take the reader there. */
+export const PAYOUT_REVIEW_ID = 'payout-review'
+
 /** "1 line" / "3 lines". */
 export const plural = (n: number, one: string, many: string) =>
   `${n} ${n === 1 ? one : many}`

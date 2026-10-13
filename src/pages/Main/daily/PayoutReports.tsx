@@ -13,10 +13,13 @@ import {
 import { formatDate } from '@/common/utils/helper'
 import { RootState } from '@/redux/store'
 import PayoutReportUploadModal from './PayoutReportUploadModal'
-import { dayRange, mappingLinkFor, plural } from './payoutCopy'
-
-/** The review list's element id, so the "need review" line can take the reader there. */
-export const PAYOUT_REVIEW_ID = 'payout-review'
+import PayoutReview from './PayoutReview'
+import {
+  PAYOUT_REVIEW_ID,
+  dayRange,
+  mappingLinkFor,
+  plural,
+} from './payoutCopy'
 
 /**
  * Payout reports, on the Clearing page.
@@ -141,6 +144,8 @@ const PayoutReports: FC = () => {
           </button>
         ) : null}
       </div>
+
+      <PayoutReview email={email} />
 
       <PayoutReportUploadModal
         open={uploading}
