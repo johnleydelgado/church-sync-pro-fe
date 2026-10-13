@@ -167,6 +167,35 @@ divides by 100 (cents in); the Clearing/statement/Daily Giving pages define a lo
 one that formats dollars directly, because those endpoints return dollars. Mixing
 them is a silent 100× error.
 
+### Registrations from the payout report (event money)
+
+Planning Center pays giving AND registrations out in the same Stripe deposits, and its API has
+no registration payments, so the bookkeeper exports the **payout report** ("full transaction
+details") from Planning Center and uploads it on the **Clearing** page (`PayoutReports.tsx`, upload
+modal `PayoutReportUploadModal.tsx`, review list `PayoutReview.tsx`, sentences in
+`payoutCopy.ts`). Plan and API contract: `docs/plans/2026-10-08-registrations-import.md`
+(section 6 is the contract; the backend lives in `quickplan-connect/src/services/payoutReport/`).
+
+- The upload previews first (plain sentences, nothing written), then records each registration
+  charge or refund **once**, dated its charge or refund day, as `CSP-E-<day>-<n>` /
+  `CSP-ER-<day>-<n>` entries, and checks every giving line in the file is already in QuickBooks.
+  Re-uploading the same or an overlapping file never posts twice.
+- Anything CSP doesn't recognise waits in the review list (code it, or mark it handled with a
+  note); so do giving lines whose day isn't fully posted yet, and the rare post QuickBooks
+  accepted but CSP couldn't record ("posting interrupted": mark posted with the entry, or post now).
+- Setup lives on **Mapping -> Registration** (`RegistrationMapping.tsx`): the date to record
+  registrations from (by charge date; Active Church uses Oct 1 2026 - September was trued up by
+  hand), a default income account + class, and per-event overrides. The Clearing account must
+  be the same one giving uses (Bank tab).
+- `settingRegistrationData` now holds `{ version: 2, default, events }`. Older code expects the
+  Stripe-era ARRAY; read it through an `Array.isArray` guard (the Archive page and the old
+  payout view do), never call `.find`/`.filter` on it directly.
+- Every payout-report endpoint returns **dollars**, signed (refunds negative) - format with the
+  page's local dollar formatter, never `@/common/utils/helper`'s `formatUsd` (cents).
+- The endpoints check the signed-in user is the church or its accepted bookkeeper; a 403 means
+  that, not an expired session.
+- **Never commit a real payout report** - every row carries a donor's or registrant's name.
+
 ### Pages
 
 `src/pages/Main/*` are the app's feature areas: `transaction` (now the Daily Giving page; `view-details`, `view-detail-stripe` are legacy batch/payout views), `automation` (`mapping`, `archive`), `client` (client management table — actively being built, see git status), `settings` (sub-pages: Account/Integrations, Billing, Profile, Bookkeeper, Projects, Email), `dashboard`, `home`, `ask-us`, `quick-start-guide`, `accounts-token`. `src/pages/Auth/*` holds login/signup/password flows; `src/pages/Subscription/*` holds the Stripe subscription plan page. Feature-specific components live in a `components/` folder next to their page.
