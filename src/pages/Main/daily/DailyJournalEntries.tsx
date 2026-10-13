@@ -9,6 +9,7 @@ import { useQuery } from 'react-query'
 import { useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
 import ClearingStatement from './ClearingStatement'
+import PayoutReports from './PayoutReports'
 import { HiOutlineDocumentText } from 'react-icons/hi'
 
 interface ClearingPageProps {}
@@ -31,7 +32,7 @@ const balanceMeaning = (balance: number | null | undefined) => {
     return "Online giving CSP has recorded that Stripe hasn't deposited yet. It comes down as each deposit is cleared against this account."
   if (cents === 0)
     return 'Everything CSP recorded has been deposited and cleared.'
-  return "Negative: more has been cleared out of this account than CSP put in. That happens when Stripe deposits carry money CSP doesn't record — giving from before you switched to CSP, or event and registration payments."
+  return "Negative: more has been cleared out of this account than CSP put in. That happens when Stripe deposits carry money CSP hasn't recorded — giving from before you switched to CSP, or event and registration payments from a payout report not uploaded yet."
 }
 
 /**
@@ -110,6 +111,8 @@ const DailyJournalEntries: FC<ClearingPageProps> = () => {
                   </p>
                 </div>
               </div>
+
+              <PayoutReports />
 
               <ClearingStatement />
             </>
