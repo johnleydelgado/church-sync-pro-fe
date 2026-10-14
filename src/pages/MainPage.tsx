@@ -56,6 +56,7 @@ import {
 import useLogoutHandler from '@/common/hooks/useLogoutHandler'
 import InviteLink from './Main/invite-link/InviteLink'
 import { useGetTokenList } from '@/common/hooks/useGetTokenList'
+import { useKeepChurchSelected } from '@/common/hooks/useChurch'
 import AskUs from './Main/ask-us/AskUs'
 import Home from './Main/home/Home'
 import QuickStartGuide from './Main/quick-start-guide/QuickStartGuide'
@@ -73,6 +74,8 @@ const MainPage: FC<indexProps> = () => {
 
   const dispatch = useDispatch()
   const logoutHandler = useLogoutHandler()
+  // The one place the selected church is kept in step with `GET /church/mine`.
+  useKeepChurchSelected()
 
   const handleLogout = () => {
     logoutHandler()

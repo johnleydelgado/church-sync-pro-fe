@@ -1,6 +1,7 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit'
 import { stat } from 'fs'
 import { number, string } from 'yup'
+import type { MyChurch } from '@/common/api/church'
 
 export interface thirdPartyTokens {
   qbo_access_token: string | null
@@ -55,6 +56,14 @@ export interface BankAccountExpensesProps {
 export interface SelectedClient {
   clientEmail: string
   clientId?: number
+}
+
+/** The church a QuickBooks / Planning Center connect was started for, kept across the redirect. */
+export interface PendingConnection {
+  churchId: number
+  accountEmail: string
+  accountUserId: number
+  returnTo: string
 }
 
 interface DateRangeTransactionProps {
@@ -116,6 +125,12 @@ interface CommonState {
   dateRangeTransaction: DateRangeTransactionProps[]
   integrationTo: 'client' | 'bookkeeper'
   selectdClient: SelectedClient
+  /**
+   * The church every page works on. Read it as `?? null`: a browser that ran an older build
+   * gets its persisted `common` back whole, without this key.
+   */
+  selectedChurch: MyChurch | null
+  pendingConnection: PendingConnection | null
 }
 
 const initialState: CommonState = {
@@ -180,6 +195,8 @@ const initialState: CommonState = {
     clientEmail: '',
     clientId: 0,
   },
+  selectedChurch: null,
+  pendingConnection: null,
 }
 
 export const common = createSlice({
@@ -244,6 +261,8 @@ export const common = createSlice({
       state.selectedBankAccount = initialState.selectedBankAccount
       state.selectedBankExpense = initialState.selectedBankExpense
       state.dateRangeTransaction = initialState.dateRangeTransaction
+      state.selectedChurch = initialState.selectedChurch
+      state.pendingConnection = initialState.pendingConnection
       // state.selectedStartDate = initialState.selectedStartDate
     },
     setSelectedTransactionDate: (
@@ -317,6 +336,20 @@ export const common = createSlice({
     setSelectedClient: (state, action: PayloadAction<SelectedClient>) => {
       state.selectdClient = action.payload
     },
+    setSelectedChurch: (state, action: PayloadAction<MyChurch | null>) => {
+      state.selectedChurch = action.payload
+    },
+    setPendingConnection: (
+      state,
+      action: PayloadAction<PendingConnection | null>,
+    ) => {
+      state.pendingConnection = action.payload
+    },
+    /** Bank and fee choices belong to one church; clear them when the church changes. */
+    resetChurchScopedState: (state) => {
+      state.selectedBankAccount = null
+      state.selectedBankExpense = null
+    },
   },
 })
 
@@ -349,6 +382,9 @@ export const {
   setDateRangeTransaction,
   setIntegrationTo,
   setSelectedClient,
+  setSelectedChurch,
+  setPendingConnection,
+  resetChurchScopedState,
 } = common.actions
 
 export default common.reducer
