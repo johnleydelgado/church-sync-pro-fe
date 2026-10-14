@@ -19,6 +19,7 @@ import AddChurchModal from './AddChurchModal'
 import ChurchCard from './ChurchCard'
 import ChurchRow from './ChurchRow'
 import ChurchStatusDialog from './ChurchStatusDialog'
+import RenameChurchModal from './RenameChurchModal'
 import { ChurchIntegration } from './components/churchBits'
 import FiltersPopover, { StatusFilter } from './components/filtersPopover'
 import Pagination from './components/pagination'
@@ -54,6 +55,7 @@ const ChurchesPage: FC = () => {
   const [statusTarget, setStatusTarget] = useState<MyChurch | null>(null)
   const [statusSaving, setStatusSaving] = useState(false)
   const [statusError, setStatusError] = useState<string | null>(null)
+  const [renameTarget, setRenameTarget] = useState<MyChurch | null>(null)
 
   // Back from the sign-in page with the browser's Back button: this page comes out of the
   // back/forward cache as it was left, with its Connect button still spinning.
@@ -157,6 +159,10 @@ const ChurchesPage: FC = () => {
     isSelected: church.id === selectedId,
     onOpen: () => goTo(church, mainRoute.TRANSACTION),
     onPeople: () => goTo(church, `${mainRoute.SETTINGS}?tab=people`),
+    // Owners rename; the server refuses anyone else.
+    onRename: church.canManagePeople
+      ? () => setRenameTarget(church)
+      : undefined,
   })
 
   const addButton = (
@@ -313,6 +319,10 @@ const ChurchesPage: FC = () => {
   return (
     <MainLayout>
       <AddChurchModal open={addOpen} onClose={() => setAddOpen(false)} />
+      <RenameChurchModal
+        church={renameTarget}
+        onClose={() => setRenameTarget(null)}
+      />
       <ChurchStatusDialog
         church={statusTarget}
         saving={statusSaving}

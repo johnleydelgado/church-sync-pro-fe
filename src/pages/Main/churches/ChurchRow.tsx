@@ -21,6 +21,8 @@ export interface ChurchActionsProps {
   onPeople: () => void
   /** Owners only (`canManagePeople`); the page passes nothing to anyone else. */
   onToggleActive?: () => void
+  /** Owners only, like `onToggleActive`. */
+  onRename?: () => void
 }
 
 /** One church in the desktop table. */
@@ -33,6 +35,7 @@ const ChurchRow: FC<ChurchActionsProps> = ({
   onOpen,
   onPeople,
   onToggleActive,
+  onRename,
 }) => {
   const muted = !church.isActive
 
@@ -98,6 +101,16 @@ const ChurchRow: FC<ChurchActionsProps> = ({
           >
             People
           </button>
+          {onRename ? (
+            <button
+              type="button"
+              onClick={onRename}
+              aria-label={`Rename ${church.name}`}
+              className="text-primary hover:underline"
+            >
+              Rename
+            </button>
+          ) : null}
           {onToggleActive ? (
             <button
               type="button"

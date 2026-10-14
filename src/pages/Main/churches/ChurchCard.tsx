@@ -8,6 +8,8 @@ interface ChurchCardProps {
   isSelected: boolean
   onOpen: () => void
   onPeople: () => void
+  /** Owners only (`canManagePeople`). */
+  onRename?: () => void
 }
 
 /** One church on a phone: who you are on it, whether it is active, and the way in. */
@@ -16,6 +18,7 @@ const ChurchCard: FC<ChurchCardProps> = ({
   isSelected,
   onOpen,
   onPeople,
+  onRename,
 }) => (
   <div
     className={`rounded-lg p-4 shadow ${
@@ -57,6 +60,16 @@ const ChurchCard: FC<ChurchCardProps> = ({
         People
       </button>
     </div>
+    {onRename ? (
+      <button
+        type="button"
+        onClick={onRename}
+        aria-label={`Rename ${church.name}`}
+        className="mt-3 text-sm font-medium text-primary hover:underline"
+      >
+        Rename
+      </button>
+    ) : null}
   </div>
 )
 
