@@ -202,6 +202,17 @@ const Mapping: FC<SettingsProps> = () => {
     expense: BankAccountExpensesProps | null
   }>({ accounts: null, expense: null })
 
+  // react-query v3 still runs a mutation's callbacks after the page unmounts. After a church
+  // switch (which remounts every page) a late answer must not write the old church's bank or
+  // fee values into the shared redux fields the new church's Mapping reads.
+  const mounted = useRef(false)
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
+
   const { mutate: saveBankData } = useMutation<
     unknown,
     Error,
@@ -209,13 +220,15 @@ const Mapping: FC<SettingsProps> = () => {
   >(({ email, data }) => addUpdateBankSettings({ email, data }), {
     onMutate: ({ field }) => setFieldStatus(field, 'saving'),
     onSuccess: (_, { field, data }) => {
+      if (!mounted.current) return
       savedBank.current.accounts = data
       setFieldStatus(field, 'saved')
     },
     onError: (e, { field }) => {
+      failNotification({ title: e.message })
+      if (!mounted.current) return
       setFieldStatus(field, 'error')
       dispatch(setSelectedBankAccount(savedBank.current.accounts))
-      failNotification({ title: e.message })
     },
     onSettled: markSettingsStale,
   })
@@ -227,16 +240,22 @@ const Mapping: FC<SettingsProps> = () => {
   >(({ email, data }) => addUpdateBankCharges({ email, data }), {
     onMutate: ({ field }) => setFieldStatus(field, 'saving'),
     onSuccess: (_, { field, data }) => {
+      if (!mounted.current) return
       savedBank.current.expense = data
       setFieldStatus(field, 'saved')
     },
     onError: (e, { field }) => {
+      failNotification({ title: e.message })
+      if (!mounted.current) return
       setFieldStatus(field, 'error')
       dispatch(setSelectedBankExpense(savedBank.current.expense))
-      failNotification({ title: e.message })
     },
     onSettled: markSettingsStale,
   })
+
+  // Each pick builds on what is on screen, so while one save is out the four dropdowns wait: a
+  // second pick followed by a failure of the first would leave the screen and server apart.
+  const bankSaving = Object.values(bankStatus).includes('saving')
 
   // "Saved" fades after a moment; "Not saved" stays until that field is picked again.
   useEffect(() => {
@@ -446,29 +465,18 @@ const Mapping: FC<SettingsProps> = () => {
       )
     }
 
+    // The server's bank and fee choices for this church, or none: an empty setting clears the
+    // fields rather than leaving a value persisted from before.
     if (userData) {
-      savedBank.current = {
-        accounts: isEmpty(userData.UserSetting?.settingBankData)
-          ? null
-          : userData.UserSetting?.settingBankData ?? null,
-        expense: isEmpty(userData.UserSetting?.settingBankCharges)
-          ? null
-          : userData.UserSetting?.settingBankCharges ?? null,
-      }
-    }
-
-    if (!isEmpty(userData?.UserSetting?.settingBankData)) {
-      dispatch(
-        setSelectedBankAccount(userData?.UserSetting?.settingBankData || null),
-      )
-    }
-
-    if (!isEmpty(userData?.UserSetting?.settingBankCharges)) {
-      dispatch(
-        setSelectedBankExpense(
-          userData?.UserSetting?.settingBankCharges || null,
-        ),
-      )
+      const accounts = isEmpty(userData.UserSetting?.settingBankData)
+        ? null
+        : userData.UserSetting?.settingBankData ?? null
+      const expense = isEmpty(userData.UserSetting?.settingBankCharges)
+        ? null
+        : userData.UserSetting?.settingBankCharges ?? null
+      savedBank.current = { accounts, expense }
+      dispatch(setSelectedBankAccount(accounts))
+      dispatch(setSelectedBankExpense(expense))
     }
 
     if (!isEmpty(userData?.UserSetting?.startDateAutomationRegistration)) {
@@ -734,6 +742,7 @@ const Mapping: FC<SettingsProps> = () => {
                               }))}
                             placeholder="Select Clearing Account"
                             components={{ Input }}
+                            isDisabled={bankSaving}
                             onChange={(val) => {
                               const updatedBankAccounts = (
                                 selectedBankAccount || []
@@ -776,6 +785,7 @@ const Mapping: FC<SettingsProps> = () => {
                               }))}
                             placeholder="Select Clearing Account"
                             components={{ Input }}
+                            isDisabled={bankSaving}
                             onChange={(val) => {
                               const updatedBankAccounts = (
                                 selectedBankAccount || []
@@ -826,6 +836,7 @@ const Mapping: FC<SettingsProps> = () => {
                                   }))}
                                 placeholder="Select Account"
                                 components={{ Input }}
+                                isDisabled={bankSaving}
                                 onChange={(val) => {
                                   pickBankExpense('feeAccount', {
                                     account: {
@@ -863,6 +874,7 @@ const Mapping: FC<SettingsProps> = () => {
                                 )}
                                 placeholder="Select Classes"
                                 components={{ Input }}
+                                isDisabled={bankSaving}
                                 onChange={(val) => {
                                   pickBankExpense('feeClass', {
                                     account: {
