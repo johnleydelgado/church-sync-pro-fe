@@ -301,7 +301,9 @@ const getUserRelated = async (email: string) => {
   try {
     // Encoded: a '+' in an address would otherwise reach Express as a space and
     // the user would not be found.
-    const response = await apiCall.get(url + `?email=${encodeURIComponent(email)}`)
+    const response = await apiCall.get(
+      url + `?email=${encodeURIComponent(email)}`,
+    )
     return response.data
   } catch (e: any) {
     return []
@@ -481,7 +483,12 @@ const postStripeGivingDay = async (
   failedDays: string[]
   reason?: string
   /** Gifts left out because their fund has no QuickBooks account. Cents. */
-  unmapped?: { day: string; fundName: string; amountCents: number; count: number }[]
+  unmapped?: {
+    day: string
+    fundName: string
+    amountCents: number
+    count: number
+  }[]
 }> => {
   const url = userRoutes.postStripeGivingDay
   const res = await apiCall.post(url, JSON.stringify({ email, day }))
@@ -535,8 +542,23 @@ export interface PayoutEntry {
   error?: string
 }
 
+/** An earlier upload whose charge dates overlap this file's. */
+export interface PayoutPreviousUpload {
+  id: number
+  fileName: string | null
+  uploadedAt: string
+  uploadedBy: string | null
+  firstDay: string | null
+  lastDay: string | null
+}
+
 export interface PayoutSummary {
   file: { rows: number; firstDay: string | null; lastDay: string | null }
+  /**
+   * How many of this file's lines an earlier upload already brought in, and those uploads.
+   * Optional: a backend older than this field doesn't send it.
+   */
+  overlap?: { rowsSeenBefore: number; previousUploads: PayoutPreviousUpload[] }
   registrations: {
     toPost: { count: number; gross: number; fees: number; net: number }
     alreadyRecorded: number

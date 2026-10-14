@@ -7,6 +7,7 @@ import { Spinner } from 'flowbite-react'
 import {
   HiOutlineCheckCircle,
   HiOutlineExclamationCircle,
+  HiOutlineInformationCircle,
   HiOutlineUpload,
 } from 'react-icons/hi'
 
@@ -313,6 +314,62 @@ const PayoutReportUploadModal: FC<PayoutReportUploadModalProps> = ({
 }
 
 /** Step 2: what recording the file would do, in sentences rather than a dump of rows. */
+/**
+ * Re-uploading is safe - lines an earlier upload brought in are skipped, never recorded twice -
+ * but people should see that before they press Record, not wonder afterwards.
+ */
+const OverlapNotice: FC<{ summary: PayoutSummary }> = ({ summary }) => {
+  const overlap = summary.overlap
+  if (!overlap) return null
+  const { rowsSeenBefore, previousUploads } = overlap
+  if (rowsSeenBefore === 0 && previousUploads.length === 0) return null
+  const everything =
+    summary.file.rows > 0 && rowsSeenBefore >= summary.file.rows
+  const latest = previousUploads[0]
+
+  return (
+    <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sky-900">
+      <p className="flex items-center gap-2 font-semibold">
+        <HiOutlineInformationCircle size={16} className="shrink-0" />
+        {everything
+          ? 'Everything in this file was already uploaded.'
+          : rowsSeenBefore > 0
+          ? `${plural(
+              rowsSeenBefore,
+              'line in this file was',
+              'lines in this file were',
+            )} already uploaded.`
+          : 'You already uploaded a report covering some of these dates.'}
+      </p>
+      {latest ? (
+        <p className="pt-1">
+          Earlier upload: {latest.fileName || 'a payout report'}, uploaded{' '}
+          {formatDate(latest.uploadedAt)}
+          {latest.uploadedBy ? ` by ${latest.uploadedBy}` : ''}
+          {latest.firstDay
+            ? `, charges ${dayRange(latest.firstDay, latest.lastDay)}`
+            : ''}
+          {previousUploads.length > 1
+            ? ` (and ${plural(
+                previousUploads.length - 1,
+                'other upload',
+                'other uploads',
+              )})`
+            : ''}
+          .
+        </p>
+      ) : null}
+      <p className="pt-1">
+        {everything
+          ? 'Nothing in it will be recorded twice, so there is nothing new to record.'
+          : rowsSeenBefore > 0
+          ? 'Those lines are skipped; only the new ones are recorded.'
+          : 'None of its lines are in this file, so all of these are new.'}
+      </p>
+    </div>
+  )
+}
+
 const PreviewStep: FC<{
   fileName: string
   summary: PayoutSummary
@@ -336,6 +393,8 @@ const PreviewStep: FC<{
             )}`
           : ''}
       </p>
+
+      <OverlapNotice summary={summary} />
 
       <ul className="list-disc space-y-1 pl-5">
         <li>
