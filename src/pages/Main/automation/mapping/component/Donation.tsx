@@ -164,7 +164,7 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
   const [openStates, setOpenStates] = useState<Record<number, boolean>>({})
 
   const dispatch = useDispatch()
-  // The parent keys this component by church, so these never change under a mounted form.
+  // MainPage remounts every page on a church switch, so these never change under a mounted form.
   const { email, churchId } = useChurch()
   const reTriggerIsUserTokens = useSelector(
     (item: RootState) => item.common.reTriggerIsUserTokens,

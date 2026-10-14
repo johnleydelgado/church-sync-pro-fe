@@ -243,8 +243,6 @@ const Profile: FC<AccountProps> = ({}) => {
               }
             />
             <TextInput
-              // Keyed by church: the input is uncontrolled, so a switch must remount it.
-              key={church?.id ?? 'none'}
               title="Church Name"
               defValue={church?.name ?? ''}
               isEditing={isEditing}

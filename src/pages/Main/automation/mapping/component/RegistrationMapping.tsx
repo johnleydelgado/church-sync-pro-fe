@@ -124,7 +124,8 @@ const asOption = (choice: QboChoice | null, options: Option[]) =>
  * income account and class, and optional per-event overrides. Saved together with Save - unlike
  * the Donation tab, nothing here saves itself.
  *
- * The parent keys this component by the church's account, so switching church gets a fresh form.
+ * The parent keys this component by the loaded settings, and MainPage remounts every page on a
+ * church switch, so the form always starts from the selected church's saved mapping.
  */
 const RegistrationMapping: FC<RegistrationMappingProps> = ({
   userData,

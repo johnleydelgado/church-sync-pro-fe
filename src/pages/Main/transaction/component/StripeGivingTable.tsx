@@ -309,9 +309,8 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({
 
   const totalPages = Math.max(1, Math.ceil(days.length / DAYS_PER_PAGE))
 
-  // Clamped, not merely reset by an effect. The list changes whenever the query key changes -
-  // which includes `churchId`, because anyone can switch church from the sidebar without
-  // touching the dates. Landing on page 4 of a list that now has one page renders a header with
+  // Clamped, not merely reset by an effect. The list changes whenever it is refetched - after a
+  // post, or a new sync start date - without the dates being touched. Landing on page 4 of a list that now has one page renders a header with
   // no rows under it, and the pagination control hides itself at one page, so there is nothing
   // left on screen to click back with. Deriving the page makes that state unreachable.
   const safePage = Math.min(page, totalPages)
@@ -321,12 +320,12 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({
   )
 
   // Collapse any open row when the range changes - it belongs to the range being left.
-  // Toggling excluded days or switching church reshapes the list too, so it resets the same way.
+  // Toggling excluded days reshapes the list too, so it resets the page the same way.
+  // (A church switch remounts the whole page.)
   useEffect(() => {
     setPage(1)
     setExpandedDay(null)
-    setConfirmDay(null)
-  }, [from, to, showExcluded, churchId])
+  }, [from, to, showExcluded])
 
   if (isLoading) return <Loading />
 

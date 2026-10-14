@@ -546,13 +546,7 @@ const Mapping: FC<SettingsProps> = () => {
                       </div>
                     </div>
 
-                    {/* Keyed by church: its autosave must never send one church's mapping
-                        to another's email when the switch lands on a cached page. */}
-                    <Donation
-                      key={churchId ?? 'none'}
-                      fundData={fundData || []}
-                      userData={userData}
-                    />
+                    <Donation fundData={fundData || []} userData={userData} />
                   </div>
                 )}
               </Tab.Panel>
@@ -575,7 +569,7 @@ const Mapping: FC<SettingsProps> = () => {
                     </Link>
                   </div>
                 ) : (
-                  // Keyed by the church's account: switching church gets a fresh form.
+                  // Keyed by the loaded settings: the form reads them once, when it mounts.
                   <RegistrationMapping
                     key={userData?.id ?? 'loading'}
                     userData={userData}

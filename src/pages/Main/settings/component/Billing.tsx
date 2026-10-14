@@ -150,16 +150,16 @@ const Billing: FC<AccountProps> = ({}) => {
     },
   })
 
-  // Mirrors the selected church's billing contact, and empties the form for a church without
-  // one - otherwise the last church's contact stayed in the form, ready to be saved here.
   useEffect(() => {
-    formik.setValues({
-      name: billingData?.name ?? '',
-      phone: billingData?.phone ?? '',
-      address: billingData?.address ?? '',
-      email: billingData?.email ?? '',
-      zipCode: billingData?.zipCode ?? '',
-    })
+    if (billingData) {
+      formik.setValues({
+        name: billingData.name,
+        phone: billingData.phone,
+        address: billingData.address,
+        email: billingData.email,
+        zipCode: billingData.zipCode,
+      })
+    }
   }, [billingData])
 
   useEffect(() => {

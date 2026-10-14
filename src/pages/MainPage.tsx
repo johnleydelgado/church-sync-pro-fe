@@ -198,7 +198,9 @@ const MainPage: FC<indexProps> = () => {
   if (isLoading || waitingForChurch) return <Loading />
 
   return (
-    <div className="h-screen bg-slate-100">
+    // Keyed by church: a switch remounts every page, so no form, debounced save or local state
+    // started for one church can carry on under another. Refreshing the same church keeps the key.
+    <div className="h-screen bg-slate-100" key={churchId ?? 'none'}>
       <Routes>
         <Route
           path={route.ROOT}
