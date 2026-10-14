@@ -156,7 +156,11 @@ const Account: FC<AccountProps> = ({}) => {
     }
     successNotification({ title: `${label} disconnected.` })
     refetch()
-    queryClient.invalidateQueries(MY_CHURCHES_KEY)
+    // Replace a list fetch that left before the disconnect.
+    queryClient.invalidateQueries(
+      { queryKey: MY_CHURCHES_KEY },
+      { cancelRefetch: true },
+    )
   }
 
   return (

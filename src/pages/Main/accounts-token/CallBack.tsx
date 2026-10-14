@@ -60,6 +60,13 @@ const exchangeCode = (
   return axios.post(`${REACT_APP_API_PATH}callBackPC`, { code })
 }
 
+/**
+ * Codes this tab has started finishing. A code is single-use, and switching church remounts
+ * every page - this one too, if it is still on screen - so a second instance must not finish
+ * the same return again.
+ */
+const handledCodes = new Set<string>()
+
 interface Failure {
   heading: string
   message: string
@@ -81,7 +88,9 @@ const CallBack: FC = () => {
   const { data: churches } = useMyChurches()
   // `finish` runs once, from the first render; it reads these when it gets to the end.
   const latest = useRef({ selectedId, churches })
-  latest.current = { selectedId, churches }
+  useEffect(() => {
+    latest.current = { selectedId, churches }
+  }, [selectedId, churches])
   const [failure, setFailure] = useState<Failure | null>(null)
 
   const finish = async (record: PendingConnection | null) => {
@@ -159,21 +168,32 @@ const CallBack: FC = () => {
     successNotification({
       title: `${service} connected for ${record.churchName}.`,
     })
-    // Land on the church the connection was for, not whichever was picked since.
+    // The connection shows on the church list; replace a fetch that left before it was saved.
+    queryClient.invalidateQueries(
+      { queryKey: MY_CHURCHES_KEY },
+      { cancelRefetch: true },
+    )
+    queryClient.invalidateQueries('getTokenList')
+    queryClient.invalidateQueries('isUserTokens')
+    // Leave first - replace, so Back can't land here again with a used code - then land on the
+    // church the connection was for, not whichever was picked since. Switching remounts every
+    // page; done the other way round it would remount this one (handledCodes covers that too).
+    navigate(backTo, { replace: true })
     const now = latest.current
     if (now.selectedId !== record.churchId && Array.isArray(now.churches)) {
       const church = now.churches.find((c) => c.id === record.churchId)
       if (church) switchChurch(church)
     }
-    queryClient.invalidateQueries(MY_CHURCHES_KEY)
-    queryClient.invalidateQueries('getTokenList')
-    queryClient.invalidateQueries('isUserTokens')
-    // Replace: Back must not land here again with a code that has already been used.
-    navigate(backTo, { replace: true })
   }
 
   useEffect(() => {
-    // Exchange the code once: it is single-use, and StrictMode runs effects twice.
+    // Exchange the code once: it is single-use, StrictMode runs effects twice, and a church
+    // switch can remount this page while the first instance is finishing.
+    const code = new URLSearchParams(window.location.search).get('code')
+    if (code) {
+      if (handledCodes.has(code)) return
+      handledCodes.add(code)
+    }
     if (!subscribed.current) finish(pending)
     return () => {
       subscribed.current = true

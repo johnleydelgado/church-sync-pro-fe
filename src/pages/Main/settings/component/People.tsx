@@ -263,7 +263,11 @@ const People: FC = () => {
               : old,
         )
         queryClient.invalidateQueries([CHURCH_PEOPLE_KEY, id])
-        queryClient.invalidateQueries(MY_CHURCHES_KEY)
+        // Replace a list fetch that left before this change.
+        queryClient.invalidateQueries(
+          { queryKey: MY_CHURCHES_KEY },
+          { cancelRefetch: true },
+        )
         const name = who(person)
         successNotification({
           title: enabled
@@ -291,7 +295,11 @@ const People: FC = () => {
         } else {
           queryClient.invalidateQueries([CHURCH_PEOPLE_KEY, id])
         }
-        queryClient.invalidateQueries(MY_CHURCHES_KEY)
+        // Replace a list fetch that left before this change.
+        queryClient.invalidateQueries(
+          { queryKey: MY_CHURCHES_KEY },
+          { cancelRefetch: true },
+        )
         successNotification({
           title:
             person.status === 'invited'
