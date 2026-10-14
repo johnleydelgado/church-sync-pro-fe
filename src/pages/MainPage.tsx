@@ -28,7 +28,6 @@ import {
   AccountTokensPage,
   AutomationArchivePage,
   AutomationMappingPage,
-  ClientManagementPage,
   DailyJournalEntriesPage,
   DashboardPage,
   SettingsPage,
@@ -64,6 +63,7 @@ import {
 import AskUs from './Main/ask-us/AskUs'
 import Home from './Main/home/Home'
 import QuickStartGuide from './Main/quick-start-guide/QuickStartGuide'
+import ChurchesPage from './Main/churches'
 import BackgroundDataFetcher from '@/common/components/background-caller-api/BackgroundDataFetcher'
 
 interface indexProps {}
@@ -341,13 +341,15 @@ const MainPage: FC<indexProps> = () => {
           }
         />
         <Route
-          path={mainRoute.CLIENT_LIST}
+          path={mainRoute.CHURCHES}
           element={
-            <PrivateRoute
-              Component={ClientManagementPage}
-              guards={[authGuard]}
-            />
+            <PrivateRoute Component={ChurchesPage} guards={[authGuard]} />
           }
+        />
+        {/* The Clients page became Churches */}
+        <Route
+          path={mainRoute.CLIENT_LIST}
+          element={<Navigate to={mainRoute.CHURCHES} replace />}
         />
         <Route
           path={mainRoute.SETTINGS}
