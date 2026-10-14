@@ -499,7 +499,7 @@ const People: FC = () => {
                               aria-label={
                                 joined
                                   ? `Remove ${who(p)}`
-                                  : `Withdraw the invite to ${p.email}`
+                                  : `Remove the invite to ${p.email}`
                               }
                               className="font-medium text-red-600 hover:underline disabled:opacity-50"
                             >
