@@ -139,25 +139,37 @@ const addTokenInUser = async ({ ...rest }: TokensProps) => {
   }
 }
 
+const SETTINGS_SAVE_TIMEOUT_MS = 30_000
+
 const createSettings = async ({
   ...rest
 }: SettingQBOProps | SettingRegistrationQBOProps) => {
   const url = userRoutes.createSettings
   try {
-    const response = await apiCall.post(url, rest)
+    // Bounded: the fund mapping's saves queue behind each other, and one request that never
+    // answers would hold every later one.
+    const response = await apiCall.post(url, rest, {
+      timeout: SETTINGS_SAVE_TIMEOUT_MS,
+    })
     return response.data
   } catch (e: any) {
+    if (e?.code === 'ECONNABORTED') {
+      throw new Error(
+        'Saving took too long, so it may not have gone through. Check your connection and try again.',
+      )
+    }
     // Rethrow. This used to return [] on failure, which made a failed save
     // indistinguishable from a successful one - so the mapping page's auto-save
-    // reported "Changes saved" for writes that never landed. Every caller runs
-    // this through react-query's useMutation, which catches the rejection and
-    // surfaces it as isError rather than letting it escape.
+    // reported "Changes saved" for writes that never landed. Every caller handles the
+    // rejection (react-query mutations, or the fund mapping save queue).
     // The backend answers with `{ error }`, other handlers with `{ message }`; read both so
     // the real reason reaches the page instead of the generic fallback.
     throw new Error(
       e?.response?.data?.error ??
         e?.response?.data?.message ??
-        'Your mapping could not be saved.',
+        (e?.response
+          ? 'Your mapping could not be saved.'
+          : 'Could not reach Church Sync Pro. Check your connection and try again.'),
     )
   }
 }
