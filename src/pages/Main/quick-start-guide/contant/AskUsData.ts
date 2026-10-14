@@ -100,14 +100,13 @@ const INSTRUCTIONS = [
     steps: [
       {
         text: 'Go to',
-        linkText: 'Bookkeeper',
-        link: routeSettings.BOOKKEEPER,
+        linkText: 'People',
+        link: `${mainRoute.SETTINGS}?tab=people`,
       },
-      "Click the Bookkeeper's tab.",
-      "Type the bookkeeper's e-mail and confirm.",
-      'We will send an invite to your bookkeeper via the given e-mail.',
-      "Once the invitation is accepted, the bookkeeper's name will appear in the Bookkeeper's tab.",
-      'Done! You can add/remove bookkeepers now.',
+      'Click "Invite someone", type the bookkeeper\'s e-mail and click Invite.',
+      "If they already have a Church Sync Pro login, they're added straight away. Otherwise you'll get an invite link to send them.",
+      'Once they join, they show as Active in the People tab.',
+      'Done! You can remove a bookkeeper from the same tab.',
     ],
   },
   {
