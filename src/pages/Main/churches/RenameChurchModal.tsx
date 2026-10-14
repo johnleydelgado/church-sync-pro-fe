@@ -139,7 +139,7 @@ const RenameChurchModal: FC<RenameChurchModalProps> = ({ church, onClose }) => {
                     value={name}
                     // Not `disabled`: a disabled input drops focus, and a server error puts it back here.
                     readOnly={pending}
-                    maxLength={255}
+                    maxLength={200}
                     aria-invalid={!!error}
                     aria-describedby={error ? 'rename-church-error' : undefined}
                     onChange={(e) => {

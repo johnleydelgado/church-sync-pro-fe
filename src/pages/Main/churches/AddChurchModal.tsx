@@ -150,7 +150,7 @@ const AddChurchModal: FC<AddChurchModalProps> = ({
                     value={name}
                     // Not `disabled`: a disabled input drops focus, and a server error puts it back here.
                     readOnly={pending}
-                    maxLength={255}
+                    maxLength={200}
                     aria-invalid={!!error}
                     aria-describedby={error ? 'add-church-error' : undefined}
                     onChange={(e) => {

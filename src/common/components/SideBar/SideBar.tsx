@@ -5,7 +5,8 @@ import { HiOutlineLogout, HiOutlineUserCircle } from 'react-icons/hi'
 import { useMediaQuery } from 'react-responsive'
 import { useLocation } from 'react-router'
 import { FaChevronDown, FaChevronUp, FaTimes } from 'react-icons/fa'
-import pages, { DropdownLink } from './constant'
+import pages, { DropdownLink, linksFor } from './constant'
+import { useChurch } from '@/common/hooks/useChurch'
 import { useDispatch } from 'react-redux'
 import { OPEN_MODAL } from '@/redux/common'
 import { useSelector } from 'react-redux'
@@ -177,6 +178,7 @@ const ItemSideBar = ({
 
 const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
   const location = useLocation()
+  const { church } = useChurch()
   const isTabletOrMobile = useMediaQuery({ query: '(max-width: 767px)' })
   const img_url = useSelector((item: RootState) => item.common.user.img_url)
   const isQuickStartHide = useSelector(
@@ -251,6 +253,7 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
               {pages.map((el) => (
                 <ItemSideBar
                   {...el}
+                  dropdownLinks={linksFor(el.dropdownLinks, church)}
                   isTrigger={isTrigger}
                   pathName={location.pathname}
                   key={el.name}

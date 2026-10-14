@@ -486,6 +486,7 @@ const People: FC = () => {
                               <button
                                 type="button"
                                 onClick={() => copyInviteLink(p)}
+                                aria-label={`Copy invite link for ${p.email}`}
                                 className="font-medium text-primary hover:underline"
                               >
                                 Copy invite link
@@ -495,6 +496,11 @@ const People: FC = () => {
                               type="button"
                               onClick={() => askToRemove(p)}
                               disabled={remove.isLoading}
+                              aria-label={
+                                joined
+                                  ? `Remove ${who(p)}`
+                                  : `Withdraw the invite to ${p.email}`
+                              }
                               className="font-medium text-red-600 hover:underline disabled:opacity-50"
                             >
                               Remove

@@ -12,7 +12,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { mainRoute } from '@/common/constant/route'
 import { BiHelpCircle, BiSortDown } from 'react-icons/bi'
 import { FaChevronDown, FaChevronUp, FaTimes } from 'react-icons/fa'
-import pages, { DropdownLink } from '../SideBar/constant'
+import pages, { DropdownLink, linksFor } from '../SideBar/constant'
 import ChurchSwitcher from '../ChurchSwitcher/ChurchSwitcher'
 interface NavBarProps {}
 
@@ -225,6 +225,7 @@ const NavBar: FC<NavBarProps> = () => {
             {pages.map((el) => (
               <ItemSideBar
                 {...el}
+                dropdownLinks={linksFor(el.dropdownLinks, church)}
                 pathName={location.pathname}
                 key={el.name}
               />
