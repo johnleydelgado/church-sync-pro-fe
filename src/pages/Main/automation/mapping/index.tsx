@@ -332,7 +332,8 @@ const Mapping: FC<SettingsProps> = () => {
       seen.add(s.fundName)
       if (s.isActive === false) archived.push(s.fundName)
     }
-    return archived
+    // Sorted: the key must not change when only the order in the saved list does.
+    return archived.sort()
   }, [userData?.UserSetting?.settingsData])
 
   const {
@@ -561,6 +562,24 @@ const Mapping: FC<SettingsProps> = () => {
     saveBankCharges({ field, churchId, email, data: next })
   }
 
+  const settingsUnavailable = (
+    <div className="flex flex-col items-center justify-center gap-3 h-96">
+      <p className="text-2xl text-center font-thin">
+        Couldn&apos;t load this church&apos;s settings.
+      </p>
+      <p className="text-center text-sm text-gray-500">
+        Nothing has been changed.
+      </p>
+      <button
+        type="button"
+        onClick={() => refetchUserData()}
+        className="rounded-lg bg-yellow px-4 py-2 text-sm font-medium text-white"
+      >
+        Try again
+      </button>
+    </div>
+  )
+
   return (
     <MainLayout>
       <TransactionDateModal />
@@ -684,7 +703,15 @@ const Mapping: FC<SettingsProps> = () => {
                       </div>
                     </div>
 
-                    <Donation fundData={fundData || []} userData={userData} />
+                    {/* Mounted once the settings are in: Donation loads its form from them
+                        once per mount and keeps it from then on. */}
+                    {userData ? (
+                      <Donation fundData={fundData || []} userData={userData} />
+                    ) : isFetchingUserData ? (
+                      <Loading />
+                    ) : (
+                      settingsUnavailable
+                    )}
                   </div>
                 )}
               </Tab.Panel>
@@ -728,21 +755,7 @@ const Mapping: FC<SettingsProps> = () => {
                   // saved choices are in, a pick would save a partial list over them.
                   <Loading />
                 ) : !userData ? (
-                  <div className="flex flex-col items-center justify-center gap-3 h-96">
-                    <p className="text-2xl text-center font-thin">
-                      Couldn&apos;t load this church&apos;s settings.
-                    </p>
-                    <p className="text-center text-sm text-gray-500">
-                      Nothing has been changed.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => refetchUserData()}
-                      className="rounded-lg bg-yellow px-4 py-2 text-sm font-medium text-white"
-                    >
-                      Try again
-                    </button>
-                  </div>
+                  settingsUnavailable
                 ) : (
                   <div>
                     <div className="mb-4 rounded-lg border border-blue-100 bg-blue-50 p-4 text-sm leading-relaxed text-gray-600">
