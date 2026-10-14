@@ -8,14 +8,15 @@ import ArchiveTable from './archive-table'
 import { useMutation, useQueryClient } from 'react-query'
 import { UserSettingsProps } from '@/common/constant/interfaces'
 import { useChurch } from '@/common/hooks/useChurch'
-import {
-  createSettings,
-  qboRegistrationSettings,
-  qboSettings,
-} from '@/common/api/user'
+import { createSettings, qboRegistrationSettings } from '@/common/api/user'
 import Loading from '@/common/components/loading/Loading'
 import { failNotification, successNotification } from '@/common/utils/toast'
 import { writeSettingsCache } from '../mapping/settingsCache'
+import {
+  currentFundMapping,
+  fundMappingSettled,
+  saveFundMapping,
+} from '../mapping/fundMappingQueue'
 
 interface indexProps {}
 
@@ -34,48 +35,33 @@ const Index: FC<indexProps> = ({}) => {
 
   const [isLoadingTrigger, setIsLoadingTrigger] = useState<boolean>(false)
 
-  // The church's settings: the same cached copy the Mapping page reads and writes, so the list
-  // saved here always starts from the newest mapping, and each reactivation from the last one.
+  // The church's settings: the same cached copy the Mapping page reads and writes.
   const { archives, isLoading, refetch, userData, isLoadingUserData } =
     useGetDeactivatedMapping()
 
-  const { mutateAsync, isLoading: isSavingSettings } = useMutation<
-    unknown,
-    unknown,
-    {
-      churchId: number
-      email: string
-      settingsData?: qboSettings[]
-      settingRegistrationData?: qboRegistrationSettings[]
-    }
-  >(
-    // Only the email and the list go to the server.
-    ({ email, settingsData, settingRegistrationData }) =>
-      createSettings(
-        settingsData
-          ? { email, settingsData }
-          : { email, settingRegistrationData },
-      ),
-    {
-      onSuccess: (
-        _,
-        { churchId: forChurch, settingsData, settingRegistrationData },
-      ) => {
-        // What was saved is what the cache holds: the next reactivation, and the Mapping page,
-        // start from it.
-        writeSettingsCache(
-          queryClient,
-          forChurch,
-          (settingsData
-            ? { settingsData }
-            : { settingRegistrationData }) as Partial<
-            UserSettingsProps['UserSetting']
-          >,
-        )
-        refetch()
+  // Stripe-era registrations only; the Donation fund mapping goes through its save queue.
+  const { mutateAsync: saveRegistrations, isLoading: isSavingSettings } =
+    useMutation<
+      unknown,
+      unknown,
+      {
+        churchId: number
+        email: string
+        settingRegistrationData: qboRegistrationSettings[]
+      }
+    >(
+      // Only the email and the list go to the server.
+      ({ email, settingRegistrationData }) =>
+        createSettings({ email, settingRegistrationData }),
+      {
+        onSuccess: (_, { churchId: forChurch, settingRegistrationData }) => {
+          // What was saved is what the cache holds.
+          writeSettingsCache(queryClient, forChurch, {
+            settingRegistrationData,
+          } as Partial<UserSettingsProps['UserSetting']>)
+        },
       },
-    },
-  )
+    )
 
   const activateRegistrationOrDonation = async (
     registration: string,
@@ -84,39 +70,30 @@ const Index: FC<indexProps> = ({}) => {
     if (!churchId) return
     setIsLoadingTrigger(true)
     try {
-      const updatedSettingsData = userData?.UserSetting?.settingsData?.map(
-        (item) => {
-          if (item.fundName === registration && type === 'batch') {
-            return { ...item, isActive: true } // Set isActive to true for 'batch'
-          }
-          return item
-        },
-      ) as qboSettings[] | undefined
-
-      // Only the Stripe-era list holds archived registrations. The payout-report mapping is an
-      // object: calling .map on it threw here, which also stopped funds being re-activated.
-      const registrations = userData?.UserSetting?.settingRegistrationData
-      const updatedSettingRegistrationData = Array.isArray(registrations)
-        ? (registrations.map((item) => {
-            if (item.registration === registration && type === 'stripe') {
-              return { ...item, isActive: true } // Set isActive to true for 'stripe'
-            }
-            return item
-          }) as qboRegistrationSettings[])
-        : undefined
-      // Nothing to re-activate, and the mapping object must never be overwritten from here.
-      if (type === 'stripe' && !updatedSettingRegistrationData) return
-      if (type === 'batch' && !updatedSettingsData) return
-
-      await mutateAsync(
-        type === 'batch'
-          ? { churchId, email, settingsData: updatedSettingsData }
-          : {
-              churchId,
-              email,
-              settingRegistrationData: updatedSettingRegistrationData,
-            },
-      )
+      if (type === 'batch') {
+        // Through the church's fund-mapping queue, from the mapping as it stands once every
+        // earlier save for it (say, one the Mapping page sent on the way here) has settled.
+        await fundMappingSettled(churchId)
+        const updated = currentFundMapping(queryClient, churchId).map((item) =>
+          item.fundName === registration ? { ...item, isActive: true } : item,
+        )
+        await saveFundMapping({ queryClient, churchId, email, list: updated })
+      } else {
+        // Only the Stripe-era list holds archived registrations. The payout-report mapping is
+        // an object and must never be overwritten from here.
+        const registrations = userData?.UserSetting?.settingRegistrationData
+        if (!Array.isArray(registrations)) return
+        await saveRegistrations({
+          churchId,
+          email,
+          settingRegistrationData: registrations.map((item) =>
+            item.registration === registration
+              ? { ...item, isActive: true }
+              : item,
+          ) as qboRegistrationSettings[],
+        })
+      }
+      refetch()
       successNotification({ title: `${registration} is active again.` })
     } catch (error: any) {
       failNotification({
