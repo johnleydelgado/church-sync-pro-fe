@@ -4,6 +4,8 @@ import { useQuery } from 'react-query'
 import isEqual from 'lodash/isEqual'
 import { RootState } from '@/redux/store'
 import { resetChurchScopedState, setSelectedChurch } from '@/redux/common'
+import { resetReduxQboData } from '@/redux/qbo'
+import { resetReduxStripeData } from '@/redux/stripe'
 import { ChurchApiError, getMyChurches, MyChurch } from '@/common/api/church'
 
 export const MY_CHURCHES_KEY = 'myChurches'
@@ -52,6 +54,10 @@ export const useSwitchChurch = () => {
       // page. Runs on EVERY switch, the first selection included: a browser coming from the
       // email-era build still holds the last client's choices in persisted state.
       dispatch(resetChurchScopedState())
+      // The QuickBooks and Stripe lists cached for the last church; the new one's are loaded
+      // by BackgroundDataFetcher.
+      dispatch(resetReduxQboData())
+      dispatch(resetReduxStripeData())
       dispatch(setSelectedChurch(next))
     },
     [dispatch],

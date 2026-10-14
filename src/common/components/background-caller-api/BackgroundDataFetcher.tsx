@@ -22,6 +22,9 @@ const BackgroundDataFetcher = () => {
     const fetchData = async () => {
       dispatch(CLOSE_MODAL(MODALS_NAME.subscriptionModal))
 
+      // No church, nothing to load - and nothing to clear the shared lists with.
+      if (!churchId) return
+
       if (
         location.pathname === mainRoute.AUTOMATION_MAPPING ||
         location.pathname === mainRoute.TRANSACTION ||
