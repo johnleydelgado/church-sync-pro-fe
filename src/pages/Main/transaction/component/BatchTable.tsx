@@ -8,8 +8,8 @@ import { Button, Tooltip } from '@material-tailwind/react'
 import { Spinner } from 'flowbite-react'
 import Empty from '@/common/components/empty/Empty'
 import Pagination from '@/common/components/pagination/Pagination'
-import { useSelector, useDispatch } from 'react-redux'
-import { RootState } from '@/redux/store'
+import { useDispatch } from 'react-redux'
+import { useChurch } from '@/common/hooks/useChurch'
 import Loading from '@/common/components/loading/Loading'
 import { usePagination } from '@/common/context/PaginationProvider'
 import { setDateRangeTransaction } from '@/redux/common'
@@ -59,13 +59,10 @@ const BatchTable: FC<BatchTableProps> = ({
   amount,
 }) => {
   const dispatch = useDispatch()
-  const { user } = useSelector((state: RootState) => state.common)
-  const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
+  const { email } = useChurch()
   const { data, synchedBatches, isLoading, isRefetching, refetch, setAmount } =
     usePagination()
 
-  const email =
-    user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
   const finalData = data
   const isButtonDisabled = (batchSyncing: any, batchId: string) => {
     // Return false if batchSyncing is not an array or has less than 2 elements

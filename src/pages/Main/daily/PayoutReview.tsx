@@ -1,6 +1,5 @@
 import React, { FC, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from 'react-query'
-import { useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
 import Dropdown from 'react-select'
 import { Spinner } from 'flowbite-react'
@@ -25,7 +24,6 @@ import {
 import { mainRoute } from '@/common/constant/route'
 import { formatDate } from '@/common/utils/helper'
 import { failNotification, successNotification } from '@/common/utils/toast'
-import { RootState } from '@/redux/store'
 import { useChurch } from '@/common/hooks/useChurch'
 import { PAYOUT_REVIEW_ID, plural, reasonWords, usd } from './payoutCopy'
 

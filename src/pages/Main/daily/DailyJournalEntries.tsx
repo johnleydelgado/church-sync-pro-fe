@@ -2,11 +2,10 @@ import MainLayout from '@/common/components/main-layout/MainLayout'
 import Loading from '@/common/components/loading/Loading'
 import { getDailyJournalEntries } from '@/common/api/user'
 import { mainRoute } from '@/common/constant/route'
-import { RootState } from '@/redux/store'
+import { useChurch } from '@/common/hooks/useChurch'
 import { FormatMoney } from 'format-money-js'
 import React, { FC } from 'react'
 import { useQuery } from 'react-query'
-import { useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
 import ClearingStatement from './ClearingStatement'
 import PayoutReports from './PayoutReports'
@@ -41,18 +40,15 @@ const balanceMeaning = (balance: number | null | undefined) => {
  * Daily Giving; this page used to list the same days a second time.
  */
 const DailyJournalEntries: FC<ClearingPageProps> = () => {
-  const { user } = useSelector((state: RootState) => state.common)
-  const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
+  const { email, churchId } = useChurch()
 
   const { data, isLoading } = useQuery(
-    ['getDailyJournalEntries', user, bookkeeper],
+    ['getDailyJournalEntries', churchId],
     async () => {
-      const email =
-        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
       if (email) return await getDailyJournalEntries(email)
       return null
     },
-    { staleTime: Infinity, refetchOnWindowFocus: false },
+    { enabled: !!churchId, staleTime: Infinity, refetchOnWindowFocus: false },
   )
 
   const balance = data?.qboClearingBalance

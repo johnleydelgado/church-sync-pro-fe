@@ -30,7 +30,7 @@ import {
 
 interface PayoutReportUploadModalProps {
   open: boolean
-  /** The effective church: the client's email when a bookkeeper is acting for one. */
+  /** The selected church's account email (`useChurch().email`). */
   email: string
   /** The registration start date, YYYY-MM-DD, for the "before your start date" line. */
   registrationStartDay: string | null

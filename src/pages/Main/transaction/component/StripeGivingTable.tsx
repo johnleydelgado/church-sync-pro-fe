@@ -1,6 +1,5 @@
 import React, { FC, useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from 'react-query'
-import { useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
 import { Button, Tooltip } from '@material-tailwind/react'
 import { Spinner } from 'flowbite-react'
@@ -28,7 +27,7 @@ import PaginationStripe from '@/common/components/pagination/PaginationStripe'
 import StripeGivingDayDetail from './StripeGivingDayDetail'
 import { mainRoute } from '@/common/constant/route'
 import { formatDate } from '@/common/utils/helper'
-import { RootState } from '@/redux/store'
+import { useChurch } from '@/common/hooks/useChurch'
 import { FormatMoney } from 'format-money-js'
 
 interface StripeGivingTableProps {
@@ -141,8 +140,7 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({
   autoSyncOn,
 }) => {
   const queryClient = useQueryClient()
-  const user = useSelector((state: RootState) => state.common.user)
-  const bookkeeper = useSelector((state: RootState) => state.common.bookkeeper)
+  const { email, churchId } = useChurch()
   const [page, setPage] = useState(1)
   // Single-open accordion.
   const [expandedDay, setExpandedDay] = useState<string | null>(null)
@@ -151,10 +149,7 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({
   const [confirmDay, setConfirmDay] = useState<string | null>(null)
   const [showExcluded, setShowExcluded] = useState(false)
 
-  const email =
-    user?.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user?.email
-
-  const queryKey = ['getStripeGivingByDay', email, from, to]
+  const queryKey = ['getStripeGivingByDay', churchId, from, to]
 
   const { data, isLoading, isError, error } = useQuery(
     queryKey,
@@ -162,7 +157,12 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({
       if (!email) return { days: [] as StripeGivingDay[] }
       return await getStripeGivingByDay(email, from, to)
     },
-    { staleTime: 60_000, refetchOnWindowFocus: false, retry: false },
+    {
+      enabled: !!churchId,
+      staleTime: 60_000,
+      refetchOnWindowFocus: false,
+      retry: false,
+    },
   )
 
   const syncStartDay = data?.syncStartDay ?? null
@@ -171,7 +171,7 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({
   const isExcluded = (day: string) => !!syncStartDay && day < syncStartDay
 
   const postDay = useMutation(
-    async (day: string) => postStripeGivingDay(email as string, day),
+    async (day: string) => postStripeGivingDay(email, day),
     {
       onMutate: (day: string) => {
         setPostingDay(day)
@@ -238,11 +238,7 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({
     // rather than introducing a second format into an unvalidated varchar.
     async (day: string) => {
       const [y, m, d] = day.split('-')
-      return await setStartDataAutomation(
-        email as string,
-        'donation',
-        `${m}-${d}-${y}`,
-      )
+      return await setStartDataAutomation(email, 'donation', `${m}-${d}-${y}`)
     },
     {
       onSuccess: () => {
@@ -314,7 +310,7 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({
   const totalPages = Math.max(1, Math.ceil(days.length / DAYS_PER_PAGE))
 
   // Clamped, not merely reset by an effect. The list changes whenever the query key changes -
-  // which includes `email`, because a bookkeeper can switch client from the navbar without
+  // which includes `churchId`, because anyone can switch church from the sidebar without
   // touching the dates. Landing on page 4 of a list that now has one page renders a header with
   // no rows under it, and the pagination control hides itself at one page, so there is nothing
   // left on screen to click back with. Deriving the page makes that state unreachable.
@@ -325,11 +321,12 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({
   )
 
   // Collapse any open row when the range changes - it belongs to the range being left.
-  // Toggling excluded days reshapes the list too, so it resets the page the same way.
+  // Toggling excluded days or switching church reshapes the list too, so it resets the same way.
   useEffect(() => {
     setPage(1)
     setExpandedDay(null)
-  }, [from, to, showExcluded])
+    setConfirmDay(null)
+  }, [from, to, showExcluded, churchId])
 
   if (isLoading) return <Loading />
 

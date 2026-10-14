@@ -2,9 +2,8 @@ import Loading from '@/common/components/loading/Loading'
 import MainLayout from '@/common/components/main-layout/MainLayout'
 import React, { FC, useMemo, useState } from 'react'
 import { useQuery } from 'react-query'
-import { useSelector } from 'react-redux'
-import { RootState } from '../../../redux/store'
 import { isEmpty } from 'lodash'
+import { useChurch } from '@/common/hooks/useChurch'
 import { getUserRelated } from '@/common/api/user'
 import StripeGivingTable from './component/StripeGivingTable'
 
@@ -58,8 +57,7 @@ const rangeFor = (days: number) => {
 interface DashboardProps {}
 
 const Dashboard: FC<DashboardProps> = () => {
-  const { user } = useSelector((state: RootState) => state.common)
-  const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
+  const { email, churchId } = useChurch()
 
   // `from`/`to` are the source of truth; the quick-range buttons just set them. A church
   // testing against older giving needs to reach any month, not only the last ninety days.
@@ -88,13 +86,11 @@ const Dashboard: FC<DashboardProps> = () => {
   }, [from, to])
 
   const { data: userData, isLoading: isLoadingUser } = useQuery(
-    ['getUserRelated'],
+    ['getUserRelated', churchId],
     async () => {
-      const email =
-        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
       if (email) return await getUserRelated(email)
     },
-    { staleTime: Infinity, refetchOnWindowFocus: false },
+    { enabled: !!churchId, staleTime: Infinity, refetchOnWindowFocus: false },
   )
 
   const hasMapping = !isEmpty(userData?.data?.UserSetting?.settingsData)
