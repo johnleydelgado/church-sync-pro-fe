@@ -1,4 +1,5 @@
 import { mainRoute, routeSettings } from '@/common/constant/route'
+import { MyChurch } from '@/common/api/church'
 import { HiBookmark, HiHome } from 'react-icons/hi'
 
 import {
@@ -37,7 +38,17 @@ export interface DropdownLink {
   name: string
   link: string
   childrenIcon?: any
+  /** Shown only when this is true for the selected church; the page behind it hides itself too. */
+  visible?: (church: MyChurch | null) => boolean
 }
+
+const withChurch = (church: MyChurch | null) => !!church
+
+/** The links of a dropdown that the selected church shows the person. */
+export const linksFor = (
+  links: DropdownLink[] | undefined,
+  church: MyChurch | null,
+) => links?.filter((l) => !l.visible || l.visible(church))
 
 export const dropdownArrLinkAutomation: DropdownLink[] = [
   {
@@ -67,21 +78,26 @@ export const dropdownArrLinkSettings: DropdownLink[] = [
     name: 'Integrations',
     link: routeSettings.INTEGRATIONS,
     childrenIcon: <MdIntegrationInstructions size={22} className="ml-2" />,
+    // Same rule as the Settings tab: owners, and bookkeepers an owner allowed.
+    visible: (church) => !!church?.canConnectIntegrations,
   },
   {
-    name: 'Bookkeeper',
-    link: routeSettings.BOOKKEEPER,
+    name: 'People',
+    link: `${mainRoute.SETTINGS}?tab=people`,
     childrenIcon: <BsPeopleFill size={22} className="ml-2" />,
+    visible: withChurch,
   },
   {
     name: 'Projects',
     link: routeSettings.PROJECTS,
     childrenIcon: <AiFillProject size={22} className="ml-2" />,
+    visible: withChurch,
   },
   {
     name: 'Email',
     link: routeSettings.SELECT_RECIPIENT_EMAILS,
     childrenIcon: <AiFillMail size={22} className="ml-2" />,
+    visible: withChurch,
   },
 ]
 
@@ -111,8 +127,8 @@ const pages: PageProps[] = [
     dropdownLinks: dropdownArrLinkAutomation,
   },
   {
-    name: 'Clients',
-    link: mainRoute.CLIENT_LIST,
+    name: 'Churches',
+    link: mainRoute.CHURCHES,
     icon: <FiUsers size={30} />,
   },
   {

@@ -1,7 +1,7 @@
 import { pcGetFunds } from '@/common/api/planning-center'
 import Loading from '@/common/components/loading/Loading'
 import MainLayout from '@/common/components/main-layout/MainLayout'
-import React, { FC, useEffect, useMemo, useState } from 'react'
+import React, { FC, useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from 'react-query'
 import { useSelector } from 'react-redux'
 
@@ -18,19 +18,22 @@ import {
 
 import { Tab } from '@headlessui/react'
 
-import { AccountTokenDataProps } from './component/Account'
+import { AccountTokenDataProps } from '@/common/hooks/useGetTokenList'
 import Donation from './component/Donation'
-import { successNotification } from '@/common/utils/toast'
+import FieldStatus, { FieldSaveStatus } from './component/FieldStatus'
+import { writeSettingsCache } from './settingsCache'
+import { failNotification, successNotification } from '@/common/utils/toast'
 import { isEmpty } from 'lodash'
 import { RootState } from '@/redux/store'
+import { selectSelectedChurch, useChurch } from '@/common/hooks/useChurch'
 import { BiSortDown } from 'react-icons/bi'
 import { AiOutlineCloudSync, AiOutlineUserAdd } from 'react-icons/ai'
 import { Link, useSearchParams } from 'react-router-dom'
 import { mainRoute, routeSettings } from '@/common/constant/route'
-import { Button, Tooltip } from '@material-tailwind/react'
+import { Tooltip } from '@material-tailwind/react'
 import { MdAppRegistration } from 'react-icons/md'
 import { BsQuestionCircle } from 'react-icons/bs'
-import { useDispatch } from 'react-redux'
+import { useDispatch, useStore } from 'react-redux'
 import {
   BankAccountExpensesProps,
   BankAccountProps,
@@ -108,7 +111,9 @@ const tabSubtitles: Record<string, string> = {
 
 const HelpTip: FC<{ text: string }> = ({ text }) => (
   <Tooltip
-    content={<span className="block max-w-xs text-xs leading-snug">{text}</span>}
+    content={
+      <span className="block max-w-xs text-xs leading-snug">{text}</span>
+    }
     placement="top"
   >
     <span className="inline-flex cursor-help text-gray-400 hover:text-gray-600">
@@ -117,16 +122,42 @@ const HelpTip: FC<{ text: string }> = ({ text }) => (
   </Tooltip>
 )
 
+/**
+ * Where to connect QuickBooks / Planning Center. Only people who may connect this church's
+ * integrations get the link; anyone else is told who can.
+ */
+const ConnectAccountsLink: FC = () => {
+  const { church, canConnectIntegrations } = useChurch()
+  if (!canConnectIntegrations) {
+    return (
+      <p className="text-xl pt-4 text-gray-600">
+        Ask an owner of {church?.name ?? 'this church'} to connect it
+      </p>
+    )
+  }
+  return (
+    <Link
+      to={routeSettings.INTEGRATIONS}
+      className="text-xl pt-4 underline text-blue-400"
+    >
+      Click Here !
+    </Link>
+  )
+}
+
+/** One of the Bank tab's four dropdowns; each shows its own save status. */
+type BankField = 'donation' | 'registration' | 'feeAccount' | 'feeClass'
+
 const Mapping: FC<SettingsProps> = () => {
   const dispatch = useDispatch()
-  const { user, selectedBankAccount, selectedBankExpense } = useSelector(
+  const { selectedBankAccount, selectedBankExpense } = useSelector(
     (state: RootState) => state.common,
   )
 
   const reduxStripeData = useSelector(
     (state: RootState) => state.stripeData.reduxStripeData,
   )
-  const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
+  const { email, churchId } = useChurch()
   const mappingNumber = useSelector(
     (item: RootState) => item.common.mappingNumber,
   )
@@ -153,40 +184,157 @@ const Mapping: FC<SettingsProps> = () => {
     }
   >(enableAutoSyncSetting)
 
+  // Mark every cached copy of the settings stale without refetching the page in front of the
+  // person, so the next visit - or a switch back to this church - asks the server.
+  const markSettingsStale = () =>
+    queryClient.invalidateQueries('getUserRelatedSettings', {
+      refetchActive: false,
+    })
+
+  const [bankStatus, setBankStatus] = useState<
+    Partial<Record<BankField, FieldSaveStatus>>
+  >({})
+  const setFieldStatus = (field: BankField, status: FieldSaveStatus) =>
+    setBankStatus((prev) => ({ ...prev, [field]: status }))
+
+  // What the server last confirmed. A failed save puts the fields back to it, so the page never
+  // shows a choice as set when QuickBooks postings would not use it.
+  const savedBank = useRef<{
+    accounts: BankAccountProps[] | null
+    expense: BankAccountExpensesProps | null
+  }>({ accounts: null, expense: null })
+
+  // react-query v3 still runs a mutation's callbacks after the page unmounts. A late answer
+  // touches this page's state and the shared redux bank/fee fields only while this page is up
+  // AND the selected church is still the one the save was for - read from the store at that
+  // moment, not from this render.
+  const mounted = useRef(false)
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
+  const store = useStore<RootState>()
+  const stillOn = (forChurch: number) =>
+    mounted.current && selectSelectedChurch(store.getState())?.id === forChurch
+
   const { mutate: saveBankData } = useMutation<
     unknown,
-    unknown,
+    Error,
     {
+      field: BankField
+      churchId: number
       email: string
-      data: BankAccountProps[] | null
+      data: BankAccountProps[]
     }
-  >(addUpdateBankSettings)
+  >(({ email, data }) => addUpdateBankSettings({ email, data }), {
+    onMutate: ({ field }) => setFieldStatus(field, 'saving'),
+    onSuccess: (_, { field, churchId: forChurch, data }) => {
+      writeSettingsCache(queryClient, forChurch, { settingBankData: data })
+      if (!stillOn(forChurch)) return
+      savedBank.current.accounts = data
+      setFieldStatus(field, 'saved')
+    },
+    onError: (e, { field, churchId: forChurch }) => {
+      failNotification({ title: e.message })
+      if (!stillOn(forChurch)) return
+      setFieldStatus(field, 'error')
+      dispatch(setSelectedBankAccount(savedBank.current.accounts))
+    },
+    // A failed request may still have landed; the next read of these settings asks the server.
+    onSettled: (_, error) => {
+      if (error) markSettingsStale()
+    },
+  })
 
   const { mutate: saveBankCharges } = useMutation<
     unknown,
-    unknown,
+    Error,
     {
+      field: BankField
+      churchId: number
       email: string
-      data: BankAccountExpensesProps | null
+      data: BankAccountExpensesProps
     }
-  >(addUpdateBankCharges)
+  >(({ email, data }) => addUpdateBankCharges({ email, data }), {
+    onMutate: ({ field }) => setFieldStatus(field, 'saving'),
+    onSuccess: (_, { field, churchId: forChurch, data }) => {
+      writeSettingsCache(queryClient, forChurch, { settingBankCharges: data })
+      if (!stillOn(forChurch)) return
+      savedBank.current.expense = data
+      setFieldStatus(field, 'saved')
+    },
+    onError: (e, { field, churchId: forChurch }) => {
+      failNotification({ title: e.message })
+      if (!stillOn(forChurch)) return
+      setFieldStatus(field, 'error')
+      dispatch(setSelectedBankExpense(savedBank.current.expense))
+    },
+    // A failed request may still have landed; the next read of these settings asks the server.
+    onSettled: (_, error) => {
+      if (error) markSettingsStale()
+    },
+  })
 
-  // to get settings data
-  const { data: userData, refetch: refetchUserData } =
-    useQuery<UserSettingsProps>(
-      ['getUserRelatedSettings', reTriggerIsUserTokens, bookkeeper],
-      async () => {
-        const emailF =
-          user.role === 'bookkeeper'
-            ? bookkeeper?.clientEmail || ''
-            : user.email
-        if (emailF) {
-          const res = await getUserRelated(emailF)
-          return res.data
-        }
-      },
-      { staleTime: Infinity },
+  // Each pick builds on what is on screen, so while one save is out the four dropdowns wait: a
+  // second pick followed by a failure of the first would leave the screen and server apart.
+  const bankSaving = Object.values(bankStatus).includes('saving')
+
+  // "Saved" fades after a moment; "Not saved" stays until that field is picked again.
+  useEffect(() => {
+    if (!Object.values(bankStatus).includes('saved')) return
+    const timer = setTimeout(
+      () =>
+        setBankStatus((prev) =>
+          Object.fromEntries(
+            Object.entries(prev).map(([k, v]) => [
+              k,
+              v === 'saved' ? 'idle' : v,
+            ]),
+          ),
+        ),
+      2500,
     )
+    return () => clearTimeout(timer)
+  }, [bankStatus])
+
+  // to get settings data. Keyed by church, so a switch refills the bank and fee fields below.
+  const {
+    data: userData,
+    refetch: refetchUserData,
+    isFetching: isFetchingUserData,
+  } = useQuery<UserSettingsProps>(
+    ['getUserRelatedSettings', reTriggerIsUserTokens, churchId],
+    async () => {
+      if (email) {
+        const res = await getUserRelated(email)
+        return res.data
+      }
+    },
+    {
+      enabled: !!churchId,
+      staleTime: Infinity,
+      // Not behind the person's back: a refetch landing during a save could put the pre-save
+      // bank or fee value back over their pick.
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+    },
+  )
+
+  // Funds archived in the mapping: each name's first entry says isActive false.
+  const archivedFunds = useMemo(() => {
+    const seen = new Set<string>()
+    const archived: string[] = []
+    const mapping = userData?.UserSetting?.settingsData ?? []
+    for (const s of mapping) {
+      if (seen.has(s.fundName)) continue
+      seen.add(s.fundName)
+      if (s.isActive === false) archived.push(s.fundName)
+    }
+    // Sorted: the key must not change when only the order in the saved list does.
+    return archived.sort()
+  }, [userData?.UserSetting?.settingsData])
 
   const {
     data: fundData,
@@ -195,52 +343,36 @@ const Mapping: FC<SettingsProps> = () => {
     isFetching: isFetchingFunds,
     refetch: refetchFunds,
   } = useQuery<FundAttProps[]>(
-    ['getFunds', bookkeeper, userData], // Same query key as on the first page
+    // Keyed on the archived names only - the one thing the list depends on. Mapping or bank
+    // saves rewrite the cached settings; with them in the key the funds reloaded and the page
+    // went blank on every save.
+    ['getFunds', churchId, archivedFunds],
     async () => {
-      const email =
-        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-
-      if (!isEmpty(userData?.UserSetting?.settingsData)) {
-        if (email) {
-          const res = (await pcGetFunds({ email, throwOnError: true })) as FundAttProps[]
-          // Apply the filter and return the filtered array
-          const filteredFunds = res.filter((a) => {
-            // Find fund with matching name and ensure isActive is either true or undefined
-            const fundSetting = userData?.UserSetting?.settingsData?.find(
-              (b) => b.fundName === a.attributes.name,
-            )
-
-            // Show the fund unless it has been explicitly deactivated. A fund added
-            // in Planning Center after the mapping was first saved has no entry here
-            // yet, and requiring one hid every new fund from this page for good.
-            return !fundSetting || fundSetting.isActive !== false
-          })
-
-          return filteredFunds // Return the filtered array
-        }
-      } else {
-        const res = (await pcGetFunds({ email, throwOnError: true })) as FundAttProps[]
-        return res
-      }
-
-      // Return an empty array if no matching data
-      return []
+      if (!email) return []
+      const res = (await pcGetFunds({
+        email,
+        throwOnError: true,
+      })) as FundAttProps[]
+      // Show every fund unless it has been explicitly archived. A fund added in Planning Center
+      // after the mapping was first saved has no entry yet, and requiring one hid every new
+      // fund from this page for good.
+      return res.filter((a) => !archivedFunds.includes(a.attributes.name))
     },
-    { staleTime: Infinity },
+    { enabled: !!churchId, staleTime: Infinity },
   )
 
   const { data: qboData, isLoading: isQboDataLoading } = useQuery(
-    useMemo(() => ['getAllQboData', bookkeeper], [bookkeeper]), // Memoize the key
-    async () => await getQboData(user, bookkeeper),
-    { staleTime: Infinity, refetchOnWindowFocus: false },
+    useMemo(() => ['getAllQboData', churchId], [churchId]), // Memoize the key
+    async () => await getQboData(email),
+    { enabled: !!churchId, staleTime: Infinity, refetchOnWindowFocus: false },
   )
 
   const { data: stripeEvents, isLoading: isStripeEventsLoading } = useQuery<
     { name: string; category: 'stripe' | 'batch'; date: string }[]
   >(
     useMemo(
-      () => ['getStripeListInRegistration', bookkeeper, reduxStripeData],
-      [bookkeeper, reduxStripeData],
+      () => ['getStripeListInRegistration', churchId, reduxStripeData],
+      [churchId, reduxStripeData],
     ), // Stable key
     async () => {
       // If accounts array has elements, use the Redux data
@@ -253,8 +385,6 @@ const Mapping: FC<SettingsProps> = () => {
         return filterData
       }
 
-      const email =
-        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
       if (email) {
         const fetchedData = await getStripeList({ email }) // Fetch only if needed
         dispatch(setReduxStripeData(fetchedData.data))
@@ -312,17 +442,7 @@ const Mapping: FC<SettingsProps> = () => {
     },
   )
 
-  useEffect(() => {
-    if (user.role === 'client') {
-      const newCat = { ...categories }
-      setCategories(newCat)
-    }
-  }, [user])
-
   const enableDisableAutomation = async (type: 'donation' | 'registration') => {
-    const email =
-      user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-
     if (type === 'donation') {
       await mutate({ email, isAutomationEnable: !isAutomationEnable })
       setIsAutomationEnable(!isAutomationEnable)
@@ -342,8 +462,6 @@ const Mapping: FC<SettingsProps> = () => {
     date: string | undefined,
   ) => {
     if (date) {
-      const email =
-        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
       mutation.mutate({
         email,
         type: type === 'startDateDonation' ? 'donation' : 'registration',
@@ -371,76 +489,96 @@ const Mapping: FC<SettingsProps> = () => {
       : null
   }
 
-  const handleSaveBankBtn = () => {
-    successNotification({ title: 'Settings successfully saved !' })
+  // Each loader below follows only the values it puts on screen. Bank, fee and fund-mapping saves
+  // write into the cached settings object; following the whole object would re-run them all and
+  // put loaded auto-sync switches and start dates (changed here without the cache) back on screen.
+  const settingsLoaded = !!userData
+  const serverSetting = userData?.UserSetting
+  const serverBankData = serverSetting?.settingBankData
+  const serverBankCharges = serverSetting?.settingBankCharges
+  // Whether any fund is mapped, not the list: a mapping save writes a new list into the cache.
+  const hasFundMapping = !isEmpty(serverSetting?.settingsData)
+  const serverAutoSync = serverSetting?.isAutomationEnable
+  const serverAutoSyncRegistration = serverSetting?.isAutomationRegistration
+  const serverStartRegistration = serverSetting?.startDateAutomationRegistration
+  const serverStartFund = serverSetting?.startDateAutomationFund
+
+  // The server's bank and fee choices for this church, or none: an empty setting clears the
+  // fields rather than leaving a value persisted from before.
+  useEffect(() => {
+    if (!settingsLoaded) return
+    const accounts = isEmpty(serverBankData) ? null : serverBankData ?? null
+    const expense = isEmpty(serverBankCharges)
+      ? null
+      : serverBankCharges ?? null
+    savedBank.current = { accounts, expense }
+    dispatch(setSelectedBankAccount(accounts))
+    dispatch(setSelectedBankExpense(expense))
+  }, [settingsLoaded, serverBankData, serverBankCharges, dispatch])
+
+  // Auto-sync switches and start dates.
+  useEffect(() => {
+    if (hasFundMapping) {
+      setIsAutomationEnable(serverAutoSync || false)
+      setIsAutomationRegistration(serverAutoSyncRegistration || false)
+    }
+
+    if (!isEmpty(serverStartRegistration)) {
+      setStartDates((prevStartDates) => ({
+        ...prevStartDates,
+        ['startDateRegistration']: serverStartRegistration || null,
+      }))
+    }
+
+    if (!isEmpty(serverStartFund)) {
+      setStartDates((prevStartDates) => ({
+        ...prevStartDates,
+        ['startDateDonation']: serverStartFund || null,
+      }))
+    }
+  }, [
+    hasFundMapping,
+    serverAutoSync,
+    serverAutoSyncRegistration,
+    serverStartRegistration,
+    serverStartFund,
+  ])
+
+  // Bank and fee choices are saved where the person makes them, to the church on screen. They
+  // used to be saved by effects watching the persisted redux values, which also fired on mount:
+  // opening Mapping after a switch saved the previous church's choice into this one.
+  const pickBankAccounts = (field: BankField, next: BankAccountProps[]) => {
+    if (!churchId) return
+    dispatch(setSelectedBankAccount(next))
+    saveBankData({ field, churchId, email, data: next })
   }
 
-  useEffect(() => {
-    if (!isEmpty(userData?.UserSetting?.settingsData)) {
-      setIsAutomationEnable(userData?.UserSetting.isAutomationEnable || false)
-      setIsAutomationRegistration(
-        userData?.UserSetting.isAutomationRegistration || false,
-      )
-    }
+  const pickBankExpense = (
+    field: BankField,
+    next: BankAccountExpensesProps,
+  ) => {
+    if (!churchId) return
+    dispatch(setSelectedBankExpense(next))
+    saveBankCharges({ field, churchId, email, data: next })
+  }
 
-    if (!isEmpty(userData?.UserSetting?.settingBankData)) {
-      dispatch(
-        setSelectedBankAccount(userData?.UserSetting?.settingBankData || null),
-      )
-    }
-
-    if (!isEmpty(userData?.UserSetting?.settingBankCharges)) {
-      dispatch(
-        setSelectedBankExpense(
-          userData?.UserSetting?.settingBankCharges || null,
-        ),
-      )
-    }
-
-    if (!isEmpty(userData?.UserSetting?.startDateAutomationRegistration)) {
-      setStartDates((prevStartDates) => ({
-        ...prevStartDates,
-        ['startDateRegistration']:
-          userData?.UserSetting?.startDateAutomationRegistration || null,
-      }))
-    }
-
-    if (!isEmpty(userData?.UserSetting?.startDateAutomationFund)) {
-      setStartDates((prevStartDates) => ({
-        ...prevStartDates,
-        ['startDateDonation']:
-          userData?.UserSetting?.startDateAutomationFund || null,
-      }))
-    }
-  }, [userData])
-
-  useEffect(() => {
-    const save = async () => {
-      if (selectedBankAccount) {
-        const email =
-          user.role === 'bookkeeper'
-            ? bookkeeper?.clientEmail || ''
-            : user.email
-        await saveBankData({ email, data: selectedBankAccount })
-      }
-    }
-
-    save()
-  }, [selectedBankAccount])
-
-  useEffect(() => {
-    const save = async () => {
-      if (selectedBankExpense) {
-        const email =
-          user.role === 'bookkeeper'
-            ? bookkeeper?.clientEmail || ''
-            : user.email
-        await saveBankCharges({ email, data: selectedBankExpense })
-      }
-    }
-
-    save()
-  }, [selectedBankExpense])
+  const settingsUnavailable = (
+    <div className="flex flex-col items-center justify-center gap-3 h-96">
+      <p className="text-2xl text-center font-thin">
+        Couldn&apos;t load this church&apos;s settings.
+      </p>
+      <p className="text-center text-sm text-gray-500">
+        Nothing has been changed.
+      </p>
+      <button
+        type="button"
+        onClick={() => refetchUserData()}
+        className="rounded-lg bg-yellow px-4 py-2 text-sm font-medium text-white"
+      >
+        Try again
+      </button>
+    </div>
+  )
 
   return (
     <MainLayout>
@@ -519,12 +657,7 @@ const Mapping: FC<SettingsProps> = () => {
                       Please set up your accounts in order to continue with the
                       donation mapping process.
                     </p>
-                    <Link
-                      to={routeSettings.INTEGRATIONS}
-                      className="text-xl pt-4 underline text-blue-400"
-                    >
-                      Click Here !
-                    </Link>
+                    <ConnectAccountsLink />
                   </div>
                 ) : (
                   <div>
@@ -570,7 +703,15 @@ const Mapping: FC<SettingsProps> = () => {
                       </div>
                     </div>
 
-                    <Donation fundData={fundData || []} userData={userData} />
+                    {/* Mounted once the settings are in: Donation loads its form from them
+                        once per mount and keeps it from then on. */}
+                    {userData ? (
+                      <Donation fundData={fundData || []} userData={userData} />
+                    ) : isFetchingUserData ? (
+                      <Loading />
+                    ) : (
+                      settingsUnavailable
+                    )}
                   </div>
                 )}
               </Tab.Panel>
@@ -585,15 +726,10 @@ const Mapping: FC<SettingsProps> = () => {
                       Please set up your accounts in order to continue with the
                       registration mapping process.
                     </p>
-                    <Link
-                      to={routeSettings.INTEGRATIONS}
-                      className="text-xl pt-4 underline text-blue-400"
-                    >
-                      Click Here !
-                    </Link>
+                    <ConnectAccountsLink />
                   </div>
                 ) : (
-                  // Keyed by church: a bookkeeper switching client gets a fresh form.
+                  // Keyed by the loaded settings: the form reads them once, when it mounts.
                   <RegistrationMapping
                     key={userData?.id ?? 'loading'}
                     userData={userData}
@@ -612,13 +748,14 @@ const Mapping: FC<SettingsProps> = () => {
                       Please set up your accounts in order to continue with the
                       registration mapping process.
                     </p>
-                    <Link
-                      to={routeSettings.INTEGRATIONS}
-                      className="text-xl pt-4 underline text-blue-400"
-                    >
-                      Click Here !
-                    </Link>
+                    <ConnectAccountsLink />
                   </div>
+                ) : isFetchingUserData ? (
+                  // Each pick saves the whole list, built from what is shown. Until this church's
+                  // saved choices are in, a pick would save a partial list over them.
+                  <Loading />
+                ) : !userData ? (
+                  settingsUnavailable
                 ) : (
                   <div>
                     <div className="mb-4 rounded-lg border border-blue-100 bg-blue-50 p-4 text-sm leading-relaxed text-gray-600">
@@ -631,8 +768,8 @@ const Mapping: FC<SettingsProps> = () => {
                         revenue accounts (the gross gifts),{' '}
                         <span className="font-semibold">debit</span> the Stripe
                         fees account (Stripe&apos;s processing cut), and{' '}
-                        <span className="font-semibold">debit</span> the clearing
-                        account for the net amount Stripe will deposit.
+                        <span className="font-semibold">debit</span> the
+                        clearing account for the net amount Stripe will deposit.
                       </p>
                       <p className="pt-2">
                         Example: $699.20 in gifts − $10.58 in fees = $688.62 to
@@ -648,13 +785,21 @@ const Mapping: FC<SettingsProps> = () => {
                           <div className="flex items-center gap-1 pb-2">
                             <p>Select Clearing Account</p>
                             <HelpTip text="A holding account for money that has left Stripe but hasn't reached your bank yet. Pick (or create in QuickBooks) an account like 'Stripe Clearing' — usually an Other Current Asset." />
+                            <span className="ml-2">
+                              <FieldStatus
+                                status={bankStatus.donation ?? 'idle'}
+                              />
+                            </span>
                           </div>
                           <Dropdown<{ value: string; label: string } | null>
                             options={qboData?.accounts
                               ?.filter((a: { type: string }) =>
-                                ['Bank', 'Other Current Asset', 'Fixed Asset', 'Other Asset'].includes(
-                                  a.type,
-                                ),
+                                [
+                                  'Bank',
+                                  'Other Current Asset',
+                                  'Fixed Asset',
+                                  'Other Asset',
+                                ].includes(a.type),
                               )
                               .map((a: { value: any; label: any }) => ({
                                 value: a.value,
@@ -662,6 +807,7 @@ const Mapping: FC<SettingsProps> = () => {
                               }))}
                             placeholder="Select Clearing Account"
                             components={{ Input }}
+                            isDisabled={bankSaving}
                             onChange={(val) => {
                               const updatedBankAccounts = (
                                 selectedBankAccount || []
@@ -671,9 +817,7 @@ const Mapping: FC<SettingsProps> = () => {
                                 label: val?.label || '',
                                 value: val?.value || '',
                               })
-                              dispatch(
-                                setSelectedBankAccount(updatedBankAccounts),
-                              )
+                              pickBankAccounts('donation', updatedBankAccounts)
                             }}
                             value={donationAccountValue('donation')}
                             className="w-72"
@@ -687,13 +831,21 @@ const Mapping: FC<SettingsProps> = () => {
                           <div className="flex items-center gap-1 pb-2">
                             <p>Select Clearing Account</p>
                             <HelpTip text="A holding account for money that has left Stripe but hasn't reached your bank yet. Pick (or create in QuickBooks) an account like 'Stripe Clearing' — usually an Other Current Asset." />
+                            <span className="ml-2">
+                              <FieldStatus
+                                status={bankStatus.registration ?? 'idle'}
+                              />
+                            </span>
                           </div>
                           <Dropdown<{ value: string; label: string } | null>
                             options={qboData?.accounts
                               ?.filter((a: { type: string }) =>
-                                ['Bank', 'Other Current Asset', 'Fixed Asset', 'Other Asset'].includes(
-                                  a.type,
-                                ),
+                                [
+                                  'Bank',
+                                  'Other Current Asset',
+                                  'Fixed Asset',
+                                  'Other Asset',
+                                ].includes(a.type),
                               )
                               .map((a: { value: any; label: any }) => ({
                                 value: a.value,
@@ -701,6 +853,7 @@ const Mapping: FC<SettingsProps> = () => {
                               }))}
                             placeholder="Select Clearing Account"
                             components={{ Input }}
+                            isDisabled={bankSaving}
                             onChange={(val) => {
                               const updatedBankAccounts = (
                                 selectedBankAccount || []
@@ -712,8 +865,9 @@ const Mapping: FC<SettingsProps> = () => {
                                 label: val?.label || '',
                                 value: val?.value || '',
                               })
-                              dispatch(
-                                setSelectedBankAccount(updatedBankAccounts),
+                              pickBankAccounts(
+                                'registration',
+                                updatedBankAccounts,
                               )
                             }}
                             value={donationAccountValue('registration')}
@@ -732,6 +886,11 @@ const Mapping: FC<SettingsProps> = () => {
                               <div className="flex items-center gap-1 pb-2">
                                 <p>Select Account</p>
                                 <HelpTip text="Where Stripe's processing fees are recorded as an expense, e.g. 'Merchant Fees' or 'Bank Charges'." />
+                                <span className="ml-2">
+                                  <FieldStatus
+                                    status={bankStatus.feeAccount ?? 'idle'}
+                                  />
+                                </span>
                               </div>
                               <Dropdown<{ value: string; label: string } | null>
                                 options={qboData?.accounts
@@ -745,31 +904,35 @@ const Mapping: FC<SettingsProps> = () => {
                                   }))}
                                 placeholder="Select Account"
                                 components={{ Input }}
+                                isDisabled={bankSaving}
                                 onChange={(val) => {
-                                  dispatch(
-                                    setSelectedBankExpense({
-                                      account: {
-                                        label: val?.label || '',
-                                        value: val?.value || '',
-                                      },
-                                      class: {
-                                        // Here, you retain the class information from the current state
-                                        label:
-                                          selectedBankExpense?.class.label ||
-                                          '',
-                                        value:
-                                          selectedBankExpense?.class.value ||
-                                          '',
-                                      },
-                                    }),
-                                  )
+                                  pickBankExpense('feeAccount', {
+                                    account: {
+                                      label: val?.label || '',
+                                      value: val?.value || '',
+                                    },
+                                    class: {
+                                      // Here, you retain the class information from the current state
+                                      label:
+                                        selectedBankExpense?.class.label || '',
+                                      value:
+                                        selectedBankExpense?.class.value || '',
+                                    },
+                                  })
                                 }}
                                 value={selectedBankExpense?.account} // Only send the account part to the Dropdown
                                 className="w-72"
                               />
                             </div>
                             <div>
-                              <p className="pb-2">Select Classes</p>
+                              <div className="flex items-center gap-1 pb-2">
+                                <p>Select Classes</p>
+                                <span className="ml-2">
+                                  <FieldStatus
+                                    status={bankStatus.feeClass ?? 'idle'}
+                                  />
+                                </span>
+                              </div>
                               <Dropdown<{ value: string; label: string } | null>
                                 options={qboData?.classes.map(
                                   (a: { value: any; label: any }) => ({
@@ -779,24 +942,23 @@ const Mapping: FC<SettingsProps> = () => {
                                 )}
                                 placeholder="Select Classes"
                                 components={{ Input }}
+                                isDisabled={bankSaving}
                                 onChange={(val) => {
-                                  dispatch(
-                                    setSelectedBankExpense({
-                                      account: {
-                                        label:
-                                          selectedBankExpense?.account.label ||
-                                          '',
-                                        value:
-                                          selectedBankExpense?.account.value ||
-                                          '',
-                                      },
-                                      class: {
-                                        label: val?.label || '',
-                                        value: val?.value || '',
-                                        // Here, you retain the class information from the current state
-                                      },
-                                    }),
-                                  )
+                                  pickBankExpense('feeClass', {
+                                    account: {
+                                      label:
+                                        selectedBankExpense?.account.label ||
+                                        '',
+                                      value:
+                                        selectedBankExpense?.account.value ||
+                                        '',
+                                    },
+                                    class: {
+                                      label: val?.label || '',
+                                      value: val?.value || '',
+                                      // Here, you retain the class information from the current state
+                                    },
+                                  })
                                 }}
                                 value={selectedBankExpense?.class} // Only send the account part to the Dropdown
                                 className="w-72"
@@ -806,14 +968,9 @@ const Mapping: FC<SettingsProps> = () => {
                         </div>
                       </div>
                     </div>
-                    <div className="flex justify-end pt-8">
-                      <Button
-                        className="bg-green-400"
-                        onClick={() => handleSaveBankBtn()}
-                      >
-                        Save
-                      </Button>
-                    </div>
+                    <p className="pt-4 text-sm text-gray-500">
+                      Each choice is saved as soon as you pick it.
+                    </p>
                   </div>
                 )}
               </Tab.Panel>

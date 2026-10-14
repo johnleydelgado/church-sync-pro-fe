@@ -1,7 +1,6 @@
 import React, { FC, useEffect, useRef, useState } from 'react'
 
-import { useSelector } from 'react-redux'
-import { RootState } from '@/redux/store'
+import { useChurch } from '@/common/hooks/useChurch'
 
 import { useDispatch } from 'react-redux'
 import { Button, Spinner } from '@material-tailwind/react'
@@ -21,12 +20,9 @@ interface ItemType {
 
 const Email: FC<AccountProps> = ({}) => {
   const dispatch = useDispatch()
-  const user = useSelector((item: RootState) => item.common.user)
-  const { email, id } = useSelector((item: RootState) => item.common.user)
-  const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
   const queryClient = useQueryClient()
-  const userId =
-    user.role === 'bookkeeper' ? bookkeeper?.clientId || '' : id || ''
+  // Email preferences are the church's, filed under its account.
+  const { churchId, accountUserId: userId } = useChurch()
   const [emailType, setEmailType] = useState<'new-fund' | 'new-registration'>(
     'new-fund',
   )
@@ -37,9 +33,10 @@ const Email: FC<AccountProps> = ({}) => {
     error,
     isLoading,
   } = useQuery(
-    ['userEmailPreferences', userId, bookkeeper],
+    ['userEmailPreferences', churchId],
     () => crudUserEmailPreferences(Number(userId)),
     {
+      enabled: !!churchId,
       refetchOnWindowFocus: false,
     },
   )

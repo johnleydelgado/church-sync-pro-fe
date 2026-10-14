@@ -5,17 +5,17 @@ import useGetDeactivatedMapping from './hooks/useGetDeactivatedMapping'
 import { Typography } from '@material-tailwind/react'
 import { Tab } from '@headlessui/react'
 import ArchiveTable from './archive-table'
-import { QueryClient, useMutation, useQuery } from 'react-query'
+import { useMutation, useQueryClient } from 'react-query'
 import { UserSettingsProps } from '@/common/constant/interfaces'
-import { useSelector } from 'react-redux'
-import { RootState } from '@/redux/store'
+import { useChurch } from '@/common/hooks/useChurch'
 import {
-  SettingRegistrationQBOProps,
   createSettings,
-  getUserRelated,
-  getUserRelatedSettings,
+  qboRegistrationSettings,
+  qboSettings,
 } from '@/common/api/user'
 import Loading from '@/common/components/loading/Loading'
+import { failNotification, successNotification } from '@/common/utils/toast'
+import { writeSettingsCache } from '../mapping/settingsCache'
 
 interface indexProps {}
 
@@ -29,51 +29,59 @@ const Index: FC<indexProps> = ({}) => {
     Registration: [],
   })
 
-  const { bookkeeper, user } = useSelector((item: RootState) => item.common)
+  const { email, churchId } = useChurch()
+  const queryClient = useQueryClient()
 
   const [isLoadingTrigger, setIsLoadingTrigger] = useState<boolean>(false)
 
-  const reTriggerIsUserTokens = useSelector(
-    (item: RootState) => item.common.reTriggerIsUserTokens,
-  )
+  // The church's settings: the same cached copy the Mapping page reads and writes, so the list
+  // saved here always starts from the newest mapping, and each reactivation from the last one.
+  const { archives, isLoading, refetch, userData, isLoadingUserData } =
+    useGetDeactivatedMapping()
 
-  const { archives, isLoading, refetch } = useGetDeactivatedMapping()
-
-  const { mutate, isLoading: isSavingSettings } = useMutation<
+  const { mutateAsync, isLoading: isSavingSettings } = useMutation<
     unknown,
     unknown,
-    SettingRegistrationQBOProps
-  >(
-    createSettings, // Mutation function to create settings
     {
-      onSuccess: () => {
-        // Re-trigger the query when the mutation is successful
+      churchId: number
+      email: string
+      settingsData?: qboSettings[]
+      settingRegistrationData?: qboRegistrationSettings[]
+    }
+  >(
+    // Only the email and the list go to the server.
+    ({ email, settingsData, settingRegistrationData }) =>
+      createSettings(
+        settingsData
+          ? { email, settingsData }
+          : { email, settingRegistrationData },
+      ),
+    {
+      onSuccess: (
+        _,
+        { churchId: forChurch, settingsData, settingRegistrationData },
+      ) => {
+        // What was saved is what the cache holds: the next reactivation, and the Mapping page,
+        // start from it.
+        writeSettingsCache(
+          queryClient,
+          forChurch,
+          (settingsData
+            ? { settingsData }
+            : { settingRegistrationData }) as Partial<
+            UserSettingsProps['UserSetting']
+          >,
+        )
         refetch()
       },
     },
   )
 
-  const { data: userData, isLoading: isLoadingUserData } =
-    useQuery<UserSettingsProps>(
-      useMemo(
-        () => [
-          'getUserRelatedSettingsArchive',
-          reTriggerIsUserTokens,
-          bookkeeper,
-        ],
-        [reTriggerIsUserTokens, bookkeeper],
-      ),
-      async () => {
-        // Assuming getUserRelated is an asynchronous function
-        const result = await getUserRelatedSettings(user, bookkeeper)
-        return result.data
-      },
-      { staleTime: Infinity },
-    )
   const activateRegistrationOrDonation = async (
     registration: string,
     type: 'stripe' | 'batch',
   ) => {
+    if (!churchId) return
     setIsLoadingTrigger(true)
     try {
       const updatedSettingsData = userData?.UserSetting?.settingsData?.map(
@@ -83,34 +91,37 @@ const Index: FC<indexProps> = ({}) => {
           }
           return item
         },
-      )
+      ) as qboSettings[] | undefined
 
       // Only the Stripe-era list holds archived registrations. The payout-report mapping is an
       // object: calling .map on it threw here, which also stopped funds being re-activated.
       const registrations = userData?.UserSetting?.settingRegistrationData
       const updatedSettingRegistrationData = Array.isArray(registrations)
-        ? registrations.map((item) => {
+        ? (registrations.map((item) => {
             if (item.registration === registration && type === 'stripe') {
               return { ...item, isActive: true } // Set isActive to true for 'stripe'
             }
             return item
-          })
+          }) as qboRegistrationSettings[])
         : undefined
       // Nothing to re-activate, and the mapping object must never be overwritten from here.
       if (type === 'stripe' && !updatedSettingRegistrationData) return
+      if (type === 'batch' && !updatedSettingsData) return
 
-      const email =
-        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-
-      // Condition to update the correct data field based on 'type'
-      const mutationData =
+      await mutateAsync(
         type === 'batch'
-          ? { email, settingsData: updatedSettingsData }
-          : { email, settingRegistrationData: updatedSettingRegistrationData }
-
-      await mutate(mutationData) // Update the correct data based on 'type
-    } catch (error) {
-      console.error('Error in activating registration:', error)
+          ? { churchId, email, settingsData: updatedSettingsData }
+          : {
+              churchId,
+              email,
+              settingRegistrationData: updatedSettingRegistrationData,
+            },
+      )
+      successNotification({ title: `${registration} is active again.` })
+    } catch (error: any) {
+      failNotification({
+        title: error?.message || `Couldn't reactivate ${registration}.`,
+      })
     } finally {
       setIsLoadingTrigger(false) // Always set loading to false in the end
     }

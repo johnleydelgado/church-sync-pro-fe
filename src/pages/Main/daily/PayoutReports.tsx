@@ -1,6 +1,5 @@
 import React, { FC, useState } from 'react'
 import { useQuery } from 'react-query'
-import { useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
 import { Button } from '@material-tailwind/react'
 import { HiOutlineExclamationCircle, HiOutlineUpload } from 'react-icons/hi'
@@ -11,7 +10,7 @@ import {
   getPayoutReportStatus,
 } from '@/common/api/user'
 import { formatDate } from '@/common/utils/helper'
-import { RootState } from '@/redux/store'
+import { useChurch } from '@/common/hooks/useChurch'
 import PayoutReportUploadModal from './PayoutReportUploadModal'
 import PayoutReview from './PayoutReview'
 import {
@@ -30,24 +29,20 @@ import {
  * still waiting for a person, and opens the upload.
  */
 const PayoutReports: FC = () => {
-  const { user } = useSelector((state: RootState) => state.common)
-  const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
+  const { email, churchId } = useChurch()
   const [uploading, setUploading] = useState(false)
-
-  const email =
-    user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
 
   const {
     data: status,
     isLoading,
     error,
   } = useQuery<PayoutStatus | null, PayoutReportError>(
-    ['payoutReportStatus', email],
+    ['payoutReportStatus', churchId],
     async () => (email ? await getPayoutReportStatus(email) : null),
     {
       staleTime: 60_000,
       refetchOnWindowFocus: false,
-      enabled: !!email,
+      enabled: !!churchId,
       retry: false,
     },
   )

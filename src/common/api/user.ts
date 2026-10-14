@@ -5,19 +5,9 @@ import { faker } from '@faker-js/faker'
 import { userRoutes } from '../constant/routes-api'
 import { error } from 'console'
 import { resizeFile } from '../utils/image.optimizer'
-import {
-  BankAccountExpensesProps,
-  BankAccountProps,
-  BookkeeperInfo,
-  UserInfo,
-} from '@/redux/common'
+import { BankAccountExpensesProps, BankAccountProps } from '@/redux/common'
 import { BillingData } from '@/pages/Main/settings/component/Billing'
 const { REACT_APP_API_PATH } = process.env
-
-interface ToggleUserActiveStatusParams {
-  userId: number
-  isActive: boolean
-}
 
 export interface UserProps {
   churchName?: string
@@ -220,6 +210,21 @@ const enableAutoSyncSetting = async ({
   }
 }
 
+/**
+ * Why a settings write failed: the server's sentence, or that it was never reached. Thrown, not
+ * returned - a value returned on failure let the page report saves that never landed.
+ */
+const settingsSaveError = (e: any, fallback: string) => {
+  const said = e?.response?.data?.message ?? e?.response?.data?.error
+  return new Error(
+    typeof said === 'string' && said
+      ? said
+      : e?.response
+      ? fallback
+      : 'Could not reach Church Sync Pro. Check your connection and try again.',
+  )
+}
+
 const addUpdateBankSettings = async ({
   email,
   data,
@@ -227,7 +232,6 @@ const addUpdateBankSettings = async ({
   email: string
   data: BankAccountProps[] | null
 }) => {
-  // await axios.get
   const url = userRoutes.addUpdateBankSettings
   const dataJson = JSON.stringify({
     email,
@@ -237,7 +241,7 @@ const addUpdateBankSettings = async ({
     const response = await apiCall.post(url, dataJson)
     return response.data
   } catch (e: any) {
-    return []
+    throw settingsSaveError(e, "Couldn't save the clearing account.")
   }
 }
 
@@ -281,7 +285,6 @@ const addUpdateBankCharges = async ({
   email: string
   data: BankAccountExpensesProps | null
 }) => {
-  // await axios.get
   const url = userRoutes.addUpdateBankCharges
   const dataJson = JSON.stringify({
     email,
@@ -291,7 +294,7 @@ const addUpdateBankCharges = async ({
     const response = await apiCall.post(url, dataJson)
     return response.data
   } catch (e: any) {
-    return []
+    throw settingsSaveError(e, "Couldn't save the Stripe fees account.")
   }
 }
 
@@ -771,17 +774,6 @@ const getPayoutSignups = async (email: string): Promise<string[]> => {
   }
 }
 
-const deleteBookeeper = async (id: string) => {
-  const url = '/deleteBookeeper'
-  const data = JSON.stringify({ id })
-  try {
-    const response = await apiCall.post(url, data)
-    return response.data.data
-  } catch (e: any) {
-    throw new Error(e.message)
-  }
-}
-
 const manualSync = async ({
   ...rest
 }: {
@@ -826,6 +818,8 @@ const getTokenList = async (email: string) => {
   }
 }
 
+// Saves a connection under the church's account. Throws with the server's sentence (403: not
+// allowed to connect integrations for that church), so the caller can say why it failed.
 const updateUserToken = async (tokenData: UserTokenProps) => {
   const url = userRoutes.updateUserToken
   const data = JSON.stringify(tokenData)
@@ -834,63 +828,39 @@ const updateUserToken = async (tokenData: UserTokenProps) => {
     const response = await apiCall.post(url, data)
     return response.data.data
   } catch (e: any) {
-    return null
+    const said = e?.response?.data?.message
+    throw new Error(
+      typeof said === 'string' && said
+        ? said
+        : e?.response
+        ? "Couldn't save the connection. Please try again."
+        : 'Could not reach Church Sync Pro. Check your connection and try again.',
+    )
   }
 }
 
+// Removes a connection. Throws with the server's sentence; a reply without `success` is a failure too.
 const deleteUserToken = async (id: number) => {
   const url = userRoutes.deleteUserToken
   const data = JSON.stringify({ id })
 
+  let response
   try {
-    const response = await apiCall.post(url, data)
-    return response.data
+    response = await apiCall.post(url, data)
   } catch (e: any) {
-    return null
+    const said = e?.response?.data?.message
+    throw new Error(
+      typeof said === 'string' && said
+        ? said
+        : e?.response
+        ? "Couldn't disconnect. Please try again."
+        : 'Could not reach Church Sync Pro. Check your connection and try again.',
+    )
   }
-}
-
-// A bookkeeper adding a church. Done through the backend rather than the browser
-// sign-up API: that API sets the NEW user's session cookies, so the bookkeeper's tab
-// would silently carry on as the church. Throws on failure (409 = church exists).
-const createClientChurch = async (churchName: string, bookkeeperId: number) => {
-  const url = userRoutes.createClientChurch
-  const response = await apiCall.post(
-    url,
-    JSON.stringify({ churchName, bookkeeperId }),
-  )
-  return response.data.data as { clientId: number; email: string }
-}
-
-const sendEmailInvitation = async (
-  name: string,
-  email: string,
-  clientId: number,
-  createdByBk = false,
-  bookkeeperId?: number | undefined,
-) => {
-  const url = userRoutes.sendEmailInvitation
-
-  // Conditionally include bookkeeperId if it exists
-  const data = JSON.stringify({
-    name,
-    emailTo: email,
-    clientId,
-    createdByBk,
-    ...(bookkeeperId ? { bookkeeperId } : {}), // Add bookkeeperId if it is defined
-  })
-
-  try {
-    const response = await apiCall.post(url, data)
-    return response.data
-  } catch (e: any) {
-    // Callers must be able to tell a failure from a send, so return the server's
-    // reason rather than a bare null that reads as "nothing to report".
-    return {
-      success: false,
-      message: e?.response?.data?.message ?? 'Request failed',
-    }
+  if (!response.data?.success) {
+    throw new Error("Couldn't disconnect. Please try again.")
   }
+  return response.data
 }
 
 const sendPasswordReset = async (email: string) => {
@@ -946,29 +916,6 @@ const checkValidInvitation = async (
 
   try {
     if (email && invitationToken) {
-      const response = await apiCall.post(url, data)
-      return response.data
-    }
-    return []
-  } catch (e: any) {
-    return null
-  }
-}
-
-interface bookkeeperListParams {
-  clientId?: number
-  bookkeeperId?: number
-}
-
-const bookkeeperList = async ({
-  clientId,
-  bookkeeperId,
-}: bookkeeperListParams) => {
-  const url = userRoutes.bookkeeperList
-  const data = JSON.stringify({ clientId, bookkeeperId })
-
-  try {
-    if (clientId || bookkeeperId) {
       const response = await apiCall.post(url, data)
       return response.data
     }
@@ -1083,44 +1030,15 @@ const userUpdate = async ({
   }
 }
 
-const getUserRelatedSettings = async (
-  user: UserInfo,
-  bookkeeper: BookkeeperInfo | null,
-) => {
-  const email =
-    user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
+/** The selected church's settings. `email` is the church's account email. */
+const getUserRelatedSettings = async (email: string) => {
   if (email) {
     return await getUserRelated(email)
   }
   return []
 }
 
-/**
- * Calls the toggleUserActiveStatus API to update the isActive status of a user.
- * @param {ToggleUserActiveStatusParams} params - The userId and isActive status.
- * @returns {Promise<any>} - API response or null in case of error.
- */
-const toggleUserActiveStatusApi = async ({
-  userId,
-  isActive,
-}: ToggleUserActiveStatusParams) => {
-  const url = userRoutes.toggleUserActiveStatus // Define the API endpoint in your route constants
-  const data = JSON.stringify({ userId, isActive })
-
-  try {
-    if (userId && typeof isActive === 'boolean') {
-      const response = await apiCall.post(url, data)
-      return response.data
-    }
-    return null
-  } catch (e: any) {
-    console.error('Error calling toggleUserActiveStatus API:', e.message)
-    return null
-  }
-}
-
 export {
-  createClientChurch,
   updateUser,
   createUser,
   addTokenInUser,
@@ -1132,14 +1050,11 @@ export {
   getTokenList,
   updateUserToken,
   deleteUserToken,
-  sendEmailInvitation,
   sendPasswordReset,
   resetPassword,
   checkValidInvitation,
-  bookkeeperList,
   updateInvitationStatus,
   enableAutoSyncSetting,
-  deleteBookeeper,
   userUpdate,
   addUpdateBankSettings,
   addUpdateBilling,
@@ -1148,7 +1063,6 @@ export {
   crudUserEmailPreferences,
   setStartDataAutomation,
   getUserRelatedSettings,
-  toggleUserActiveStatusApi,
   getDailyJournalEntries,
   getClearingStatement,
   markTransitionTruedUp,

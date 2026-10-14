@@ -302,7 +302,7 @@ const InviteLink: FC<SignUpProps> = () => {
                   // onClick={googleSignInClicked}
                 >
                   <AiOutlineBarChart size={22} />
-                  <p className="pl-4">Create a Bookkepers Account</p>
+                  <p className="pl-4">Create your bookkeeper account</p>
                 </div>
                 <div className="border-[0.5px] w-3/4" />
 

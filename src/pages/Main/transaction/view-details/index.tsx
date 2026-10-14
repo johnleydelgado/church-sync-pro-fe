@@ -1,6 +1,7 @@
 import { pcGetFunds } from '@/common/api/planning-center'
 import MainLayout from '@/common/components/main-layout/MainLayout'
 import { RootState } from '@/redux/store'
+import { useChurch } from '@/common/hooks/useChurch'
 import React, { FC, useEffect, useState } from 'react'
 import { useQuery } from 'react-query'
 import { useDispatch, useSelector } from 'react-redux'
@@ -90,27 +91,26 @@ const ViewDetails: FC<indexProps> = ({}) => {
   const { batchId } = useParams()
   const navigation = useNavigate()
   const dispatch = useDispatch()
-  const { user, selectedBankAccount } = useSelector(
+  const { selectedBankAccount } = useSelector(
     (state: RootState) => state.common,
   )
   const [finalData, setFinalData] = useState<FinalDataProps | null>(null)
   const [newData, setNewData] = useState<any>(null)
 
-  const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
+  const { email, churchId } = useChurch()
   const [isSynching, setIsSynching] = useState(false)
 
   const { data, synchedBatches, refetch, isLoading, isRefetching } =
     usePagination()
 
   const { data: fundData } = useQuery<FundProps[]>(
-    ['getFunds', bookkeeper],
+    ['getFunds', churchId],
     async () => {
-      const email =
-        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
       if (email) return await pcGetFunds({ email })
       return []
     },
     {
+      enabled: !!churchId,
       staleTime: Infinity,
       refetchOnWindowFocus: false,
     },
@@ -118,9 +118,6 @@ const ViewDetails: FC<indexProps> = ({}) => {
 
   useEffect(() => {
     if (!isEmpty(data)) {
-      const email =
-        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-
       setFinalData({
         batches: data?.find(
           (item: AttributesProps) =>
@@ -131,7 +128,7 @@ const ViewDetails: FC<indexProps> = ({}) => {
         ),
       })
     }
-  }, [data, batchId, synchedBatches])
+  }, [data, batchId, synchedBatches, email])
 
   useEffect(() => {
     if (!isEmpty(fundData) && !isEmpty(finalData)) {
@@ -213,8 +210,6 @@ const ViewDetails: FC<indexProps> = ({}) => {
   }): Promise<void> => {
     setIsSynching(true)
     try {
-      const email =
-        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
       const result = await manualSync({
         email,
         dataBatch,
@@ -261,8 +256,6 @@ const ViewDetails: FC<indexProps> = ({}) => {
   const triggerUnSync = async (): Promise<void> => {
     setIsSynching(true)
     try {
-      const email =
-        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
       const result = await deleteQboDeposit(email, finalData?.synchedBatches)
       if (result === 'success') {
         setIsSynching(false)

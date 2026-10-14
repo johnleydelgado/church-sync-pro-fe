@@ -2,6 +2,7 @@ import { getStripeList } from '@/common/api/stripe'
 import { getUserRelated } from '@/common/api/user'
 import { UserSettingsProps } from '@/common/constant/interfaces'
 import { RootState } from '@/redux/store'
+import { useChurch } from '@/common/hooks/useChurch'
 import React, { FC, useEffect, useMemo, useState } from 'react'
 import { useQuery } from 'react-query'
 import { useDispatch } from 'react-redux'
@@ -21,25 +22,25 @@ const useGetDeactivatedMapping = () => {
     (state: RootState) => state.stripeData.reduxStripeData,
   )
 
-  const { user, bookkeeper, reTriggerIsUserTokens } = useSelector(
+  const { reTriggerIsUserTokens } = useSelector(
     (state: RootState) => state.common,
   )
+  const { email, churchId } = useChurch()
 
-  const { data: userData, refetch: refetchUserData } =
-    useQuery<UserSettingsProps>(
-      ['getUserRelatedSettings', reTriggerIsUserTokens, bookkeeper],
-      async () => {
-        const emailF =
-          user.role === 'bookkeeper'
-            ? bookkeeper?.clientEmail || ''
-            : user.email
-        if (emailF) {
-          const res = await getUserRelated(emailF)
-          return res.data
-        }
-      },
-      { staleTime: Infinity },
-    )
+  const {
+    data: userData,
+    refetch: refetchUserData,
+    isLoading: isLoadingUserData,
+  } = useQuery<UserSettingsProps>(
+    ['getUserRelatedSettings', reTriggerIsUserTokens, churchId],
+    async () => {
+      if (email) {
+        const res = await getUserRelated(email)
+        return res.data
+      }
+    },
+    { enabled: !!churchId, staleTime: Infinity },
+  )
 
   const {
     data: stripeEvents,
@@ -47,10 +48,8 @@ const useGetDeactivatedMapping = () => {
     isRefetching: isStripeEventsRefetch,
     refetch,
   } = useQuery<Archive[]>(
-    ['getStripeListInactiveRegistration', reduxStripeData, userData],
+    ['getStripeListInactiveRegistration', churchId, reduxStripeData, userData],
     async () => {
-      const email =
-        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
       if (email && userData?.UserSetting) {
         // Only the Stripe-era list holds archived registrations; the payout-report mapping is
         // an object, and calling .filter on it threw - losing the archived funds below too.
@@ -107,7 +106,14 @@ const useGetDeactivatedMapping = () => {
     setIsLoading(isStripeEventsLoading || isStripeEventsRefetch) // Reflects both loading and refetching
   }, [isStripeEventsLoading, isStripeEventsRefetch])
 
-  return { archives, isLoading, refetch: refetchUserData }
+  // `userData`: the church's settings, the same cached copy the Mapping page reads and writes.
+  return {
+    archives,
+    isLoading,
+    refetch: refetchUserData,
+    userData,
+    isLoadingUserData,
+  }
 }
 
 export default useGetDeactivatedMapping

@@ -5,12 +5,18 @@ import { FiSearch } from 'react-icons/fi'
 interface SearchInputProps {
   value: string
   onChange: (value: string) => void
+  placeholder?: string
 }
 
-const SearchInput: React.FC<SearchInputProps> = ({ value, onChange }) => (
+const SearchInput: React.FC<SearchInputProps> = ({
+  value,
+  onChange,
+  placeholder = 'Search by name',
+}) => (
   <div className="relative w-full md:w-64">
     <Input
-      placeholder="Search (e.g By name, email)"
+      aria-label={placeholder}
+      placeholder={placeholder}
       className="!border-gray-300 bg-white text-gray-500 placeholder:text-gray-500 shadow-lg focus:!border-yellow w-full pr-10"
       crossOrigin={undefined}
       value={value}

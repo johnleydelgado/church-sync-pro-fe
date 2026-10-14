@@ -1,6 +1,7 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit'
 import { stat } from 'fs'
 import { number, string } from 'yup'
+import type { MyChurch } from '@/common/api/church'
 
 export interface thirdPartyTokens {
   qbo_access_token: string | null
@@ -20,14 +21,6 @@ export interface UserInfo {
   isSubscribe?: string
   role?: 'bookkeeper' | 'client' | string
   img_url?: string
-}
-
-export interface BookkeeperInfo {
-  clientEmail: string
-  clientId?: number
-  churchName: string
-  bookkeeperIntegrationAccessEnabled?: boolean
-  role?: string
 }
 
 interface transactionDateProps {
@@ -52,9 +45,17 @@ export interface BankAccountExpensesProps {
   }
 }
 
-export interface SelectedClient {
-  clientEmail: string
-  clientId?: number
+/** The church a QuickBooks / Planning Center connect was started for, kept across the redirect. */
+export interface PendingConnection {
+  /** Which service the person was sent to. */
+  type: 'qbo' | 'pco' | 'stripe'
+  churchId: number
+  churchName: string
+  accountEmail: string
+  accountUserId: number
+  returnTo: string
+  /** Date.now() when Connect was clicked; an old record is treated as missing. */
+  startedAt: number
 }
 
 interface DateRangeTransactionProps {
@@ -89,13 +90,6 @@ interface CommonState {
   reTriggerIsUserTokens: boolean
   isShowSettings: boolean
   isShowTransaction: boolean
-  bookkeeper: BookkeeperInfo | null
-  accountState: {
-    type: string
-    access_token: string
-    refresh_token: string
-    realm_id?: string
-  } | null
   selectedTransactionDate: transactionDateProps
   selectedStartDate: Date | null
   tabSettings: {
@@ -114,8 +108,12 @@ interface CommonState {
   stripeCurrentData: any
   stripeCurrentPage: number
   dateRangeTransaction: DateRangeTransactionProps[]
-  integrationTo: 'client' | 'bookkeeper'
-  selectdClient: SelectedClient
+  /**
+   * The church every page works on. Read it as `?? null`: a browser that ran an older build
+   * gets its persisted `common` back whole, without this key.
+   */
+  selectedChurch: MyChurch | null
+  pendingConnection: PendingConnection | null
 }
 
 const initialState: CommonState = {
@@ -143,12 +141,6 @@ const initialState: CommonState = {
   reTriggerIsUserTokens: false,
   isShowSettings: false,
   isShowTransaction: false,
-  bookkeeper: {
-    clientEmail: '',
-    clientId: 0,
-    churchName: '',
-  },
-  accountState: null,
   selectedTransactionDate: { startDate: null, endDate: null },
   selectedStartDate: null,
   tabSettings: {
@@ -175,11 +167,8 @@ const initialState: CommonState = {
       type: 'batch',
     },
   ],
-  integrationTo: 'client',
-  selectdClient: {
-    clientEmail: '',
-    clientId: 0,
-  },
+  selectedChurch: null,
+  pendingConnection: null,
 }
 
 export const common = createSlice({
@@ -229,21 +218,16 @@ export const common = createSlice({
     setIsShowTransaction: (state, action: PayloadAction<boolean>) => {
       state.isShowTransaction = action.payload
     },
-    setAccountState: (state, action) => {
-      state.accountState = action.payload
-    },
-    setBookkeeper: (state, action: PayloadAction<BookkeeperInfo>) => {
-      state.bookkeeper = action.payload
-    },
     resetUserData: (state) => {
       state.user = initialState.user
       state.selectedThirdPartyId = initialState.selectedThirdPartyId
       state.thirdPartyTokens = initialState.thirdPartyTokens
-      state.bookkeeper = initialState.bookkeeper
       state.selectedTransactionDate = initialState.selectedTransactionDate
       state.selectedBankAccount = initialState.selectedBankAccount
       state.selectedBankExpense = initialState.selectedBankExpense
       state.dateRangeTransaction = initialState.dateRangeTransaction
+      state.selectedChurch = initialState.selectedChurch
+      state.pendingConnection = initialState.pendingConnection
       // state.selectedStartDate = initialState.selectedStartDate
     },
     setSelectedTransactionDate: (
@@ -308,14 +292,28 @@ export const common = createSlice({
     ) => {
       state.dateRangeTransaction = action.payload
     },
-    setIntegrationTo: (
-      state,
-      action: PayloadAction<'client' | 'bookkeeper'>,
-    ) => {
-      state.integrationTo = action.payload
+    setSelectedChurch: (state, action: PayloadAction<MyChurch | null>) => {
+      state.selectedChurch = action.payload
     },
-    setSelectedClient: (state, action: PayloadAction<SelectedClient>) => {
-      state.selectdClient = action.payload
+    setPendingConnection: (
+      state,
+      action: PayloadAction<PendingConnection | null>,
+    ) => {
+      state.pendingConnection = action.payload
+    },
+    /**
+     * Everything here belongs to one church; put it back when the church changes. Bank and fee
+     * choices, and the legacy batch / Stripe payout views' data, cursor, page, start date and
+     * date filter.
+     */
+    resetChurchScopedState: (state) => {
+      state.selectedBankAccount = null
+      state.selectedBankExpense = null
+      state.stripeCurrentData = initialState.stripeCurrentData
+      state.lastObjectId = initialState.lastObjectId
+      state.persistPage = initialState.persistPage
+      state.selectedStartDate = initialState.selectedStartDate
+      state.dateRangeTransaction = initialState.dateRangeTransaction
     },
   },
 })
@@ -332,8 +330,6 @@ export const {
   setIsShowSettings,
   setIsShowTransaction,
   resetUserData,
-  setAccountState,
-  setBookkeeper,
   setSelectedTransactionDate,
   setSelectedStartDate,
   setTabSettings,
@@ -347,8 +343,9 @@ export const {
   setStripeCurrentData,
   setStripeCurrentPage,
   setDateRangeTransaction,
-  setIntegrationTo,
-  setSelectedClient,
+  setSelectedChurch,
+  setPendingConnection,
+  resetChurchScopedState,
 } = common.actions
 
 export default common.reducer

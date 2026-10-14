@@ -11,6 +11,7 @@ import { QboDataSelectProps } from '@/pages/Main/settings'
 import { CLOSE_MODAL } from '@/redux/common'
 import { setProjectFieldValues } from '@/redux/nonPersistState'
 import { RootState, useAppDispatch } from '@/redux/store'
+import { useChurch } from '@/common/hooks/useChurch'
 import { Dialog, Transition } from '@headlessui/react'
 import {
   Button,
@@ -108,8 +109,8 @@ const ModalCreateUpdateProject: FC<ModalRegistrationProps> = ({ size }) => {
   }
 
   const [isLoading, setIsLoading] = useState<boolean>(false)
-  const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
-  const { user } = useSelector((state: RootState) => state.common)
+  // `churchEmail`: the form has its own `email` field (the project's).
+  const { email: churchEmail, churchId } = useChurch()
   const isOpen = openModals.includes(MODALS_NAME.projectCU)
 
   const {
@@ -117,9 +118,9 @@ const ModalCreateUpdateProject: FC<ModalRegistrationProps> = ({ size }) => {
     isLoading: isQboDataLoading,
     refetch,
   } = useQuery(
-    useMemo(() => ['getAllQboData', bookkeeper], [bookkeeper]), // Memoize the key
-    async () => await getQboData(user, bookkeeper),
-    { staleTime: Infinity, refetchOnWindowFocus: false },
+    useMemo(() => ['getAllQboData', churchId], [churchId]), // Memoize the key
+    async () => await getQboData(churchEmail),
+    { enabled: !!churchId, staleTime: Infinity, refetchOnWindowFocus: false },
   )
 
   const formik = useFormik({
@@ -152,18 +153,14 @@ const ModalCreateUpdateProject: FC<ModalRegistrationProps> = ({ size }) => {
       // forgotPasswordHandler(values.email)
       try {
         setIsLoading(true)
-        const email =
-          user.role === 'bookkeeper'
-            ? bookkeeper?.clientEmail || ''
-            : user.email
 
         if (!projectFieldValues) {
-          await addProject(email, values)
+          await addProject(churchEmail, values)
           successNotification({ title: 'Project Successfully Created' })
         } else {
           console.log('obj', values, projectFieldValues)
 
-          await updateProject(email, values)
+          await updateProject(churchEmail, values)
           successNotification({ title: 'Project Successfully Updated' })
         }
 

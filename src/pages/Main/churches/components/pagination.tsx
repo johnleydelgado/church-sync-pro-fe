@@ -2,7 +2,6 @@ import { Button } from 'flowbite-react'
 import React, { FC } from 'react'
 import { MdChevronRight, MdChevronLeft } from 'react-icons/md'
 
-// Define the props for the Pagination component
 interface PaginationProps {
   currentPage: number
   totalCount: number
@@ -10,7 +9,6 @@ interface PaginationProps {
   onPageChange: (page: number) => void
 }
 
-// Explicitly type the component as FC<PaginationProps>
 const Pagination: FC<PaginationProps> = ({
   currentPage,
   totalCount,
@@ -41,12 +39,15 @@ const Pagination: FC<PaginationProps> = ({
       <ul className="inline-flex items-center -space-x-px">
         {totalPages > 0 && (
           <li className="pr-4">
-            <div
-              className="cursor-pointer rounded-2xl p-2 text-gray-500 hover:bg-blue-600 hover:text-white"
+            <button
+              type="button"
+              aria-label="Previous page"
+              disabled={currentPage <= 1}
+              className="rounded-2xl p-2 text-gray-500 hover:bg-blue-600 hover:text-white disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-gray-500"
               onClick={goToPrevPage}
             >
               <MdChevronLeft />
-            </div>
+            </button>
           </li>
         )}
         {pageNumbers.map((page) => (
@@ -55,6 +56,7 @@ const Pagination: FC<PaginationProps> = ({
               color="gray"
               gradientMonochrome={`${page === currentPage ? 'info' : ''}`}
               className="h-8 w-8 rounded-full"
+              aria-current={page === currentPage ? 'page' : undefined}
               onClick={() => onPageChange(page)}
             >
               {page}
@@ -63,12 +65,15 @@ const Pagination: FC<PaginationProps> = ({
         ))}
         {totalPages > 0 && (
           <li className="pl-4">
-            <div
-              className="cursor-pointer rounded-2xl p-2 text-gray-500 hover:bg-blue-600 hover:text-white"
+            <button
+              type="button"
+              aria-label="Next page"
+              disabled={currentPage >= totalPages}
+              className="rounded-2xl p-2 text-gray-500 hover:bg-blue-600 hover:text-white disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-gray-500"
               onClick={goToNextPage}
             >
               <MdChevronRight />
-            </div>
+            </button>
           </li>
         )}
       </ul>

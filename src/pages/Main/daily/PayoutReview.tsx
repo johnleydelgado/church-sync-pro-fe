@@ -1,6 +1,5 @@
 import React, { FC, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from 'react-query'
-import { useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
 import Dropdown from 'react-select'
 import { Spinner } from 'flowbite-react'
@@ -25,7 +24,7 @@ import {
 import { mainRoute } from '@/common/constant/route'
 import { formatDate } from '@/common/utils/helper'
 import { failNotification, successNotification } from '@/common/utils/toast'
-import { RootState } from '@/redux/store'
+import { useChurch } from '@/common/hooks/useChurch'
 import { PAYOUT_REVIEW_ID, plural, reasonWords, usd } from './payoutCopy'
 
 type Option = { value: string; label: string }
@@ -198,14 +197,13 @@ const CodeItPanel: FC<{
   onCancel: () => void
   onPost: (account: Option, cls: Option | null) => void
 }> = ({ row, busy, onCancel, onPost }) => {
-  const user = useSelector((state: RootState) => state.common.user)
-  const bookkeeper = useSelector((state: RootState) => state.common.bookkeeper)
+  const { email, churchId } = useChurch()
 
   // Same query (and cache) as the Mapping page.
   const { data: qboData, isLoading } = useQuery<QboLists | undefined>(
-    ['getAllQboData', bookkeeper],
-    async () => await getQboData(user, bookkeeper),
-    { staleTime: Infinity, refetchOnWindowFocus: false },
+    ['getAllQboData', churchId],
+    async () => await getQboData(email),
+    { enabled: !!churchId, staleTime: Infinity, refetchOnWindowFocus: false },
   )
 
   const accounts = useMemo<Option[]>(

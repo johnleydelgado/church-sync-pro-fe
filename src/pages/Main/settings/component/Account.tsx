@@ -1,28 +1,26 @@
-import LoginButton from '@/pages/Auth/secondaryLogin/components/LoginButton'
-import pcLogin from '@/common/assets/planning-center-btn.png'
-import qboLogin from '@/common/assets/qbo_login.png'
-import stripeLogin from '@/common/assets/stripe.png'
-
-import React, { FC, useEffect, useRef, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router'
-import { failNotification, successNotification } from '@/common/utils/toast'
-import { useSelector } from 'react-redux'
-import { RootState } from '@/redux/store'
-import { deleteUserToken, updateUserToken } from '@/common/api/user'
-import { authApi } from '@/common/api/auth'
-import { useQuery } from 'react-query'
-import { getTokenList } from '@/common/api/user'
+import React, { FC, useState } from 'react'
 import { useDispatch } from 'react-redux'
-import { setAccountState } from '@/redux/common'
+import { useQueryClient } from 'react-query'
+import { failNotification, successNotification } from '@/common/utils/toast'
+import { deleteUserToken } from '@/common/api/user'
 import qboIcon from '@/common/assets/qbo-icon.png'
 import pcoIcon from '@/common/assets/pco-icon.png'
 import stripeIcon from '@/common/assets/stripe.png'
 import { CgSync } from 'react-icons/cg'
 import { BiSync } from 'react-icons/bi'
 import { useGetTokenList } from '@/common/hooks/useGetTokenList'
+import { MY_CHURCHES_KEY, useChurch } from '@/common/hooks/useChurch'
+import {
+  IntegrationType,
+  useConnectIntegration,
+} from '@/common/hooks/useConnectIntegration'
+import { mainRoute } from '@/common/constant/route'
 import ConfirmActionModal from '@/common/components/modal/ConfirmActionModal'
 import { MODALS_NAME } from '@/common/constant/modal'
 import { OPEN_MODAL } from '@/redux/common'
+
+/** Where QuickBooks / Planning Center / Stripe send the person back to once connected. */
+const RETURN_TO = `${mainRoute.SETTINGS}?tab=integrations`
 
 interface AccountProps {}
 
@@ -55,12 +53,16 @@ export interface AccountTokenDataProps {
 
 const Account: FC<AccountProps> = ({}) => {
   const dispatch = useDispatch()
-  const subscribed = useRef(false)
-  const { email, id, role } = useSelector((item: RootState) => item.common.user)
-  const accountState = useSelector(
-    (item: RootState) => item.common.accountState,
-  )
-  const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
+  const queryClient = useQueryClient()
+  const { church, canConnectIntegrations } = useChurch()
+  const connect = useConnectIntegration()
+
+  // Connections belong to a church; connecting or disconnecting needs the right to do it there.
+  const blockedReason = !church
+    ? 'Choose a church first. Connections belong to a church.'
+    : !canConnectIntegrations
+    ? `Only an owner of ${church.name}, or a bookkeeper they allow, can connect or disconnect its accounts.`
+    : null
 
   const [isBtnLoading, setIsBtnLoading] = useState<LoadingProps>({
     stripeLoading: false,
@@ -75,29 +77,26 @@ const Account: FC<AccountProps> = ({}) => {
     label: string
   } | null>(null)
 
-  const requestDisconnect = (
-    id: number | undefined | null,
-    label: string,
-  ) => {
+  const requestDisconnect = (id: number | undefined | null, label: string) => {
     setDisconnectTarget({ id, label })
     dispatch(OPEN_MODAL(MODALS_NAME.modalConfirmDisconnect))
   }
 
-  const qboLoginHandler = async () => {
-    setIsBtnLoading({ ...isBtnLoading, qboLoading: true })
-    const authUri = await authApi('authQB')
-    window.location.href = authUri
-    // window.open(authUri)
-  }
-  const pcLoginHandler = async () => {
-    setIsBtnLoading({ ...isBtnLoading, pcoLoading: true })
-    const authUri = await authApi('authPC')
-    window.location.href = authUri
-  }
-  const stripeLoginHandler = async () => {
-    setIsBtnLoading({ ...isBtnLoading, stripeLoading: true })
-    const authUri = await authApi('authStripe')
-    window.location.href = authUri
+  const connectHandler = async (
+    type: IntegrationType,
+    loadingKey: keyof LoadingProps,
+  ) => {
+    if (!church || !canConnectIntegrations) return
+    setIsBtnLoading((s) => ({ ...s, [loadingKey]: true }))
+    try {
+      // On success the browser is already on its way to the sign-in page; keep the spinner.
+      await connect(type, church, RETURN_TO)
+    } catch (e: any) {
+      failNotification({
+        title: e?.message || "Couldn't start connecting. Please try again.",
+      })
+      setIsBtnLoading((s) => ({ ...s, [loadingKey]: false }))
+    }
   }
 
   // One definition per integration. The three cards were previously ~60 lines of
@@ -106,29 +105,26 @@ const Account: FC<AccountProps> = ({}) => {
   // rendered outside the card border.
   const INTEGRATIONS = [
     {
-      type: 'qbo',
+      type: 'qbo' as const,
       name: 'QuickBooks',
       icon: qboIcon,
       loadingKey: 'qboLoading' as const,
-      onConnect: qboLoginHandler,
       description:
         'Where your journal entries are posted. Church Sync Pro writes your daily giving entry here.',
     },
     {
-      type: 'pco',
+      type: 'pco' as const,
       name: 'Planning Center',
       icon: pcoIcon,
       loadingKey: 'pcoLoading' as const,
-      onConnect: pcLoginHandler,
       description:
         'Where your donations come from. Online giving in Planning Center is the source for every entry.',
     },
     {
-      type: 'stripe',
+      type: 'stripe' as const,
       name: 'Stripe',
       icon: stripeIcon,
       loadingKey: 'stripeLoading' as const,
-      onConnect: stripeLoginHandler,
       description:
         'Used to reconcile payouts against your clearing account once the deposit lands.',
     },
@@ -145,75 +141,27 @@ const Account: FC<AccountProps> = ({}) => {
 
   const allConnected = INTEGRATIONS.every((it) => hasTokenOfTypes([it.type]))
 
-  const deleteToken = async (id: number | undefined | null) => {
+  // The token id comes from the selected church's token list; the backend checks the
+  // signed-in person may manage that church's integrations before deleting it.
+  const deleteToken = async (id: number | undefined | null, label: string) => {
+    if (!id) return
     try {
-      if (id) {
-        const res = await deleteUserToken(id)
-
-        if (res.success) {
-          successNotification({
-            title: 'delete token successfully !',
-          })
-          refetch()
-        } else {
-          failNotification({ title: res.data.message })
-        }
-      }
-    } catch (e) {
+      await deleteUserToken(id)
+    } catch (e: any) {
+      // The server's sentence, e.g. not allowed to manage this church's integrations.
       failNotification({
-        title: '',
+        title: e?.message || `Couldn't disconnect ${label}. Please try again.`,
       })
+      return
     }
+    successNotification({ title: `${label} disconnected.` })
+    refetch()
+    // Replace a list fetch that left before the disconnect.
+    queryClient.invalidateQueries(
+      { queryKey: MY_CHURCHES_KEY },
+      { cancelRefetch: true },
+    )
   }
-
-  useEffect(() => {
-    const loadState = async () => {
-      if (accountState) {
-        const { type, access_token, refresh_token, realm_id } = accountState
-        try {
-          const emailLatest =
-            role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : email
-          const tokenObject = {
-            email: emailLatest,
-            token_type: type,
-            access_token,
-            refresh_token,
-            realm_id,
-            userId: id,
-          }
-
-          if (type === 'qbo') {
-            tokenObject.realm_id = realm_id
-          }
-          const res = await updateUserToken({
-            ...tokenObject,
-          })
-
-          if (res) {
-            // successNotification({
-            //   title: 'Sync !',
-            // })
-            // dispatch(setSelectedThirdPartyId(0))
-            refetch()
-            // history(location.pathname, { replace: true })
-          } else {
-            failNotification({ title: res.message })
-          }
-        } catch (e) {
-          failNotification({ title: (e as string) || '' })
-        } finally {
-          dispatch(setAccountState(null))
-        }
-      }
-    }
-
-    if (!subscribed.current) {
-      loadState()
-    }
-    return () => {
-      subscribed.current = true
-    }
-  }, [])
 
   return (
     <div className="h-full">
@@ -222,7 +170,9 @@ const Account: FC<AccountProps> = ({}) => {
         title={`Disconnect ${disconnectTarget?.label || ''}?`}
         body="Your syncs will stop until you reconnect."
         confirmLabel="Disconnect"
-        onConfirm={() => deleteToken(disconnectTarget?.id)}
+        onConfirm={() =>
+          deleteToken(disconnectTarget?.id, disconnectTarget?.label || '')
+        }
       />
 
       <div className="h-full">
@@ -233,6 +183,9 @@ const Account: FC<AccountProps> = ({}) => {
                 ? 'Your accounts are connected.'
                 : 'Before we start, connect your accounts first'}
             </p>
+            {blockedReason ? (
+              <p className="text-sm text-gray-500">{blockedReason}</p>
+            ) : null}
           </div>
 
           <div className="flex flex-col gap-4 pt-4 lg:p-4">
@@ -273,7 +226,8 @@ const Account: FC<AccountProps> = ({}) => {
                       {connected ? (
                         <button
                           type="button"
-                          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-600 transition hover:bg-gray-50"
+                          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                          disabled={!!blockedReason}
                           onClick={() =>
                             requestDisconnect(
                               tokenList &&
@@ -290,8 +244,8 @@ const Account: FC<AccountProps> = ({}) => {
                         <button
                           type="button"
                           className="inline-flex items-center gap-2 rounded-md bg-btmColor px-4 py-1.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                          onClick={it.onConnect}
-                          disabled={loading}
+                          onClick={() => connectHandler(it.type, it.loadingKey)}
+                          disabled={loading || !!blockedReason}
                         >
                           {loading ? <CgSync className="animate-spin" /> : null}
                           {loading ? 'Connecting…' : 'Connect'}
@@ -302,43 +256,6 @@ const Account: FC<AccountProps> = ({}) => {
                 </div>
               )
             })}
-
-            {/* <LoginButton
-          loginImage={qboLogin}
-          onClick={qboLoginHandler}
-          name="Already connected to Qbo"
-          isHide={
-            tokenList &&
-            tokenList[0]?.tokens.find((a) => a.token_type === 'qbo')
-              ? true
-              : false
-          }
-          logoutHandler={() =>
-            deleteToken(
-              tokenList &&
-                tokenList[0]?.tokens.find((a) => a.token_type === 'qbo')?.id,
-            )
-          }
-          isLoading={isBtnLoading.qboLoading || isLoading || isRefetching}
-        />
-        <LoginButton
-          loginImage={stripeLogin}
-          onClick={stripeLoginHandler}
-          name="Already connected to Stripe Connect"
-          isHide={
-            tokenList &&
-            tokenList[0]?.tokens.find((a) => a.token_type === 'stripe')
-              ? true
-              : false
-          }
-          isLoading={isBtnLoading.stripeLoading || isLoading || isRefetching}
-          logoutHandler={() =>
-            deleteToken(
-              tokenList &&
-                tokenList[0]?.tokens.find((a) => a.token_type === 'stripe')?.id,
-            )
-          }
-        /> */}
           </div>
         </div>
       </div>

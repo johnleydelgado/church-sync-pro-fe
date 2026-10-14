@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from 'react-query'
 import Dropdown, { components } from 'react-select'
 import { QboGetAllQboData, getQboData } from '@/common/api/qbo'
 import { RootState } from '@/redux/store'
+import { useChurch } from '@/common/hooks/useChurch'
 import { useSelector } from 'react-redux'
 import {
   SettingRegistrationQBOProps,
@@ -94,7 +95,7 @@ const HelpTip: FC<{ text: string }> = ({ text }) => (
 )
 
 const Registration: FC<DonationProps> = ({ stripeEvents, userData }) => {
-  const { user, selectedStartDate } = useSelector(
+  const { selectedStartDate } = useSelector(
     (state: RootState) => state.common,
   )
 
@@ -108,7 +109,7 @@ const Registration: FC<DonationProps> = ({ stripeEvents, userData }) => {
   const [openStates, setOpenStates] = useState<Record<number, boolean>>({})
 
   const dispatch = useDispatch()
-  const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
+  const { email, churchId } = useChurch()
   const reTriggerIsUserTokens = useSelector(
     (item: RootState) => item.common.reTriggerIsUserTokens,
   )
@@ -121,7 +122,7 @@ const Registration: FC<DonationProps> = ({ stripeEvents, userData }) => {
   >(createSettings)
 
   const { data: qboData, isLoading: isQboDataLoading } = useQuery(
-    ['getAllQboDataInRegistration', bookkeeper],
+    ['getAllQboDataInRegistration', churchId],
     async () => {
       // If accounts array has elements, use the Redux data
       // if (reduxQboData.accounts.length > 0) {
@@ -129,11 +130,12 @@ const Registration: FC<DonationProps> = ({ stripeEvents, userData }) => {
       //   return reduxQboData
       // }
 
-      const fetchedData = await getQboData(user, bookkeeper) // Fetch only if needed
+      const fetchedData = await getQboData(email) // Fetch only if needed
       dispatch(setReduxQboData(fetchedData))
       return fetchedData
     },
     {
+      enabled: !!churchId,
       refetchOnWindowFocus: false,
       onError: (error) => console.error('Query failed:', error),
     },
@@ -244,8 +246,6 @@ const Registration: FC<DonationProps> = ({ stripeEvents, userData }) => {
 
     try {
       setOnGoingSaving(true)
-      const email =
-        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
       await mutate({
         email,
         settingRegistrationData: settingsData,
@@ -305,8 +305,6 @@ const Registration: FC<DonationProps> = ({ stripeEvents, userData }) => {
       return item // Otherwise, return the item as is.
     })
 
-    const email =
-      user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
     await mutate({
       email,
       settingRegistrationData: updatedSettingsData,

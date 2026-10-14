@@ -10,6 +10,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { RootState } from '@/redux/store'
 import { pcGetBatches } from '../api/planning-center'
 import { isEmpty } from 'lodash'
+import { useChurch } from '@/common/hooks/useChurch'
 
 // Define your interfaces here
 // ...
@@ -79,8 +80,7 @@ export const PaginationProvider: React.FC<PaginationProviderProps> = ({
   children,
 }) => {
   const dispatch = useDispatch()
-  const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
-  const { user } = useSelector((state: RootState) => state.common)
+  const { email, churchId } = useChurch()
 
   const [currentPage, setCurrentPage] = useState(1)
   const [offset, setOffset] = useState(0)
@@ -104,15 +104,13 @@ export const PaginationProvider: React.FC<PaginationProviderProps> = ({
   } = useQuery<BatchesAndSyncProps | undefined>(
     [
       'getBatches',
-      bookkeeper,
+      churchId,
       offset,
       selectedStartDate,
       dateRangeTransaction,
       amount,
     ],
     async () => {
-      const email =
-        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
       const filterDate = dateRangeTransaction?.find(
         (item) => item.type === 'batch',
       )?.dateRange
@@ -138,6 +136,8 @@ export const PaginationProvider: React.FC<PaginationProviderProps> = ({
       return []
     },
     {
+      // Mounted around every page: without a church there is nothing to ask for.
+      enabled: !!churchId,
       refetchOnWindowFocus: false,
     },
   )

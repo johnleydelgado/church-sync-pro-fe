@@ -19,6 +19,7 @@ import {
   subMonths,
 } from 'date-fns'
 import { usePagination } from '../context/PaginationProvider'
+import { useChurch } from './useChurch'
 
 type dateRangeProps =
   | 'This Month'
@@ -38,10 +39,8 @@ type dateRangeProps =
   | undefined
 
 const usePaginationStripe = () => {
-  const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
-  const { user, stripeCurrentPage } = useSelector(
-    (state: RootState) => state.common,
-  )
+  const { email, churchId } = useChurch()
+  const { stripeCurrentPage } = useSelector((state: RootState) => state.common)
   const [amount, setAmount] = useState(0)
 
   const [totalItems, setTotalItems] = useState(0)
@@ -61,11 +60,8 @@ const usePaginationStripe = () => {
     refetch,
     isRefetching,
   } = useQuery<Stripe.Charge[]>(
-    ['getStripePayouts', bookkeeper, selectedStartDate],
+    ['getStripePayouts', churchId, selectedStartDate],
     async () => {
-      const email =
-        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-
       try {
         if (email)
           return await getStripePayouts(
@@ -80,6 +76,7 @@ const usePaginationStripe = () => {
       }
     },
     {
+      enabled: !!churchId,
       staleTime: Infinity,
       refetchOnWindowFocus: false,
     },
@@ -105,9 +102,6 @@ const usePaginationStripe = () => {
     const eDate = dateRangeTransaction?.find(
       (item) => item.type === 'stripe',
     )?.endDate
-
-    const email =
-      user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
 
     if (!isEmpty(currentPageData) && filterDate) {
       let filteredData = currentPageData

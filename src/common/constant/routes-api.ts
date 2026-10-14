@@ -34,15 +34,11 @@ const userRoutes = {
   getTokenList: '/user/getTokenList',
   updateUserToken: '/user/updateUserToken',
   deleteUserToken: '/user/deleteUserToken',
-  sendEmailInvitation: '/user/sendEmailInvitation',
   sendPasswordReset: '/user/sendPasswordReset',
   resetPassword: '/user/resetPassword',
   checkValidInvitation: '/user/checkValidInvitation',
   updateInvitationStatus: '/user/updateInvitationStatus',
-  createClientChurch: '/user/createClientChurch',
-  bookkeeperList: '/user/bookkeeperList',
   userUpdate: '/user/userUpdate',
-  toggleUserActiveStatus: '/user/toggleUserActiveStatus',
   addUpdateBankSettings: '/user/addUpdateBankSettings',
   addUpdateBilling: '/user/addUpdateBilling',
   viewBilling: '/user/viewBilling',
@@ -64,4 +60,15 @@ const userRoutes = {
   payoutReportSignups: '/user/payoutReport/signups',
 }
 
-export { pcRoutes, userRoutes, qboRoutes, stripeRoutes }
+/** The Churches page and the People tab. */
+const churchRoutes = {
+  mine: '/church/mine',
+  create: '/church/create',
+  update: '/church/update',
+  people: '/church/people',
+  invite: '/church/people/invite',
+  access: '/church/people/access',
+  remove: '/church/people/remove',
+}
+
+export { pcRoutes, userRoutes, qboRoutes, stripeRoutes, churchRoutes }

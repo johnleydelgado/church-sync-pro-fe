@@ -117,7 +117,7 @@ Access control uses a custom guard system, **not** SuperTokens route components:
   the backend log as `[email-verification] <email> -> <url>`.
 - **Never call SuperTokens' sign-up API from the browser to create someone else's
   account.** It sets the *new* user's session cookies, so the caller silently becomes
-  that user. The Clients page uses the backend `createClientChurch` endpoint instead.
+  that user. Adding a church goes through the backend (`POST /church/create`).
 
 - **SuperTokens** is initialized in `App.tsx` (`Session`, `ThirdPartyEmailPassword`, `EmailPassword` recipes; `apiBasePath: '/auth'`). Session existence is checked imperatively via `Session.doesSessionExist()`.
 - App-level tokens/flags are kept in `localStorage` through `src/common/utils/storage.ts`. Keys are namespaced by `REACT_APP_NAME_PROJECT` (`storageKey`: `PERSONAL_TOKEN`, `TOKENS`, `SETTINGS`, `QBQ_ACCESS_TOKEN`, `PC_ACCESS_TOKEN`). The presence of `PERSONAL_TOKEN` is what `authGuard`/`unAuthGuard` key off of.
@@ -126,7 +126,7 @@ Access control uses a custom guard system, **not** SuperTokens route components:
 ### State: Redux + redux-persist + react-query (two parallel systems)
 
 Redux store (`src/redux/store.ts`) combines four slices, persisted to localStorage via redux-persist (`whitelist: ['common','qboData','stripeData']`):
-- `common` (`src/redux/common.ts`) — the big one: current `user`, `bookkeeper`, selected client, modal stack (`openModals`), transaction date ranges, UI flags. This holds most cross-cutting UI state.
+- `common` (`src/redux/common.ts`) — the big one: current `user`, the `selectedChurch`, `pendingConnection` (an OAuth connect in flight), modal stack (`openModals`), transaction date ranges, UI flags. This holds most cross-cutting UI state. redux-persist restores the saved `common` object WHOLE, so a key added later (like `selectedChurch`) is `undefined`, not `null`, in a browser that ran an older build: read it through `selectSelectedChurch` / `useChurch()`, which apply `?? null`.
 - `qboData` / `stripeData` — cached third-party data. A custom `checkExpirationMiddleware` in the store resets these slices after 24h (compares `persistedAt`).
 - `nonPersistState` — explicitly not persisted.
 
@@ -244,17 +244,44 @@ modal `PayoutReportUploadModal.tsx`, review list `PayoutReview.tsx`, sentences i
   payout view do), never call `.find`/`.filter` on it directly.
 - Every payout-report endpoint returns **dollars**, signed (refunds negative) - format with the
   page's local dollar formatter, never `@/common/utils/helper`'s `formatUsd` (cents).
-- The endpoints check the signed-in user is the church or its accepted bookkeeper; a 403 means
+- The endpoints (like every church endpoint now) check the signed-in user is a member of the church; a 403 means
   that, not an expired session.
 - **Never commit a real payout report** - every row carries a donor's or registrant's name.
 
 ### Pages
 
-`src/pages/Main/*` are the app's feature areas: `transaction` (now the Daily Giving page; `view-details`, `view-detail-stripe` are legacy batch/payout views), `automation` (`mapping`, `archive`), `client` (client management table — actively being built, see git status), `settings` (sub-pages: Account/Integrations, Billing, Profile, Bookkeeper, Projects, Email), `dashboard`, `home`, `ask-us`, `quick-start-guide`, `accounts-token`. `src/pages/Auth/*` holds login/signup/password flows; `src/pages/Subscription/*` holds the Stripe subscription plan page. Feature-specific components live in a `components/` folder next to their page.
+`src/pages/Main/*` are the app's feature areas: `transaction` (now the Daily Giving page; `view-details`, `view-detail-stripe` are legacy batch/payout views), `automation` (`mapping`, `archive`), `churches` (the Churches page: add, rename, connect, deactivate), `settings` (tabs: Profile, Billing, Integrations, People, Projects, Email), `dashboard`, `home`, `ask-us`, `quick-start-guide`, `accounts-token`. `src/pages/Auth/*` holds login/signup/password flows; `src/pages/Subscription/*` holds the Stripe subscription plan page. Feature-specific components live in a `components/` folder next to their page.
 
 ### Roles
 
-Two user roles flow through the app: `client` and `bookkeeper` (see `UserInfo.role` / `BookkeeperInfo` in `src/redux/common.ts`). A bookkeeper acts on behalf of a selected client, so many queries resolve the effective email as `user.role === 'bookkeeper' ? bookkeeper?.clientEmail : user.email`. Preserve this pattern when adding data fetches.
+**Everyone works on one selected church** (2026-10-15; plan
+`docs/plans/2026-10-14-church-access-and-bookkeeper-screens.md`). `GET /church/mine` lists the
+churches the signed-in person belongs to (`MyChurch`: `role` owner|bookkeeper,
+`canConnectIntegrations`, `canManagePeople`, `accountEmail`, `accountUserId`, connections); the
+sidebar `ChurchSwitcher` picks one; `useChurch()` (`src/common/hooks/useChurch.ts`) gives every page
+`church`, `churchId`, `email` and `accountUserId`.
+
+- **Church data → `useChurch()`; the person's own data → `user`.** `email` is the church's
+  *account* email (the Users row its settings, tokens and postings are filed under), which every
+  older endpoint still takes as `email`. Key church queries by `churchId` with
+  `enabled: !!churchId`. Never reintroduce the old `user.role === 'bookkeeper' ? clientEmail : email`
+  idiom — `bookkeeper` / `selectdClient` / `accountState` are gone from redux.
+- **Switch only through `useSwitchChurch()`.** It resets church-scoped redux (bank/fee picks, the
+  QuickBooks/Stripe lists, legacy view state) before selecting, and MainPage keys the page container
+  by `churchId`, so every page remounts on a switch.
+- **The backend decides access, per church** (`quickplan-connect/src/services/churchAccess.ts`): a
+  person's own row always; otherwise an accepted `ChurchMembers` row; owners always connect
+  integrations and manage people; bookkeepers connect only when an owner switches it on (People
+  tab). A 403 means "not your church / not allowed", never an expired session.
+- **Pages:** Churches (`/churches`, replaced the Clients page; the old client-list URL redirects),
+  People tab (`/settings?tab=people`, replaced the Bookkeepers tab; invites always show a copyable
+  link because SendGrid mail is unreliable, and a person who already has a login is added straight
+  away), `NoChurchYet` in place of church pages when the list is empty.
+- **Connecting QuickBooks / Planning Center** goes through `useConnectIntegration()`, which saves a
+  `pendingConnection` (church, type, start time; 30-minute expiry) and flushes redux-persist before
+  the redirect; `accounts-token/CallBack.tsx` files the tokens under that church.
+- `user.role` (`client` | `bookkeeper`) now only matters at sign-up: a `client` login gets its own
+  church created the first time it loads `/church/mine`.
 
 ## Other
 

@@ -2,6 +2,7 @@
 import { pcGetBatches, pcGetFunds } from '@/common/api/planning-center'
 import MainLayout from '@/common/components/main-layout/MainLayout'
 import { RootState } from '@/redux/store'
+import { useChurch } from '@/common/hooks/useChurch'
 import React, { FC, useEffect, useState } from 'react'
 import { useQuery } from 'react-query'
 import { useDispatch, useSelector } from 'react-redux'
@@ -93,14 +94,13 @@ const ViewDetails: FC<indexProps> = ({}) => {
   const dispatch = useDispatch()
   const [isFetching, setIsFetching] = useState(false)
   const {
-    user,
     selectedBankAccount,
     persistPage,
     lastObjectId,
     selectedStartDate,
   } = useSelector((state: RootState) => state.common)
 
-  const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
+  const { email, churchId } = useChurch()
   const [stripePayoutData, setStripePayoutData] = useState<FinalDataProps[]>()
   const [isSynching, setIsSynching] = useState(false)
   const stripeCurrentData = useSelector(
@@ -109,13 +109,12 @@ const ViewDetails: FC<indexProps> = ({}) => {
 
   // Assuming you have access to user.email in the second page
   const { data: fundData, isLoading } = useQuery<FundProps[]>(
-    ['getFunds'],
+    ['getFunds', churchId],
     async () => {
-      const email =
-        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
       if (email) return await pcGetFunds({ email })
     },
     {
+      enabled: !!churchId,
       staleTime: Infinity, // The data will be considered fresh indefinitely
       refetchOnWindowFocus: false,
     },
@@ -124,11 +123,8 @@ const ViewDetails: FC<indexProps> = ({}) => {
   const { data: stripePayoutRes, isLoading: isLoadingStripe } = useQuery<
     StripeObj[]
   >(
-    ['getStripePayouts', bookkeeper, selectedStartDate, stripeCurrentData],
+    ['getStripePayouts', churchId, selectedStartDate, stripeCurrentData],
     async () => {
-      const email =
-        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-
       if (!isEmpty(stripeCurrentData)) {
         return stripeCurrentData
       }
@@ -165,24 +161,6 @@ const ViewDetails: FC<indexProps> = ({}) => {
     }[]
   >([{ id: null, batchId: null, createdAt: null, donationId: null }])
 
-  // const {
-  //   data: batchesData,
-  //   isLoading: isLoadingBatchData,
-  //   isRefetching: isRefetchingBatchData,
-  //   refetch,
-  // } = useQuery(
-  //   ['getBatchStripeViewDetails'], // Same query key as in the first page
-  //   async () => {
-  //     const email =
-  //       user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-  //     if (email) return await pcGetBatches(email, '', 0)
-  //   },
-  //   {
-  //     staleTime: Infinity, // The data will be considered fresh indefinitely
-  //     refetchOnWindowFocus: false,
-  //   },
-  // )
-
   const {
     synchedBatches: synchedBatchesF,
     isLoading: isLoadingBatchData,
@@ -191,20 +169,16 @@ const ViewDetails: FC<indexProps> = ({}) => {
   } = usePagination()
 
   const { data: userData } = useQuery(
-    ['getUserRelated'],
+    ['getUserRelated', churchId],
     async () => {
-      const email =
-        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
       if (email) return await getUserRelated(email)
     },
-    { staleTime: Infinity, refetchOnWindowFocus: false },
+    { enabled: !!churchId, staleTime: Infinity, refetchOnWindowFocus: false },
   )
 
   const triggerUnSync = async (): Promise<void> => {
     setIsSynching(true)
     try {
-      const email =
-        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
       const result = await deleteQboDeposit(email, synchedBatches)
       if (result === 'success') {
         setIsSynching(false)
@@ -226,9 +200,6 @@ const ViewDetails: FC<indexProps> = ({}) => {
       const filterFundName = fundData?.length
         ? fundData.map((item) => item.attributes.name)
         : []
-
-      const email =
-        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
 
       const date = String(fromUnixTime(Number(payoutDate)))
       // Format the date
@@ -420,11 +391,6 @@ const ViewDetails: FC<indexProps> = ({}) => {
     const fetchData = async () => {
       try {
         setIsFetching(true)
-        const email =
-          user?.role === 'bookkeeper'
-            ? bookkeeper?.clientEmail || ''
-            : user?.email
-
         if (!email) {
           setIsFetching(false)
           return

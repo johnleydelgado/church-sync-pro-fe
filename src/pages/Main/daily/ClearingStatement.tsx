@@ -1,10 +1,9 @@
 import { ClearingStatementData, getClearingStatement } from '@/common/api/user'
 import { formatDate } from '@/common/utils/helper'
-import { RootState } from '@/redux/store'
+import { useChurch } from '@/common/hooks/useChurch'
 import { FormatMoney } from 'format-money-js'
 import React, { FC, useState } from 'react'
 import { useQuery } from 'react-query'
-import { useSelector } from 'react-redux'
 import { HiOutlinePrinter, HiOutlineQuestionMarkCircle } from 'react-icons/hi'
 import { Tooltip } from '@material-tailwind/react'
 import TransitionPanel from './TransitionPanel'
@@ -54,17 +53,13 @@ const defaultMonth = () => {
  * to it so deposits already reconciled out of clearing are visible as the difference.
  */
 const ClearingStatement: FC = () => {
-  const { user } = useSelector((state: RootState) => state.common)
-  const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
+  const { email, churchId } = useChurch()
   const [month, setMonth] = useState<string>(defaultMonth())
 
-  const email =
-    user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-
   const { data, isLoading } = useQuery<ClearingStatementData | null>(
-    ['getClearingStatement', email, month],
+    ['getClearingStatement', churchId, month],
     async () => (email ? await getClearingStatement(email, month) : null),
-    { staleTime: 60_000, refetchOnWindowFocus: false, enabled: !!email },
+    { staleTime: 60_000, refetchOnWindowFocus: false, enabled: !!churchId },
   )
 
   const monthLabel = new Date(`${month}-01T00:00:00`).toLocaleDateString(

@@ -1,11 +1,14 @@
 import { isEmpty } from 'lodash'
 import React, { FC, useEffect, useMemo, useState } from 'react'
-import { useMutation, useQuery } from 'react-query'
+import { useMutation, useQuery, useQueryClient } from 'react-query'
 import Dropdown, { components } from 'react-select'
 import { QboGetAllQboData, getQboData } from '@/common/api/qbo'
 import { RootState } from '@/redux/store'
+import { useChurch } from '@/common/hooks/useChurch'
 import { useSelector } from 'react-redux'
 import { SettingQBOProps, createSettings, qboSettings } from '@/common/api/user'
+import { UserSettingsProps } from '@/common/constant/interfaces'
+import { writeSettingsCache } from '../settingsCache'
 import {
   Button,
   IconButton,
@@ -25,6 +28,7 @@ import ModalCreateUpdateProject from '@/common/components/modal/ModalCreateUpdat
 import { BsPlus, BsQuestionCircle } from 'react-icons/bs'
 import { HiCheck, HiOutlineExclamationCircle } from 'react-icons/hi'
 import { Spinner } from 'flowbite-react'
+import FieldStatus, { FieldSaveStatus } from './FieldStatus'
 import { BiArchiveIn, BiDotsHorizontal } from 'react-icons/bi'
 import { FundAttProps } from '@/common/constant/interfaces'
 import colors from '@/common/constant/colors'
@@ -79,7 +83,9 @@ const delay = (ms: any) => new Promise((res) => setTimeout(res, ms))
 
 const HelpTip: FC<{ text: string }> = ({ text }) => (
   <Tooltip
-    content={<span className="block max-w-xs text-xs leading-snug">{text}</span>}
+    content={
+      <span className="block max-w-xs text-xs leading-snug">{text}</span>
+    }
     placement="top"
   >
     <span className="inline-flex cursor-help text-gray-400 hover:text-gray-600">
@@ -88,69 +94,29 @@ const HelpTip: FC<{ text: string }> = ({ text }) => (
   </Tooltip>
 )
 
-/**
- * Auto-save status for one dropdown.
- *
- * Shown beside the field's own label rather than inside the control: react-select already owns
- * that space with its clear and chevron indicators, and a spinner there shifts them around as it
- * appears. The label row is empty and sits directly above the field, so the status is adjacent to
- * what the person just changed without moving anything.
- *
- * "Saved" is deliberately transient. A tick that never leaves stops being read after the first
- * time; one that fades says "that landed" and then gets out of the way. A failure does NOT fade -
- * unsaved work is the one thing here worth interrupting for.
- */
-type FieldSaveStatus = 'idle' | 'saving' | 'saved' | 'error'
-
-const FieldStatus: FC<{ status: FieldSaveStatus }> = ({ status }) => {
-  if (status === 'idle') return null
-
-  if (status === 'saving') {
-    return (
-      <span
-        className="flex items-center gap-1 text-xs font-normal text-gray-400"
-        role="status"
-        aria-live="polite"
-      >
-        <Spinner size="sm" className="h-3 w-3" />
-        Saving
-      </span>
-    )
-  }
-
-  if (status === 'saved') {
-    return (
-      <span
-        className="flex items-center gap-1 text-xs font-normal text-success"
-        role="status"
-        aria-live="polite"
-      >
-        <HiCheck size={14} />
-        Saved
-      </span>
-    )
-  }
-
-  return (
-    <span
-      className="flex items-center gap-1 text-xs font-medium text-red-500"
-      role="alert"
-    >
-      <HiOutlineExclamationCircle size={14} />
-      Not saved
-    </span>
-  )
-}
-
 /** Identifies one dropdown: a fund plus which of its three fields. */
 const fieldKey = (fundName: string | null | undefined, category: string) =>
   `${fundName ?? ''}::${category}`
 
+/** The fund mapping in a church's saved settings, or an empty list. */
+const savedMappingOf = (userData: any): qboSettings[] =>
+  Array.isArray(userData?.UserSetting?.settingsData)
+    ? userData.UserSetting.settingsData
+    : []
+
+/**
+ * Donation fund mapping.
+ *
+ * The form is loaded ONCE per mount, from the church's cached settings, and is never overwritten
+ * from the cache afterwards: the form is the source of truth while the page is open. Every save
+ * writes what it saved into the cache, so the next mount (a tab switch, a return visit) starts
+ * from it. A church switch remounts the page.
+ */
 const Donation: FC<DonationProps> = ({ fundData, userData }) => {
-  const { user, selectedStartDate } = useSelector(
-    (state: RootState) => state.common,
+  const { selectedStartDate } = useSelector((state: RootState) => state.common)
+  const [settingsData, setSettingsData] = useState<qboSettings[]>(() =>
+    savedMappingOf(userData),
   )
-  const [settingsData, setSettingsData] = useState<qboSettings[]>([])
   const [onGoingSaving, setOnGoingSaving] = useState<boolean>(false)
   // Which dropdowns have an edit that has not reached the server yet, and which just landed.
   // Tracking them per field is what lets the status sit next to the control the person touched
@@ -158,36 +124,147 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
   const [pendingFields, setPendingFields] = useState<Set<string>>(new Set())
   const [justSavedFields, setJustSavedFields] = useState<Set<string>>(new Set())
   const [saveError, setSaveError] = useState<string | null>(null)
-  // Skips the save that would otherwise fire when the saved mapping is first loaded in.
-  const hasLoadedSettings = React.useRef(false)
   const [openStates, setOpenStates] = useState<Record<number, boolean>>({})
 
   const dispatch = useDispatch()
-  const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
+  // MainPage remounts every page on a church switch, so these never change under a mounted form.
+  const { email, churchId } = useChurch()
   const reTriggerIsUserTokens = useSelector(
     (item: RootState) => item.common.reTriggerIsUserTokens,
   )
+  const queryClient = useQueryClient()
+
+  // The newest form and pending-field set, for the debounce timer and the unmount flush (state
+  // seen from those is a render behind). Written together with the state, in the handlers.
+  const latestMapping = React.useRef<qboSettings[]>(settingsData)
+  const pendingKeys = React.useRef<Set<string>>(new Set())
+  const saveTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+  const initialised = React.useRef(!!userData)
+
+  const setMapping = (next: qboSettings[]) => {
+    latestMapping.current = next
+    setSettingsData(next)
+  }
+  const setPending = (next: Set<string>) => {
+    pendingKeys.current = next
+    setPendingFields(next)
+  }
+
+  // Loaded once: if the settings weren't there at mount, take them the first time they are.
+  useEffect(() => {
+    if (initialised.current || !userData) return
+    initialised.current = true
+    setMapping(savedMappingOf(userData))
+  }, [userData]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // create user settings
-  const { mutate, mutateAsync, isLoading: isSavingSettings } = useMutation<
+  const { mutateAsync } = useMutation<
     unknown,
     unknown,
-    SettingQBOProps
-  >(createSettings)
+    SettingQBOProps & { churchId: number }
+  >(
+    // Only the email and the list go to the server.
+    ({ email, settingsData }) => createSettings({ email, settingsData }),
+    {
+      // Runs after unmount too (react-query v3), so a flushed save still reaches the cache.
+      onSuccess: (_, { churchId: forChurch, settingsData }) => {
+        if (!settingsData) return
+        writeSettingsCache(queryClient, forChurch, {
+          settingsData:
+            settingsData as unknown as UserSettingsProps['UserSetting']['settingsData'],
+        })
+      },
+    },
+  )
+
+  // Saves run one at a time, in the order they were asked for, so the server and the cache end
+  // on the newest list even when an earlier request is slow.
+  const saveChain = React.useRef<Promise<unknown>>(Promise.resolve())
+  const enqueueSave = (list: qboSettings[]) => {
+    const forChurch = churchId as number
+    const run = saveChain.current
+      .catch(() => undefined)
+      .then(() =>
+        mutateAsync({ churchId: forChurch, email, settingsData: list }),
+      )
+    saveChain.current = run
+    return run
+  }
+
+  const cancelScheduledSave = () => {
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = null
+  }
+
+  /** The fields in `done` reached the server. */
+  const markSaved = (done: Set<string>) => {
+    const next = new Set(pendingKeys.current)
+    done.forEach((k) => next.delete(k))
+    setPending(next)
+    setJustSavedFields((prev) => {
+      const shown = new Set(prev)
+      done.forEach((k) => shown.add(k))
+      return shown
+    })
+    setSaveError(null)
+  }
+
+  /**
+   * Save the mapping as it is edited.
+   *
+   * Deliberately saves PARTIAL mappings, unlike the Save button, which refuses until every fund
+   * on the page has an account. Mapping a church with a dozen funds is not one sitting, and
+   * losing the work because the last fund is undecided is the behaviour this replaces.
+   *
+   * Debounced so picking an account, then a class, then a customer is one write rather than
+   * three, and the status is shown inline - a toast on every dropdown would be unbearable.
+   */
+  const autoSave = async () => {
+    saveTimer.current = null
+    if (!email || !churchId) return
+    // Snapshot what this write covers. More edits can land while it is in flight, and those
+    // must stay pending rather than being marked saved by a request that did not include them.
+    const inFlight = new Set(pendingKeys.current)
+    try {
+      await enqueueSave(latestMapping.current)
+      markSaved(inFlight)
+    } catch (e: any) {
+      // The fields stay pending, so their status flips to "Not saved" and the work is
+      // visibly still outstanding. Typing is never interrupted.
+      setSaveError(e?.message ?? 'Your mapping could not be saved.')
+    }
+  }
+
+  const scheduleSave = () => {
+    cancelScheduledSave()
+    saveTimer.current = setTimeout(autoSave, 1200)
+  }
+
+  // Leaving the page (another tab, another page, another church) with a change still waiting for
+  // its debounce: save it now rather than drop it.
+  useEffect(
+    () => () => {
+      if (!saveTimer.current) return
+      cancelScheduledSave()
+      enqueueSave(latestMapping.current).catch(() =>
+        failNotification({
+          title: "Your last fund mapping change couldn't be saved.",
+        }),
+      )
+    },
+    [], // eslint-disable-line react-hooks/exhaustive-deps
+  )
 
   const { data: qboData, isLoading: isQboDataLoading } = useQuery(
-    useMemo(() => ['getAllQboData', bookkeeper], [bookkeeper]), // Memoize the key
-    async () => await getQboData(user, bookkeeper),
-    { staleTime: Infinity, refetchOnWindowFocus: false },
+    useMemo(() => ['getAllQboData', churchId], [churchId]), // Memoize the key
+    async () => await getQboData(email),
+    { enabled: !!churchId, staleTime: Infinity, refetchOnWindowFocus: false },
   )
 
   // Adding a new option at the top of the list
   const modifiedOptionsCustomer = qboData?.customers
     ? [{ value: 'Add Project', label: 'Add Project' }, ...qboData.customers]
     : []
-
-  const email =
-    user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
 
   const selectHandler = ({
     val,
@@ -198,43 +275,31 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
     fundName: string | null | undefined
     category: 'account' | 'class' | 'customer'
   }) => {
-    const tempData: qboSettings[] = [...settingsData]
+    const tempData: qboSettings[] = [...latestMapping.current]
 
     const index = tempData.findIndex(
       (item: qboSettings) => item.fundName === fundName,
     )
 
     if (index !== -1) {
-      const currentItem = tempData[index]
-
-      if (currentItem) {
-        // Check if currentItem is defined
-        if (val) {
-          const { value, label } = val
-          currentItem[category] = { value, label }
-        } else {
-          currentItem[category] = undefined
-        }
+      // A copy: the item is shared with the cached settings and with any save in flight.
+      tempData[index] = {
+        ...(tempData[index] as qboSettings),
+        [category]: val ? { value: val.value, label: val.label } : undefined,
       }
     } else {
-      const newObject: qboSettings = { fundName }
-
-      if (val) {
-        const { value, label } = val
-        newObject[category] = { value, label }
-      } else {
-        newObject[category] = undefined
-      }
-
-      tempData.push(newObject)
+      tempData.push({
+        fundName,
+        [category]: val ? { value: val.value, label: val.label } : undefined,
+      })
     }
 
-    setSettingsData(tempData)
+    setMapping(tempData)
 
     // Mark this exact dropdown as in-flight straight away, so the spinner appears on the
     // control the person just used rather than after the debounce has elapsed.
     const key = fieldKey(fundName, category)
-    setPendingFields((prev) => new Set(prev).add(key))
+    setPending(new Set(pendingKeys.current).add(key))
     setJustSavedFields((prev) => {
       if (!prev.has(key)) return prev
       const next = new Set(prev)
@@ -242,6 +307,7 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
       return next
     })
     setSaveError(null)
+    scheduleSave()
   }
 
   /** The status to show beside one dropdown's label. */
@@ -255,45 +321,44 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
     return 'idle'
   }
 
-  const isAnyKeyMissing = (): boolean => {
-    return settingsData.some(
-      (item) => !isEmpty(item) && item.account === undefined,
-    )
-  }
-
   const handleSubmit = async () => {
-    const nonEmptySettingsData = settingsData.filter((item) => !isEmpty(item))
-    const lengthOfNonEmptySettingsData = nonEmptySettingsData.length
-
-    if (
-      isAnyKeyMissing() ||
-      (settingsData.length !== 0 &&
-        (fundData?.length !== lengthOfNonEmptySettingsData ||
-          isEmpty(settingsData)))
-    ) {
+    if (!churchId) return
+    // Every fund shown - active, and in Planning Center's current list - needs an account.
+    // Archived or closed funds left in the mapping don't block Save.
+    const unmapped = (fundData ?? [])
+      .map((f) => f.attributes.name)
+      .filter(
+        (name) =>
+          !latestMapping.current.find((m) => m.fundName === name)?.account
+            ?.value,
+      )
+    if (unmapped.length > 0) {
       failNotification({
-        title: 'Please fill up all select',
+        title: `Choose a QuickBooks account for ${unmapped.join(', ')}.`,
         position: 'bottom-center',
       })
       return
     }
 
+    // This save covers any change still waiting for its debounce.
+    cancelScheduledSave()
+    const covered = new Set(pendingKeys.current)
+    setOnGoingSaving(true)
     try {
-      setOnGoingSaving(true)
-
-      await mutate({
-        email,
-        settingsData,
-      })
-      await delay(2000)
-      dispatch(setReTriggerIsUserTokens(!reTriggerIsUserTokens))
-      successNotification({ title: 'Settings successfully saved !' })
+      await enqueueSave(latestMapping.current)
+    } catch (e: any) {
       setOnGoingSaving(false)
-    } catch (e) {
-      // no-op
+      setSaveError(e?.message ?? 'Your mapping could not be saved.')
+      failNotification({
+        title: e?.message || 'Your mapping could not be saved.',
+      })
+      return
     }
-
-    // dispatch(setReTriggerIsUserTokens(!reTriggerIsUserTokens))
+    markSaved(covered)
+    await delay(2000)
+    dispatch(setReTriggerIsUserTokens(!reTriggerIsUserTokens))
+    successNotification({ title: 'Settings successfully saved !' })
+    setOnGoingSaving(false)
   }
 
   const findDefaultValue = (
@@ -326,85 +391,40 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
   }
 
   const deactivateFund = async (fundName: string) => {
-    if (isEmpty(settingsData)) {
+    if (!churchId) return
+    const before = latestMapping.current
+    if (isEmpty(before)) {
       failNotification({ title: 'Please save the settings first' })
       return
     }
 
+    const updatedSettingsData = before.map((item) =>
+      item.fundName === fundName ? { ...item, isActive: false } : item,
+    )
+    // The form shows the archived fund too, so later saves keep it archived. The save covers any
+    // change still waiting for its debounce.
+    setMapping(updatedSettingsData)
+    cancelScheduledSave()
+    const covered = new Set(pendingKeys.current)
     setOnGoingSaving(true)
-    const updatedSettingsData = settingsData.map((item) => {
-      if (item.fundName === fundName) {
-        // If the registration matches, set `isActive` to `false`.
-        return { ...item, isActive: false }
-      }
-      return item // Otherwise, return the item as is.
-    })
-
-    await mutate({
-      email,
-      settingsData: updatedSettingsData,
-    })
+    try {
+      await enqueueSave(updatedSettingsData)
+    } catch (e: any) {
+      // Not archived: put the form back, or the next save would archive it after all.
+      setMapping(before)
+      setOnGoingSaving(false)
+      failNotification({
+        title: e?.message || `Couldn't archive ${fundName}.`,
+      })
+      return
+    }
+    markSaved(covered)
     await delay(2000)
     dispatch(setReTriggerIsUserTokens(!reTriggerIsUserTokens))
     successNotification({ title: 'Archived successfully' })
     setOnGoingSaving(false)
     return ''
   }
-
-  useEffect(() => {
-    if (!isEmpty(userData?.UserSetting?.settingsData)) {
-      const settingsData = userData.UserSetting.settingsData
-      setSettingsData(settingsData)
-    }
-  }, [userData])
-
-  /**
-   * Save the mapping as it is edited.
-   *
-   * Deliberately saves PARTIAL mappings, unlike the Save button, which refuses until every fund
-   * on the page has an account. Mapping a church with a dozen funds is not one sitting, and
-   * losing the work because the last fund is undecided is the behaviour this replaces.
-   *
-   * Debounced so picking an account, then a class, then a customer is one write rather than
-   * three, and the status is shown inline - a toast on every dropdown would be unbearable.
-   */
-  useEffect(() => {
-    if (!hasLoadedSettings.current) {
-      // The first run is the saved mapping arriving, not a user edit.
-      if (settingsData.length > 0) hasLoadedSettings.current = true
-      return
-    }
-    if (!email || settingsData.length === 0) return
-
-    const timer = setTimeout(async () => {
-      // Snapshot what this write covers. More edits can land while it is in flight, and those
-      // must stay pending rather than being marked saved by a request that did not include them.
-      const inFlight = new Set(pendingFields)
-      try {
-        // mutateAsync, not mutate: mutate returns void, so the old `await mutate(...)` resolved
-        // immediately and reported success before the request had even been sent.
-        await mutateAsync({ email, settingsData })
-        setPendingFields((prev) => {
-          const next = new Set(prev)
-          inFlight.forEach((k) => next.delete(k))
-          return next
-        })
-        setJustSavedFields((prev) => {
-          const next = new Set(prev)
-          inFlight.forEach((k) => next.add(k))
-          return next
-        })
-        setSaveError(null)
-      } catch (e: any) {
-        // The fields stay pending, so their status flips to "Not saved" and the work is
-        // visibly still outstanding. Typing is never interrupted.
-        setSaveError(e?.message ?? 'Your mapping could not be saved.')
-      }
-    }, 1200)
-
-    return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settingsData, email])
 
   /**
    * Retire each "Saved" tick a couple of seconds after it appears.
@@ -420,9 +440,9 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
 
   return (
     <div>
-      {/* Deliberately not `isSavingSettings`: that fires on auto-save too, and blanking the
-          whole mapping behind a spinner every time a dropdown changes is unusable. The button
-          path sets `onGoingSaving`; auto-save shows its status inline instead. */}
+      {/* Not for auto-save: blanking the whole mapping behind a spinner every time a dropdown
+          changes is unusable. Save and Archive set `onGoingSaving`; auto-save shows its status
+          inline instead. */}
       {isQboDataLoading || onGoingSaving ? (
         <Loading />
       ) : (

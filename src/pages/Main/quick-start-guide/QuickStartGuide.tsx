@@ -1,7 +1,6 @@
 import MainLayout from '@/common/components/main-layout/MainLayout'
 import React, { FC } from 'react'
-import { useSelector } from 'react-redux'
-import { RootState } from '@/redux/store'
+import { useChurch } from '@/common/hooks/useChurch'
 import { getUserRelated } from '@/common/api/user'
 import { useQuery } from 'react-query'
 import { isEmpty } from 'lodash'
@@ -16,8 +15,7 @@ interface BookkeeperProps {}
 const CORE_STEP_COUNT = 4
 
 const QuickStartGuide: FC<BookkeeperProps> = ({}) => {
-  const user = useSelector((state: RootState) => state.common.user)
-  const bookkeeper = useSelector((state: RootState) => state.common.bookkeeper)
+  const { email, churchId } = useChurch()
 
   const [open, setOpen] = React.useState<number | null>(null)
   const handleOpen = (value: number) =>
@@ -26,12 +24,8 @@ const QuickStartGuide: FC<BookkeeperProps> = ({}) => {
   const { tokenList } = useGetTokenList()
 
   const { data: userData } = useQuery(
-    ['quickStartUserRelated', user, bookkeeper],
+    ['quickStartUserRelated', churchId],
     async () => {
-      const email =
-        user.role === 'bookkeeper'
-          ? bookkeeper?.clientEmail || ''
-          : user.email
       if (email) {
         const res = await getUserRelated(email)
         return res.data
@@ -39,7 +33,7 @@ const QuickStartGuide: FC<BookkeeperProps> = ({}) => {
     },
     {
       refetchOnWindowFocus: false,
-      enabled: !!user,
+      enabled: !!churchId,
     },
   )
 

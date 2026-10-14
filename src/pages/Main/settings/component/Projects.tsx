@@ -2,6 +2,7 @@ import React, { FC, useEffect, useMemo, useRef, useState } from 'react'
 
 import { useSelector } from 'react-redux'
 import { RootState } from '@/redux/store'
+import { useChurch } from '@/common/hooks/useChurch'
 
 import { useDispatch } from 'react-redux'
 import {
@@ -16,16 +17,11 @@ import { capitalAtFirstLetter } from '@/common/utils/helper'
 import { OPEN_MODAL } from '@/redux/common'
 import { MODALS_NAME } from '@/common/constant/modal'
 import { useQuery } from 'react-query'
-import { bookkeeperList } from '@/common/api/user'
 import { format } from 'date-fns'
 import Lottie from 'lottie-react'
 import empty from '@/common/assets/empty.json'
 import { AiOutlineUserAdd } from 'react-icons/ai'
-import ModalInvitation from '../../bookkeeper/components/Modal'
-import {
-  setDeleteBookkeeper,
-  setProjectFieldValues,
-} from '@/redux/nonPersistState'
+import { setProjectFieldValues } from '@/redux/nonPersistState'
 import { QboGetAllQboData, findCustomers, getQboData } from '@/common/api/qbo'
 import { BiChevronLeft, BiChevronRight } from 'react-icons/bi'
 import ModalCreateUpdateProject from '@/common/components/modal/ModalCreateUpdateProject'
@@ -35,14 +31,6 @@ import DeleteModal from '../modal/DeleteModal'
 import { QboDataSelectProps } from '../../automation/mapping'
 
 interface AccountProps {}
-
-interface BookkeeperProps {
-  email: string
-  id: number
-  createdAt: string
-  userId: number | null
-  User: { email: string; firstName: string; lastName: string }
-}
 
 const mappingPayload = (obj: any): CustomerProps => ({
   email: obj?.PrimaryEmailAddr?.Address || '',
@@ -66,17 +54,7 @@ const ITEMS_PER_PAGE = 5
 const Projects: FC<AccountProps> = ({}) => {
   const dispatch = useDispatch()
   const [searchTerm, setSearchTerm] = useState<string>('')
-  const openModal = () => {
-    dispatch(OPEN_MODAL(MODALS_NAME.invitation))
-  }
-
-  // const openDeleteModal = () => {
-  //   dispatch(OPEN_MODAL(MODALS_NAME.deleteBookeeper))
-  //   // dispatch(setDeleteBookkeeper({ id, email }))
-  // }
-
-  const user = useSelector((state: RootState) => state.common.user)
-  const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
+  const { email, churchId } = useChurch()
   const { projectFieldValues } = useSelector(
     (state: RootState) => state.nonPersistState,
   )
@@ -93,23 +71,14 @@ const Projects: FC<AccountProps> = ({}) => {
     '',
   )
 
-  const { data, refetch, isLoading } = useQuery<BookkeeperProps[]>(
-    ['bookkeeperList'],
-    async () => {
-      const res = await bookkeeperList({ clientId: user?.id })
-      return res.data
-    },
-    { staleTime: Infinity, refetchOnWindowFocus: false },
-  )
-
   const {
     data: qboData,
     isLoading: isQboDataLoading,
     refetch: refetchQboData,
   } = useQuery<QboDataSelectProps>(
-    useMemo(() => ['getAllQboData', bookkeeper], [bookkeeper]), // Memoize the key
-    async () => await getQboData(user, bookkeeper),
-    { staleTime: Infinity, refetchOnWindowFocus: false },
+    useMemo(() => ['getAllQboData', churchId], [churchId]), // Memoize the key
+    async () => await getQboData(email),
+    { enabled: !!churchId, staleTime: Infinity, refetchOnWindowFocus: false },
   )
 
   // Check if qboData.customers is defined and is an array
@@ -137,8 +106,6 @@ const Projects: FC<AccountProps> = ({}) => {
   const openDeleteModal = async (Id: number | string) => {
     setRemoveLoading(true)
     setEditingCustomerId(Id)
-    const email =
-      user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
     try {
       const result = await findCustomers(email, Id)
       const payload = mappingPayload(result)
@@ -162,8 +129,6 @@ const Projects: FC<AccountProps> = ({}) => {
   const editHandler = async (Id: number | string) => {
     setEditLoading(true)
     setEditingCustomerId(Id)
-    const email =
-      user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
     try {
       const result = await findCustomers(email, Id)
       const payload = mappingPayload(result)

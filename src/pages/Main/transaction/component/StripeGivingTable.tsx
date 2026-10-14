@@ -1,6 +1,5 @@
 import React, { FC, useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from 'react-query'
-import { useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
 import { Button, Tooltip } from '@material-tailwind/react'
 import { Spinner } from 'flowbite-react'
@@ -28,7 +27,7 @@ import PaginationStripe from '@/common/components/pagination/PaginationStripe'
 import StripeGivingDayDetail from './StripeGivingDayDetail'
 import { mainRoute } from '@/common/constant/route'
 import { formatDate } from '@/common/utils/helper'
-import { RootState } from '@/redux/store'
+import { useChurch } from '@/common/hooks/useChurch'
 import { FormatMoney } from 'format-money-js'
 
 interface StripeGivingTableProps {
@@ -141,8 +140,7 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({
   autoSyncOn,
 }) => {
   const queryClient = useQueryClient()
-  const user = useSelector((state: RootState) => state.common.user)
-  const bookkeeper = useSelector((state: RootState) => state.common.bookkeeper)
+  const { email, churchId } = useChurch()
   const [page, setPage] = useState(1)
   // Single-open accordion.
   const [expandedDay, setExpandedDay] = useState<string | null>(null)
@@ -151,10 +149,7 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({
   const [confirmDay, setConfirmDay] = useState<string | null>(null)
   const [showExcluded, setShowExcluded] = useState(false)
 
-  const email =
-    user?.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user?.email
-
-  const queryKey = ['getStripeGivingByDay', email, from, to]
+  const queryKey = ['getStripeGivingByDay', churchId, from, to]
 
   const { data, isLoading, isError, error } = useQuery(
     queryKey,
@@ -162,7 +157,12 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({
       if (!email) return { days: [] as StripeGivingDay[] }
       return await getStripeGivingByDay(email, from, to)
     },
-    { staleTime: 60_000, refetchOnWindowFocus: false, retry: false },
+    {
+      enabled: !!churchId,
+      staleTime: 60_000,
+      refetchOnWindowFocus: false,
+      retry: false,
+    },
   )
 
   const syncStartDay = data?.syncStartDay ?? null
@@ -171,13 +171,16 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({
   const isExcluded = (day: string) => !!syncStartDay && day < syncStartDay
 
   const postDay = useMutation(
-    async (day: string) => postStripeGivingDay(email as string, day),
+    async (day: string) => postStripeGivingDay(email, day),
     {
       onMutate: (day: string) => {
         setPostingDay(day)
+        // The row as it was when Post was pressed: by the time the answer arrives the list may
+        // already have been refetched with this day's new totals.
+        return { before: (data?.days ?? []).find((d) => d.date === day) }
       },
       onSettled: () => setPostingDay(null),
-      onSuccess: (result, day) => {
+      onSuccess: (result, day, context) => {
         // Gifts whose fund has no QuickBooks account are left out entirely. Say so - by fund and
         // amount - instead of calling the day up to date (Active, Legacy Offering, 2026-10-10).
         const unmapped = (result?.unmapped ?? []).filter((u) => u.day === day)
@@ -188,7 +191,8 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({
           failNotification({
             title: `Nothing posted for ${formatDate(day)}: ${unmappedText} has no QuickBooks account. Map it on the Mapping page, then press the button again.`,
           })
-          queryClient.invalidateQueries(queryKey)
+          // By prefix: the dates may have changed while the post was running.
+          queryClient.invalidateQueries('getStripeGivingByDay')
           return
         }
         if (unmapped.length) {
@@ -197,7 +201,7 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({
           })
         }
         if (result?.postedDays?.length) {
-          const before = (data?.days ?? []).find((d) => d.date === day)
+          const before = context?.before
           const difference = before ? unpostedDifference(before) : 0
           successNotification({
             title:
@@ -218,7 +222,7 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({
             title: `${formatDate(day)} is already up to date in QuickBooks`,
           })
         }
-        queryClient.invalidateQueries(queryKey)
+        queryClient.invalidateQueries('getStripeGivingByDay')
         queryClient.invalidateQueries('getDailyJournalEntries')
       },
       onError: () => {
@@ -238,16 +242,12 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({
     // rather than introducing a second format into an unvalidated varchar.
     async (day: string) => {
       const [y, m, d] = day.split('-')
-      return await setStartDataAutomation(
-        email as string,
-        'donation',
-        `${m}-${d}-${y}`,
-      )
+      return await setStartDataAutomation(email, 'donation', `${m}-${d}-${y}`)
     },
     {
       onSuccess: () => {
         successNotification({ title: 'Sync start date saved' })
-        queryClient.invalidateQueries(queryKey)
+        queryClient.invalidateQueries('getStripeGivingByDay')
       },
       onError: (e: any) => {
         failNotification({
@@ -313,9 +313,8 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({
 
   const totalPages = Math.max(1, Math.ceil(days.length / DAYS_PER_PAGE))
 
-  // Clamped, not merely reset by an effect. The list changes whenever the query key changes -
-  // which includes `email`, because a bookkeeper can switch client from the navbar without
-  // touching the dates. Landing on page 4 of a list that now has one page renders a header with
+  // Clamped, not merely reset by an effect. The list changes whenever it is refetched - after a
+  // post, or a new sync start date - without the dates being touched. Landing on page 4 of a list that now has one page renders a header with
   // no rows under it, and the pagination control hides itself at one page, so there is nothing
   // left on screen to click back with. Deriving the page makes that state unreachable.
   const safePage = Math.min(page, totalPages)
@@ -326,6 +325,7 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({
 
   // Collapse any open row when the range changes - it belongs to the range being left.
   // Toggling excluded days reshapes the list too, so it resets the page the same way.
+  // (A church switch remounts the whole page.)
   useEffect(() => {
     setPage(1)
     setExpandedDay(null)

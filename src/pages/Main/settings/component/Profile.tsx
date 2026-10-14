@@ -2,6 +2,7 @@ import React, { FC, useEffect, useRef, useState } from 'react'
 
 import { useSelector } from 'react-redux'
 import { RootState } from '@/redux/store'
+import { useChurch } from '@/common/hooks/useChurch'
 
 import { useDispatch } from 'react-redux'
 import {
@@ -30,6 +31,7 @@ const TextInput = ({
   error,
   onChange,
   isDisabled,
+  hint,
 }: {
   title: string
   defValue: string | undefined
@@ -37,6 +39,7 @@ const TextInput = ({
   error?: string
   onChange?: (e: any) => void
   isDisabled?: boolean
+  hint?: string
 }) => (
   <div className="grid grid-cols-2 w-1/3 gap-24 md:gap-12">
     <p className="w-32">{title}</p>
@@ -52,6 +55,7 @@ const TextInput = ({
         crossOrigin={undefined}
       />
       {error ? <p className="text-red-600">{error}</p> : null}
+      {hint ? <p className="pt-1 text-xs text-gray-500">{hint}</p> : null}
     </div>
   </div>
 )
@@ -67,7 +71,9 @@ const Profile: FC<AccountProps> = ({}) => {
     (state: RootState) => state.common.isQuickStartHide,
   )
 
-  const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
+  // The church shown here is the selected one, read-only for everyone: it is renamed on the
+  // Churches page, so editing the person's own Users.churchName here would drift from it.
+  const { church } = useChurch()
 
   const { email, id, role, firstName, lastName, churchName, img_url } =
     useSelector((item: RootState) => item.common.user)
@@ -77,8 +83,8 @@ const Profile: FC<AccountProps> = ({}) => {
     initialValues: {
       firstName: firstName || '',
       lastName: lastName || '',
-      churchName:
-        role === 'bookkeeper' ? bookkeeper?.churchName || '' : churchName || '',
+      // Sent back unchanged: this form no longer edits it.
+      churchName: churchName || '',
       email: email || '',
       imageUrl: img_url || '',
     },
@@ -238,25 +244,19 @@ const Profile: FC<AccountProps> = ({}) => {
             />
             <TextInput
               title="Church Name"
-              defValue={
-                role === 'bookkeeper'
-                  ? bookkeeper?.churchName || ''
-                  : churchName || ''
-              }
+              defValue={church?.name ?? ''}
               isEditing={isEditing}
-              onChange={(e: any) =>
-                formik.setFieldValue('churchName', e.target.value)
-              }
-              isDisabled={role === 'bookkeeper'}
+              isDisabled
+              hint="Rename it on the Churches page (owners)"
             />
             <TextInput
+              // Read-only: the sign-in email belongs to the login (SuperTokens), and the
+              // profile update no longer saves it.
               title="Email"
               defValue={email}
               isEditing={isEditing}
-              error={formik.errors.email}
-              onChange={(e: any) =>
-                formik.setFieldValue('email', e.target.value)
-              }
+              isDisabled
+              hint="Your sign-in email can't be changed here."
             />
           </div>
 

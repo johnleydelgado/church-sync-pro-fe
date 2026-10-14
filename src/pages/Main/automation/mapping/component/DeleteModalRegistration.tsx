@@ -8,6 +8,7 @@ import { MODALS_NAME } from '@/common/constant/modal'
 import { failNotification, successNotification } from '@/common/utils/toast'
 import { CLOSE_MODAL } from '@/redux/common'
 import { RootState } from '@/redux/store'
+import { useChurch } from '@/common/hooks/useChurch'
 import { Dialog, Transition } from '@headlessui/react'
 
 import { FC, Fragment, useState } from 'react'
@@ -35,9 +36,8 @@ const DeleteModalRegistration: FC<ModalRegistrationProps> = ({
   userData,
 }) => {
   const dispatch = useDispatch()
-  const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
+  const { email } = useChurch()
   const [isSubmit, setIsSubmit] = useState<boolean>(false)
-  const user = useSelector((state: RootState) => state.common.user)
   const openModals = useSelector((state: RootState) => state.common.openModals)
   const reTriggerIsUserTokens = useSelector(
     (item: RootState) => item.common.reTriggerIsUserTokens,
@@ -51,19 +51,6 @@ const DeleteModalRegistration: FC<ModalRegistrationProps> = ({
 
   const isOpen = openModals.includes(MODALS_NAME.modalDeleteRegistration)
 
-  // const { data: userData } = useQuery(
-  //   ['getUserRelatedSettings', reTriggerIsUserTokens, bookkeeper],
-  //   async () => {
-  //     const emailF =
-  //       user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-  //     if (emailF) {
-  //       const res = await getUserRelated(emailF)
-  //       return res.data
-  //     }
-  //   },
-  //   { staleTime: Infinity },
-  // )
-
   const { mutate, isLoading: isSavingSettings } = useMutation<
     unknown,
     unknown,
@@ -73,9 +60,6 @@ const DeleteModalRegistration: FC<ModalRegistrationProps> = ({
   const handlerSubmit = async () => {
     try {
       setIsSubmit(true)
-      const email =
-        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-
       const filteredRegistrations =
         userData?.UserSetting?.settingRegistrationData?.filter(
           (registration: any) => registration.registration !== name,

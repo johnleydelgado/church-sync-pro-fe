@@ -17,6 +17,7 @@ import {
 import { UserSettingsProps } from '@/common/constant/interfaces'
 import { failNotification, successNotification } from '@/common/utils/toast'
 import { RootState } from '@/redux/store'
+import { useChurch } from '@/common/hooks/useChurch'
 import type { QboDataSelectProps } from '..'
 
 interface RegistrationMappingProps {
@@ -123,17 +124,18 @@ const asOption = (choice: QboChoice | null, options: Option[]) =>
  * income account and class, and optional per-event overrides. Saved together with Save - unlike
  * the Donation tab, nothing here saves itself.
  *
- * The parent keys this component by church, so a bookkeeper switching client gets a fresh form.
+ * The parent keys this component by the loaded settings, and MainPage remounts every page on a
+ * church switch, so the form always starts from the selected church's saved mapping.
  */
 const RegistrationMapping: FC<RegistrationMappingProps> = ({
   userData,
   qboData,
 }) => {
   const queryClient = useQueryClient()
-  const { user, bookkeeper, selectedBankAccount, selectedBankExpense } =
-    useSelector((state: RootState) => state.common)
-  const email =
-    user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
+  const { selectedBankAccount, selectedBankExpense } = useSelector(
+    (state: RootState) => state.common,
+  )
+  const { email, churchId } = useChurch()
 
   const settings = userData?.UserSetting
   const saved = useMemo(
@@ -170,10 +172,10 @@ const RegistrationMapping: FC<RegistrationMappingProps> = ({
   )
 
   const { data: signups } = useQuery<string[], PayoutReportError>(
-    ['payoutSignups', email],
+    ['payoutSignups', churchId],
     async () => (email ? await getPayoutSignups(email) : []),
     {
-      enabled: !!email,
+      enabled: !!churchId,
       staleTime: 60_000,
       refetchOnWindowFocus: false,
       retry: false,

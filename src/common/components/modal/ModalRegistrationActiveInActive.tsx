@@ -6,6 +6,7 @@ import {
 import { MODALS_NAME } from '@/common/constant/modal'
 import { CLOSE_MODAL } from '@/redux/common'
 import { RootState } from '@/redux/store'
+import { useChurch } from '@/common/hooks/useChurch'
 import { Dialog, Transition } from '@headlessui/react'
 
 import React, { FC, Fragment, useEffect, useMemo } from 'react'
@@ -31,23 +32,20 @@ const ModalRegistrationActiveInActive: FC<ModalRegistrationProps> = ({
 }) => {
   const dispatch = useDispatch()
   const openModals = useSelector((state: RootState) => state.common.openModals)
-  const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
-  const user = useSelector((item: RootState) => item.common.user)
+  const { email, churchId } = useChurch()
   const reTriggerIsUserTokens = useSelector(
     (item: RootState) => item.common.reTriggerIsUserTokens,
   )
 
   const { data: userData, refetch } = useQuery(
-    ['getUserRelatedSettings', reTriggerIsUserTokens, bookkeeper],
+    ['getUserRelatedSettings', reTriggerIsUserTokens, churchId],
     async () => {
-      const emailF =
-        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-      if (emailF) {
-        const res = await getUserRelated(emailF)
+      if (email) {
+        const res = await getUserRelated(email)
         return res.data
       }
     },
-    { staleTime: Infinity },
+    { enabled: !!churchId, staleTime: Infinity },
   )
 
   const handleCloseModals = () => {
@@ -71,8 +69,6 @@ const ModalRegistrationActiveInActive: FC<ModalRegistrationProps> = ({
   }, [openModals])
 
   const handlerSubmit = () => {
-    const email =
-      user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
     mutate({ data: registrationSettings, email })
     handleCloseModals()
     setSelectRegName(null)
