@@ -4,6 +4,7 @@ import { useMutation, useQuery } from 'react-query'
 import Dropdown, { components } from 'react-select'
 import { QboGetAllQboData, getQboData } from '@/common/api/qbo'
 import { RootState } from '@/redux/store'
+import { useChurch } from '@/common/hooks/useChurch'
 import { useSelector } from 'react-redux'
 import { SettingQBOProps, createSettings, qboSettings } from '@/common/api/user'
 import {
@@ -164,6 +165,7 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
 
   const dispatch = useDispatch()
   const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
+  const { email: churchEmail, churchId } = useChurch()
   const reTriggerIsUserTokens = useSelector(
     (item: RootState) => item.common.reTriggerIsUserTokens,
   )
@@ -176,9 +178,9 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
   >(createSettings)
 
   const { data: qboData, isLoading: isQboDataLoading } = useQuery(
-    useMemo(() => ['getAllQboData', bookkeeper], [bookkeeper]), // Memoize the key
-    async () => await getQboData(user, bookkeeper),
-    { staleTime: Infinity, refetchOnWindowFocus: false },
+    useMemo(() => ['getAllQboData', churchId], [churchId]), // Memoize the key
+    async () => await getQboData(churchEmail),
+    { enabled: !!churchId, staleTime: Infinity, refetchOnWindowFocus: false },
   )
 
   // Adding a new option at the top of the list

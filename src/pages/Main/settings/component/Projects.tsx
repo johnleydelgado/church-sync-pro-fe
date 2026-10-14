@@ -2,6 +2,7 @@ import React, { FC, useEffect, useMemo, useRef, useState } from 'react'
 
 import { useSelector } from 'react-redux'
 import { RootState } from '@/redux/store'
+import { useChurch } from '@/common/hooks/useChurch'
 
 import { useDispatch } from 'react-redux'
 import {
@@ -77,6 +78,7 @@ const Projects: FC<AccountProps> = ({}) => {
 
   const user = useSelector((state: RootState) => state.common.user)
   const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
+  const { email: churchEmail, churchId } = useChurch()
   const { projectFieldValues } = useSelector(
     (state: RootState) => state.nonPersistState,
   )
@@ -107,9 +109,9 @@ const Projects: FC<AccountProps> = ({}) => {
     isLoading: isQboDataLoading,
     refetch: refetchQboData,
   } = useQuery<QboDataSelectProps>(
-    useMemo(() => ['getAllQboData', bookkeeper], [bookkeeper]), // Memoize the key
-    async () => await getQboData(user, bookkeeper),
-    { staleTime: Infinity, refetchOnWindowFocus: false },
+    useMemo(() => ['getAllQboData', churchId], [churchId]), // Memoize the key
+    async () => await getQboData(churchEmail),
+    { enabled: !!churchId, staleTime: Infinity, refetchOnWindowFocus: false },
   )
 
   // Check if qboData.customers is defined and is an array

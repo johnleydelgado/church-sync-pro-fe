@@ -9,6 +9,7 @@ import { QueryClient, useMutation, useQuery } from 'react-query'
 import { UserSettingsProps } from '@/common/constant/interfaces'
 import { useSelector } from 'react-redux'
 import { RootState } from '@/redux/store'
+import { useChurch } from '@/common/hooks/useChurch'
 import {
   SettingRegistrationQBOProps,
   createSettings,
@@ -30,6 +31,7 @@ const Index: FC<indexProps> = ({}) => {
   })
 
   const { bookkeeper, user } = useSelector((item: RootState) => item.common)
+  const { email: churchEmail, churchId } = useChurch()
 
   const [isLoadingTrigger, setIsLoadingTrigger] = useState<boolean>(false)
 
@@ -59,16 +61,16 @@ const Index: FC<indexProps> = ({}) => {
         () => [
           'getUserRelatedSettingsArchive',
           reTriggerIsUserTokens,
-          bookkeeper,
+          churchId,
         ],
-        [reTriggerIsUserTokens, bookkeeper],
+        [reTriggerIsUserTokens, churchId],
       ),
       async () => {
         // Assuming getUserRelated is an asynchronous function
-        const result = await getUserRelatedSettings(user, bookkeeper)
+        const result = await getUserRelatedSettings(churchEmail)
         return result.data
       },
-      { staleTime: Infinity },
+      { enabled: !!churchId, staleTime: Infinity },
     )
   const activateRegistrationOrDonation = async (
     registration: string,

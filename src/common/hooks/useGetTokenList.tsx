@@ -1,7 +1,6 @@
-import { RootState } from '@/redux/store'
 import { useQuery } from 'react-query'
-import { useSelector } from 'react-redux'
 import { getTokenList } from '../api/user'
+import { useChurch } from './useChurch'
 // ... other imports
 
 interface Token {
@@ -26,8 +25,7 @@ export interface AccountTokenDataProps {
 }
 
 export const useGetTokenList = () => {
-  const { email, id, role } = useSelector((item: RootState) => item.common.user)
-  const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
+  const { email, churchId } = useChurch()
 
   const {
     data: tokenList,
@@ -35,13 +33,12 @@ export const useGetTokenList = () => {
     isLoading,
     isRefetching,
   } = useQuery<AccountTokenDataProps[]>(
-    ['getTokenList', bookkeeper],
+    ['getTokenList', churchId],
     async () => {
-      const emailLatest =
-        role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : email
-      if (emailLatest) return await getTokenList(emailLatest)
+      if (email) return await getTokenList(email)
     },
     {
+      enabled: !!churchId,
       staleTime: Infinity,
       cacheTime: Infinity,
       refetchOnWindowFocus: false,

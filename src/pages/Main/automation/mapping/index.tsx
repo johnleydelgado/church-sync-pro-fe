@@ -23,6 +23,7 @@ import Donation from './component/Donation'
 import { successNotification } from '@/common/utils/toast'
 import { isEmpty } from 'lodash'
 import { RootState } from '@/redux/store'
+import { useChurch } from '@/common/hooks/useChurch'
 import { BiSortDown } from 'react-icons/bi'
 import { AiOutlineCloudSync, AiOutlineUserAdd } from 'react-icons/ai'
 import { Link, useSearchParams } from 'react-router-dom'
@@ -127,6 +128,7 @@ const Mapping: FC<SettingsProps> = () => {
     (state: RootState) => state.stripeData.reduxStripeData,
   )
   const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
+  const { email: churchEmail, churchId } = useChurch()
   const mappingNumber = useSelector(
     (item: RootState) => item.common.mappingNumber,
   )
@@ -230,9 +232,9 @@ const Mapping: FC<SettingsProps> = () => {
   )
 
   const { data: qboData, isLoading: isQboDataLoading } = useQuery(
-    useMemo(() => ['getAllQboData', bookkeeper], [bookkeeper]), // Memoize the key
-    async () => await getQboData(user, bookkeeper),
-    { staleTime: Infinity, refetchOnWindowFocus: false },
+    useMemo(() => ['getAllQboData', churchId], [churchId]), // Memoize the key
+    async () => await getQboData(churchEmail),
+    { enabled: !!churchId, staleTime: Infinity, refetchOnWindowFocus: false },
   )
 
   const { data: stripeEvents, isLoading: isStripeEventsLoading } = useQuery<

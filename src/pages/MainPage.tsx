@@ -56,7 +56,11 @@ import {
 import useLogoutHandler from '@/common/hooks/useLogoutHandler'
 import InviteLink from './Main/invite-link/InviteLink'
 import { useGetTokenList } from '@/common/hooks/useGetTokenList'
-import { useKeepChurchSelected } from '@/common/hooks/useChurch'
+import {
+  useChurch,
+  useKeepChurchSelected,
+  useMyChurches,
+} from '@/common/hooks/useChurch'
 import AskUs from './Main/ask-us/AskUs'
 import Home from './Main/home/Home'
 import QuickStartGuide from './Main/quick-start-guide/QuickStartGuide'
@@ -65,12 +69,18 @@ import BackgroundDataFetcher from '@/common/components/background-caller-api/Bac
 interface indexProps {}
 
 const MainPage: FC<indexProps> = () => {
-  const { email } = useSelector((item: RootState) => item.common.user)
-  const user = useSelector((item: RootState) => item.common.user)
   // const { isConnected } = useApiConnectivityCheck()
   const location = useLocation()
   const personalToken = storage.getToken(storageKey.PERSONAL_TOKEN)
-  const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
+  const { church, churchId, email, accountUserId } = useChurch()
+  const {
+    data: churches,
+    isLoading: isLoadingChurches,
+    isError: churchesFailed,
+    isFetching: isFetchingChurches,
+    error: churchesError,
+    refetch: refetchChurches,
+  } = useMyChurches()
 
   const dispatch = useDispatch()
   const logoutHandler = useLogoutHandler()
@@ -85,33 +95,29 @@ const MainPage: FC<indexProps> = () => {
   )
 
   const { data: userData, isLoading } = useQuery(
-    ['getUserRelatedDashboard', user, bookkeeper, reTriggerIsUserTokens],
+    ['getUserRelatedDashboard', churchId, reTriggerIsUserTokens],
     async () => {
-      const emailF =
-        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-      if (emailF) {
-        const res = await getUserRelated(emailF)
+      if (email) {
+        const res = await getUserRelated(email)
         return res.data
       }
     },
     {
       refetchOnWindowFocus: false,
-      enabled: !!user, // Only run query if `user` and `bookkeeper` are truthy
+      enabled: !!churchId,
     },
   )
 
   const { tokenList } = useGetTokenList()
 
   const { data: isUserTokens } = useQuery(
-    ['isUserTokens', tokenList, bookkeeper],
+    ['isUserTokens', tokenList, churchId],
     async () => {
-      const email =
-        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-
       if (email) return await isUserHaveTokens(email)
       return false
     },
     {
+      enabled: !!churchId,
       staleTime: Infinity,
       refetchOnWindowFocus: false,
     },
@@ -126,14 +132,15 @@ const MainPage: FC<indexProps> = () => {
   }
 
   useEffect(() => {
-    if (!isEmpty(userData?.UserSetting) && isUserTokens) {
-      storage.setLocalToken(userData?.id, storageKey.SETTINGS)
+    if (!isEmpty(userData?.UserSetting) && isUserTokens && accountUserId) {
+      // The church's account, not the signed-in person: the settings belong to the church.
+      storage.setLocalToken(String(accountUserId), storageKey.SETTINGS)
       dispatch(setIsShowTransaction(true))
     } else {
       storage.removeToken(storageKey.SETTINGS)
       dispatch(setIsShowTransaction(false))
     }
-  }, [userData, isUserTokens])
+  }, [userData, isUserTokens, accountUserId])
 
   useEffect(() => {
     // if (!isConnected && personalToken) {
@@ -145,7 +152,50 @@ const MainPage: FC<indexProps> = () => {
     }
   }, [personalToken])
 
-  if (isLoading) return <Loading />
+  // Signed in, nothing selected yet, and the church list is loading (or loaded and about to be
+  // picked from): hold the pages back so none of them mounts with an empty church email.
+  // A list that loaded empty does not block; the pages show their own "no church" state.
+  const waitingForChurch =
+    !!personalToken &&
+    !church &&
+    (isLoadingChurches || (Array.isArray(churches) && churches.length > 0))
+  // The list failed and there is nothing to fall back on.
+  const churchesUnavailable =
+    !!personalToken && !church && churchesFailed && !Array.isArray(churches)
+
+  if (churchesUnavailable) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 h-screen bg-slate-100 px-4">
+        <p className="text-2xl text-center font-thin">
+          {churchesError instanceof Error && churchesError.message
+            ? churchesError.message
+            : 'Could not load your churches.'}
+        </p>
+        <p className="text-center text-sm text-gray-500">
+          Nothing has been changed.
+        </p>
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={() => refetchChurches()}
+            disabled={isFetchingChurches}
+            className="rounded-lg bg-yellow px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+          >
+            {isFetchingChurches ? 'Trying again…' : 'Try again'}
+          </button>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700"
+          >
+            Sign out
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (isLoading || waitingForChurch) return <Loading />
 
   return (
     <div className="h-screen bg-slate-100">

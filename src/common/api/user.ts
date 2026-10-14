@@ -5,12 +5,7 @@ import { faker } from '@faker-js/faker'
 import { userRoutes } from '../constant/routes-api'
 import { error } from 'console'
 import { resizeFile } from '../utils/image.optimizer'
-import {
-  BankAccountExpensesProps,
-  BankAccountProps,
-  BookkeeperInfo,
-  UserInfo,
-} from '@/redux/common'
+import { BankAccountExpensesProps, BankAccountProps } from '@/redux/common'
 import { BillingData } from '@/pages/Main/settings/component/Billing'
 const { REACT_APP_API_PATH } = process.env
 
@@ -1083,12 +1078,8 @@ const userUpdate = async ({
   }
 }
 
-const getUserRelatedSettings = async (
-  user: UserInfo,
-  bookkeeper: BookkeeperInfo | null,
-) => {
-  const email =
-    user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
+/** The selected church's settings. `email` is the church's account email. */
+const getUserRelatedSettings = async (email: string) => {
   if (email) {
     return await getUserRelated(email)
   }

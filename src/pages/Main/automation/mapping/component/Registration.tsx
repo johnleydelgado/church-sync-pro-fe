@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from 'react-query'
 import Dropdown, { components } from 'react-select'
 import { QboGetAllQboData, getQboData } from '@/common/api/qbo'
 import { RootState } from '@/redux/store'
+import { useChurch } from '@/common/hooks/useChurch'
 import { useSelector } from 'react-redux'
 import {
   SettingRegistrationQBOProps,
@@ -109,6 +110,7 @@ const Registration: FC<DonationProps> = ({ stripeEvents, userData }) => {
 
   const dispatch = useDispatch()
   const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
+  const { email: churchEmail, churchId } = useChurch()
   const reTriggerIsUserTokens = useSelector(
     (item: RootState) => item.common.reTriggerIsUserTokens,
   )
@@ -121,7 +123,7 @@ const Registration: FC<DonationProps> = ({ stripeEvents, userData }) => {
   >(createSettings)
 
   const { data: qboData, isLoading: isQboDataLoading } = useQuery(
-    ['getAllQboDataInRegistration', bookkeeper],
+    ['getAllQboDataInRegistration', churchId],
     async () => {
       // If accounts array has elements, use the Redux data
       // if (reduxQboData.accounts.length > 0) {
@@ -129,11 +131,12 @@ const Registration: FC<DonationProps> = ({ stripeEvents, userData }) => {
       //   return reduxQboData
       // }
 
-      const fetchedData = await getQboData(user, bookkeeper) // Fetch only if needed
+      const fetchedData = await getQboData(churchEmail) // Fetch only if needed
       dispatch(setReduxQboData(fetchedData))
       return fetchedData
     },
     {
+      enabled: !!churchId,
       refetchOnWindowFocus: false,
       onError: (error) => console.error('Query failed:', error),
     },
