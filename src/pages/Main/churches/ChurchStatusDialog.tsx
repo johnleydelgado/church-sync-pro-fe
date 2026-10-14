@@ -112,7 +112,7 @@ const ChurchStatusDialog: FC<ChurchStatusDialogProps> = ({
                     }`}
                   >
                     {saving
-                      ? 'Saving...'
+                      ? 'Saving…'
                       : deactivating
                       ? 'Deactivate'
                       : 'Reactivate'}

@@ -43,6 +43,7 @@ const ChurchCard: FC<ChurchCardProps> = ({
       <button
         type="button"
         onClick={onOpen}
+        aria-label={`Open ${church.name}`}
         className="flex-1 rounded-lg bg-primary px-3 py-2 text-white hover:opacity-90"
       >
         Open
@@ -50,6 +51,7 @@ const ChurchCard: FC<ChurchCardProps> = ({
       <button
         type="button"
         onClick={onPeople}
+        aria-label={`People on ${church.name}`}
         className="flex-1 rounded-lg border border-primary px-3 py-2 text-primary"
       >
         People

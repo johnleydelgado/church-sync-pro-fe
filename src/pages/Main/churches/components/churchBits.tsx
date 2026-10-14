@@ -59,11 +59,12 @@ export const IntegrationStatus: FC<IntegrationStatusProps> = ({
         type="button"
         onClick={onConnect}
         disabled={disabled || starting}
+        aria-busy={starting}
         aria-label={`Connect ${INTEGRATION_NAME[type]} for ${church.name}`}
         className="inline-flex items-center gap-2 rounded-lg border border-primary px-3 py-1 text-sm font-medium text-primary hover:bg-primary hover:text-white disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent disabled:hover:text-primary"
       >
         {starting ? <Spinner size="sm" className="h-3 w-3" /> : null}
-        {starting ? 'Connecting...' : 'Connect'}
+        {starting ? 'Connecting…' : 'Connect'}
       </button>
     )
   }

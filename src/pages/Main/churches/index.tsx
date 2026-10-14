@@ -1,4 +1,4 @@
-import React, { FC, useMemo, useState } from 'react'
+import React, { FC, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from 'react-query'
 import { Button } from '@material-tailwind/react'
@@ -25,7 +25,6 @@ import Pagination from './components/pagination'
 import SearchInput from './components/searchInput'
 
 const ITEMS_PER_PAGE = 10
-const COLUMNS = 5
 
 /** Every church the signed-in person works on: add one, connect it, open it, deactivate it. */
 const ChurchesPage: FC = () => {
@@ -56,6 +55,16 @@ const ChurchesPage: FC = () => {
   const [statusSaving, setStatusSaving] = useState(false)
   const [statusError, setStatusError] = useState<string | null>(null)
 
+  // Back from the sign-in page with the browser's Back button: this page comes out of the
+  // back/forward cache as it was left, with its Connect button still spinning.
+  useEffect(() => {
+    const onShow = (e: PageTransitionEvent) => {
+      if (e.persisted) setStarting(null)
+    }
+    window.addEventListener('pageshow', onShow)
+    return () => window.removeEventListener('pageshow', onShow)
+  }, [])
+
   const list = useMemo(
     () => (Array.isArray(churches) ? churches : []),
     [churches],
@@ -81,6 +90,7 @@ const ChurchesPage: FC = () => {
 
   const loading = (isLoading || isIdle) && !Array.isArray(churches)
   const failed = isError && !Array.isArray(churches)
+  const isEmpty = !loading && !failed && list.length === 0
 
   /** Make it the selected church (unless it already is), then go there. */
   const goTo = (church: MyChurch, to: string) => {
@@ -116,22 +126,28 @@ const ChurchesPage: FC = () => {
     setStatusError(null)
     try {
       await updateChurch(church.id, { isActive })
-      await queryClient.invalidateQueries(MY_CHURCHES_KEY)
-      successNotification({
-        title: isActive
-          ? `${church.name} is active again.`
-          : `${church.name} is deactivated. Nightly posting is off for it.`,
-      })
-      setStatusTarget(null)
     } catch (e) {
       setStatusError(
         e instanceof ChurchApiError && e.message
           ? e.message
           : 'Could not update the church.',
       )
-    } finally {
       setStatusSaving(false)
+      return
     }
+    // The change is saved; the list catches up in the background (with its own retries).
+    setStatusSaving(false)
+    setStatusTarget(null)
+    successNotification({
+      title: isActive
+        ? `${church.name} is active again.`
+        : `${church.name} is deactivated. Nightly posting is off for it.`,
+    })
+    // A fetch already on its way may have left before the change; replace it.
+    queryClient.invalidateQueries(
+      { queryKey: MY_CHURCHES_KEY },
+      { cancelRefetch: true },
+    )
   }
 
   const resetToFirstPage = () => setCurrentPage(1)
@@ -156,8 +172,9 @@ const ChurchesPage: FC = () => {
   const renderBody = () => {
     if (loading) {
       return (
-        <>
-          <div className="hidden md:block pt-8" aria-busy="true">
+        <div role="status">
+          <span className="sr-only">Loading churches</span>
+          <div className="hidden md:block pt-8" aria-hidden="true">
             {Array.from({ length: 4 }).map((_, i) => (
               <div
                 key={i}
@@ -165,7 +182,7 @@ const ChurchesPage: FC = () => {
               />
             ))}
           </div>
-          <div className="space-y-4 pt-6 md:hidden" aria-busy="true">
+          <div className="space-y-4 pt-6 md:hidden" aria-hidden="true">
             {Array.from({ length: 3 }).map((_, i) => (
               <div
                 key={i}
@@ -173,7 +190,7 @@ const ChurchesPage: FC = () => {
               />
             ))}
           </div>
-        </>
+        </div>
       )
     }
 
@@ -191,17 +208,20 @@ const ChurchesPage: FC = () => {
             disabled={isFetching}
             className="rounded-lg bg-yellow px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
           >
-            {isFetching ? 'Trying again...' : 'Try again'}
+            {isFetching ? 'Trying again…' : 'Try again'}
           </button>
         </div>
       )
     }
 
-    if (list.length === 0) {
+    if (isEmpty) {
       return (
         <div className="flex flex-col items-center gap-4 py-16 text-center">
           <HiOutlineOfficeBuilding size={40} className="text-gray-300" />
-          <p className="text-gray-700">You&apos;re not on a church yet.</p>
+          <p className="max-w-md text-gray-700">
+            You&apos;re not on a church yet. Add one, or ask a church&apos;s
+            owner to invite you.
+          </p>
           {addButton}
         </div>
       )
@@ -232,11 +252,21 @@ const ChurchesPage: FC = () => {
           <table className="w-full border-separate border-spacing-0 text-sm text-gray-500">
             <thead className="border-y-2 border-yellow bg-white text-xs uppercase text-yellow">
               <tr className="[&>*]:px-6 [&>*]:py-4">
-                <th className="text-left">Church</th>
-                <th className="text-left">QuickBooks</th>
-                <th className="text-left">Planning Center</th>
-                <th className="text-left">Status</th>
-                <th className="text-right">Actions</th>
+                <th scope="col" className="text-left">
+                  Church
+                </th>
+                <th scope="col" className="text-left">
+                  QuickBooks
+                </th>
+                <th scope="col" className="text-left">
+                  Planning Center
+                </th>
+                <th scope="col" className="text-left">
+                  Status
+                </th>
+                <th scope="col" className="text-right">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="[&>tr>td]:border-b [&>tr>td]:border-gray-100">
@@ -250,7 +280,7 @@ const ChurchesPage: FC = () => {
                   connectBusy={!!starting}
                   onConnect={(type) => connect(church, type)}
                   onToggleActive={
-                    church.role === 'owner'
+                    church.canManagePeople
                       ? () => askToggleActive(church)
                       : undefined
                   }
@@ -299,7 +329,8 @@ const ChurchesPage: FC = () => {
               Every church you work on. Pick one in the sidebar to work on it.
             </p>
           </div>
-          {addButton}
+          {/* An empty list shows its own Add church button; one is enough. */}
+          {isEmpty ? null : addButton}
         </div>
 
         {!loading && !failed && list.length > 0 ? (

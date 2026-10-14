@@ -19,7 +19,7 @@ export interface ChurchActionsProps {
   onConnect: (type: ChurchIntegration) => void
   onOpen: () => void
   onPeople: () => void
-  /** Owners only; the page passes nothing for a bookkeeper. */
+  /** Owners only (`canManagePeople`); the page passes nothing to anyone else. */
   onToggleActive?: () => void
 }
 
@@ -85,6 +85,7 @@ const ChurchRow: FC<ChurchActionsProps> = ({
           <button
             type="button"
             onClick={onOpen}
+            aria-label={`Open ${church.name}`}
             className="rounded-lg bg-primary px-3 py-1 text-white hover:opacity-90"
           >
             Open
@@ -92,6 +93,7 @@ const ChurchRow: FC<ChurchActionsProps> = ({
           <button
             type="button"
             onClick={onPeople}
+            aria-label={`People on ${church.name}`}
             className="text-primary hover:underline"
           >
             People
@@ -100,6 +102,9 @@ const ChurchRow: FC<ChurchActionsProps> = ({
             <button
               type="button"
               onClick={onToggleActive}
+              aria-label={`${church.isActive ? 'Deactivate' : 'Reactivate'} ${
+                church.name
+              }`}
               className={
                 church.isActive
                   ? 'text-red-600 hover:underline'

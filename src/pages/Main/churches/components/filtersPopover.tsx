@@ -47,7 +47,7 @@ const FiltersPopover: React.FC<FiltersPopoverProps> = ({
         <h3 className="text-lg font-medium text-gray-700">Filters</h3>
         <button
           type="button"
-          className="text-yellow-500 underline text-sm"
+          className="text-yellow underline text-sm"
           onClick={() => onStatusChange('')}
         >
           Clear

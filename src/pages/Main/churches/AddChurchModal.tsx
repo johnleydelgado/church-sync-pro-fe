@@ -64,8 +64,11 @@ const AddChurchModal: FC<AddChurchModalProps> = ({
     setError(null)
     try {
       const created = await createChurch(trimmed)
-      // Into the cached list first: the selection is kept pointing at a church in that list, and
-      // must not be moved off the new one while the refetch is on its way.
+      // A list fetch that left before the church existed would land after this and drop it,
+      // and the selection follows the list; stop it first.
+      await queryClient.cancelQueries(MY_CHURCHES_KEY)
+      // Into the cached list before switching: the selection is kept pointing at a church in
+      // that list, and must not be moved off the new one while the refetch is on its way.
       queryClient.setQueryData<MyChurch[]>([MY_CHURCHES_KEY, userId], (old) => [
         ...(Array.isArray(old) ? old : []).filter((c) => c.id !== created.id),
         created,
@@ -145,7 +148,8 @@ const AddChurchModal: FC<AddChurchModalProps> = ({
                     type="text"
                     autoComplete="off"
                     value={name}
-                    disabled={pending}
+                    // Not `disabled`: a disabled input drops focus, and a server error puts it back here.
+                    readOnly={pending}
                     maxLength={255}
                     aria-invalid={!!error}
                     aria-describedby={error ? 'add-church-error' : undefined}
@@ -153,7 +157,7 @@ const AddChurchModal: FC<AddChurchModalProps> = ({
                       setName(e.target.value)
                       if (error) setError(null)
                     }}
-                    className={`w-full rounded-lg border px-3 py-2 text-sm text-gray-800 shadow-sm focus:outline-none focus:ring-1 disabled:bg-gray-50 ${
+                    className={`w-full rounded-lg border px-3 py-2 text-sm text-gray-800 shadow-sm focus:outline-none focus:ring-1 read-only:bg-gray-50 ${
                       error
                         ? 'border-red-400 focus:border-red-500 focus:ring-red-500'
                         : 'border-gray-300 focus:border-primary focus:ring-primary'
@@ -186,7 +190,7 @@ const AddChurchModal: FC<AddChurchModalProps> = ({
                       disabled={pending}
                       className="bg-primary normal-case"
                     >
-                      {pending ? 'Adding...' : 'Add church'}
+                      {pending ? 'Adding…' : 'Add church'}
                     </Button>
                   </div>
                 </form>
