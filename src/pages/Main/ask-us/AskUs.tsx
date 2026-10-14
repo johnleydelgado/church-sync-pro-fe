@@ -2,9 +2,6 @@ import MainLayout from '@/common/components/main-layout/MainLayout'
 import React, { FC } from 'react'
 import Lottie from 'lottie-react'
 import empty from '@/common/assets/empty.json'
-import { useDispatch } from 'react-redux'
-import { OPEN_MODAL } from '@/redux/common'
-import { MODALS_NAME } from '@/common/constant/modal'
 import { useQuery } from 'react-query'
 import { useSelector } from 'react-redux'
 import { RootState } from '@/redux/store'
@@ -25,10 +22,6 @@ import { Link } from 'react-router-dom'
 interface BookkeeperProps {}
 
 const AskUs: FC<BookkeeperProps> = ({}) => {
-  const dispatch = useDispatch()
-  const openModal = () => {
-    dispatch(OPEN_MODAL(MODALS_NAME.invitation))
-  }
   const user = useSelector((state: RootState) => state.common.user)
 
   const [open, setOpen] = React.useState(null)

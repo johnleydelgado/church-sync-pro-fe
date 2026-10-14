@@ -9,11 +9,6 @@ import { BankAccountExpensesProps, BankAccountProps } from '@/redux/common'
 import { BillingData } from '@/pages/Main/settings/component/Billing'
 const { REACT_APP_API_PATH } = process.env
 
-interface ToggleUserActiveStatusParams {
-  userId: number
-  isActive: boolean
-}
-
 export interface UserProps {
   churchName?: string
   firstName?: string
@@ -779,17 +774,6 @@ const getPayoutSignups = async (email: string): Promise<string[]> => {
   }
 }
 
-const deleteBookeeper = async (id: string) => {
-  const url = '/deleteBookeeper'
-  const data = JSON.stringify({ id })
-  try {
-    const response = await apiCall.post(url, data)
-    return response.data.data
-  } catch (e: any) {
-    throw new Error(e.message)
-  }
-}
-
 const manualSync = async ({
   ...rest
 }: {
@@ -879,49 +863,6 @@ const deleteUserToken = async (id: number) => {
   return response.data
 }
 
-// A bookkeeper adding a church. Done through the backend rather than the browser
-// sign-up API: that API sets the NEW user's session cookies, so the bookkeeper's tab
-// would silently carry on as the church. Throws on failure (409 = church exists).
-const createClientChurch = async (churchName: string, bookkeeperId: number) => {
-  const url = userRoutes.createClientChurch
-  const response = await apiCall.post(
-    url,
-    JSON.stringify({ churchName, bookkeeperId }),
-  )
-  return response.data.data as { clientId: number; email: string }
-}
-
-const sendEmailInvitation = async (
-  name: string,
-  email: string,
-  clientId: number,
-  createdByBk = false,
-  bookkeeperId?: number | undefined,
-) => {
-  const url = userRoutes.sendEmailInvitation
-
-  // Conditionally include bookkeeperId if it exists
-  const data = JSON.stringify({
-    name,
-    emailTo: email,
-    clientId,
-    createdByBk,
-    ...(bookkeeperId ? { bookkeeperId } : {}), // Add bookkeeperId if it is defined
-  })
-
-  try {
-    const response = await apiCall.post(url, data)
-    return response.data
-  } catch (e: any) {
-    // Callers must be able to tell a failure from a send, so return the server's
-    // reason rather than a bare null that reads as "nothing to report".
-    return {
-      success: false,
-      message: e?.response?.data?.message ?? 'Request failed',
-    }
-  }
-}
-
 const sendPasswordReset = async (email: string) => {
   const url = userRoutes.sendPasswordReset
   const data = JSON.stringify({ email })
@@ -975,29 +916,6 @@ const checkValidInvitation = async (
 
   try {
     if (email && invitationToken) {
-      const response = await apiCall.post(url, data)
-      return response.data
-    }
-    return []
-  } catch (e: any) {
-    return null
-  }
-}
-
-interface bookkeeperListParams {
-  clientId?: number
-  bookkeeperId?: number
-}
-
-const bookkeeperList = async ({
-  clientId,
-  bookkeeperId,
-}: bookkeeperListParams) => {
-  const url = userRoutes.bookkeeperList
-  const data = JSON.stringify({ clientId, bookkeeperId })
-
-  try {
-    if (clientId || bookkeeperId) {
       const response = await apiCall.post(url, data)
       return response.data
     }
@@ -1120,32 +1038,7 @@ const getUserRelatedSettings = async (email: string) => {
   return []
 }
 
-/**
- * Calls the toggleUserActiveStatus API to update the isActive status of a user.
- * @param {ToggleUserActiveStatusParams} params - The userId and isActive status.
- * @returns {Promise<any>} - API response or null in case of error.
- */
-const toggleUserActiveStatusApi = async ({
-  userId,
-  isActive,
-}: ToggleUserActiveStatusParams) => {
-  const url = userRoutes.toggleUserActiveStatus // Define the API endpoint in your route constants
-  const data = JSON.stringify({ userId, isActive })
-
-  try {
-    if (userId && typeof isActive === 'boolean') {
-      const response = await apiCall.post(url, data)
-      return response.data
-    }
-    return null
-  } catch (e: any) {
-    console.error('Error calling toggleUserActiveStatus API:', e.message)
-    return null
-  }
-}
-
 export {
-  createClientChurch,
   updateUser,
   createUser,
   addTokenInUser,
@@ -1157,14 +1050,11 @@ export {
   getTokenList,
   updateUserToken,
   deleteUserToken,
-  sendEmailInvitation,
   sendPasswordReset,
   resetPassword,
   checkValidInvitation,
-  bookkeeperList,
   updateInvitationStatus,
   enableAutoSyncSetting,
-  deleteBookeeper,
   userUpdate,
   addUpdateBankSettings,
   addUpdateBilling,
@@ -1173,7 +1063,6 @@ export {
   crudUserEmailPreferences,
   setStartDataAutomation,
   getUserRelatedSettings,
-  toggleUserActiveStatusApi,
   getDailyJournalEntries,
   getClearingStatement,
   markTransitionTruedUp,

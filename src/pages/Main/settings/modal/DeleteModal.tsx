@@ -1,5 +1,4 @@
 import { updateProject } from '@/common/api/qbo'
-import { deleteBookeeper, sendEmailInvitation } from '@/common/api/user'
 import Loading from '@/common/components/loading/Loading'
 import CommonTextField from '@/common/components/text-input/CommonTextField'
 import { MODALS_NAME } from '@/common/constant/modal'

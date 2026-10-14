@@ -18,7 +18,7 @@ import {
 
 import { Tab } from '@headlessui/react'
 
-import { AccountTokenDataProps } from './component/Account'
+import { AccountTokenDataProps } from '@/common/hooks/useGetTokenList'
 import Donation from './component/Donation'
 import FieldStatus, { FieldSaveStatus } from './component/FieldStatus'
 import { failNotification, successNotification } from '@/common/utils/toast'
