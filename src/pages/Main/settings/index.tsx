@@ -145,7 +145,9 @@ const Settings: FC<SettingsProps> = () => {
             </div>
           </div>
         </div>
-        <Tabs value={activeTab} className="w-full">
+        {/* Keyed: material-tailwind's Tabs reads `value` only when it mounts, so a ?tab= change
+            (a link, Back, or the tab hiding itself) would otherwise leave the old tab showing. */}
+        <Tabs key={activeTab} value={activeTab} className="w-full">
           <TabsHeader
             className="bg-transparent w-full md:w-1/2 lg:w-full xl:w-1/2"
             indicatorProps={{
