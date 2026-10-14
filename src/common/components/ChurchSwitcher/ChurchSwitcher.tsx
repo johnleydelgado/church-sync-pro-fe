@@ -64,15 +64,25 @@ const roleLabel = (church: MyChurch) =>
 
 const nameKey = (name: string) => name.trim().toLowerCase()
 
-/** `sameName`: another of the person's churches has this name, so the role tells them apart. */
-const optionFor = (church: MyChurch, sameName = false): ChurchOption => {
+/**
+ * `sameName`: another of the person's churches has this name, so the role tells them apart.
+ * `sameNameAndRole`: one also has the same role, so only the church's number does.
+ */
+const optionFor = (
+  church: MyChurch,
+  sameName = false,
+  sameNameAndRole = false,
+): ChurchOption => {
   const notes = [
     sameName ? roleLabel(church) : '',
     church.isActive ? '' : 'inactive',
   ].filter(Boolean)
+  const label = notes.length
+    ? `${church.name} (${notes.join(', ')})`
+    : church.name
   return {
     value: church.id,
-    label: notes.length ? `${church.name} (${notes.join(', ')})` : church.name,
+    label: sameNameAndRole ? `${label} · #${church.id}` : label,
     church,
   }
 }
@@ -89,11 +99,22 @@ const ChurchSwitcher: FC<ChurchSwitcherProps> = ({
 
   const options = useMemo(() => {
     const list = churches ?? []
-    const counts = new Map<string, number>()
-    list.forEach((c) =>
-      counts.set(nameKey(c.name), (counts.get(nameKey(c.name)) ?? 0) + 1),
+    const byName = new Map<string, number>()
+    const byNameAndRole = new Map<string, number>()
+    const add = (counts: Map<string, number>, key: string) =>
+      counts.set(key, (counts.get(key) ?? 0) + 1)
+    const sameRoleKey = (c: MyChurch) => `${nameKey(c.name)}|${c.role}`
+    list.forEach((c) => {
+      add(byName, nameKey(c.name))
+      add(byNameAndRole, sameRoleKey(c))
+    })
+    return list.map((c) =>
+      optionFor(
+        c,
+        (byName.get(nameKey(c.name)) ?? 0) > 1,
+        (byNameAndRole.get(sameRoleKey(c)) ?? 0) > 1,
+      ),
     )
-    return list.map((c) => optionFor(c, (counts.get(nameKey(c.name)) ?? 0) > 1))
   }, [churches])
   const value = church
     ? options.find((o) => o.value === church.id) ?? optionFor(church)

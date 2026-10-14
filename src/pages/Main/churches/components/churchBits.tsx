@@ -1,13 +1,9 @@
 import React, { FC } from 'react'
 import { Spinner } from 'flowbite-react'
 import { MyChurch } from '@/common/api/church'
+import { INTEGRATION_NAME } from '@/common/hooks/useConnectIntegration'
 
 export type ChurchIntegration = 'qbo' | 'pco'
-
-export const INTEGRATION_NAME: Record<ChurchIntegration, string> = {
-  qbo: 'QuickBooks',
-  pco: 'Planning Center',
-}
 
 export const roleLabel = (church: MyChurch) =>
   church.role === 'owner' ? 'Owner' : 'Bookkeeper'

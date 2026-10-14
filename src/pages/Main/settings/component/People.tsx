@@ -402,14 +402,20 @@ const People: FC = () => {
           <table className="w-full min-w-[720px] text-left text-sm">
             <thead>
               <tr className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500">
-                <th className="py-2 pr-4 font-medium">Person</th>
-                <th className="py-2 pr-4 font-medium">Role</th>
-                <th className="py-2 pr-4 font-medium">Status</th>
-                <th className="py-2 pr-4 font-medium">
+                <th scope="col" className="py-2 pr-4 font-medium">
+                  Person
+                </th>
+                <th scope="col" className="py-2 pr-4 font-medium">
+                  Role
+                </th>
+                <th scope="col" className="py-2 pr-4 font-medium">
+                  Status
+                </th>
+                <th scope="col" className="py-2 pr-4 font-medium">
                   Can connect QuickBooks &amp; Planning Center
                 </th>
                 {canManagePeople ? (
-                  <th className="py-2 font-medium">
+                  <th scope="col" className="py-2 font-medium">
                     <span className="sr-only">Actions</span>
                   </th>
                 ) : null}
