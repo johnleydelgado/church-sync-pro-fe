@@ -145,17 +145,18 @@ const Account: FC<AccountProps> = ({}) => {
   // signed-in person may manage that church's integrations before deleting it.
   const deleteToken = async (id: number | undefined | null, label: string) => {
     if (!id) return
-    const res = await deleteUserToken(id)
-    if (res?.success) {
-      successNotification({ title: `${label} disconnected.` })
-      refetch()
-      queryClient.invalidateQueries(MY_CHURCHES_KEY)
-    } else {
+    try {
+      await deleteUserToken(id)
+    } catch (e: any) {
+      // The server's sentence, e.g. not allowed to manage this church's integrations.
       failNotification({
-        title:
-          res?.message || `Couldn't disconnect ${label}. Please try again.`,
+        title: e?.message || `Couldn't disconnect ${label}. Please try again.`,
       })
+      return
     }
+    successNotification({ title: `${label} disconnected.` })
+    refetch()
+    queryClient.invalidateQueries(MY_CHURCHES_KEY)
   }
 
   return (

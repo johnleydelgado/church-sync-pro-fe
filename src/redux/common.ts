@@ -60,10 +60,15 @@ export interface SelectedClient {
 
 /** The church a QuickBooks / Planning Center connect was started for, kept across the redirect. */
 export interface PendingConnection {
+  /** Which service the person was sent to. */
+  type: 'qbo' | 'pco' | 'stripe'
   churchId: number
+  churchName: string
   accountEmail: string
   accountUserId: number
   returnTo: string
+  /** Date.now() when Connect was clicked; an old record is treated as missing. */
+  startedAt: number
 }
 
 interface DateRangeTransactionProps {

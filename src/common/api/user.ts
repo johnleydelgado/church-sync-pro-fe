@@ -821,6 +821,8 @@ const getTokenList = async (email: string) => {
   }
 }
 
+// Saves a connection under the church's account. Throws with the server's sentence (403: not
+// allowed to connect integrations for that church), so the caller can say why it failed.
 const updateUserToken = async (tokenData: UserTokenProps) => {
   const url = userRoutes.updateUserToken
   const data = JSON.stringify(tokenData)
@@ -829,20 +831,39 @@ const updateUserToken = async (tokenData: UserTokenProps) => {
     const response = await apiCall.post(url, data)
     return response.data.data
   } catch (e: any) {
-    return null
+    const said = e?.response?.data?.message
+    throw new Error(
+      typeof said === 'string' && said
+        ? said
+        : e?.response
+        ? "Couldn't save the connection. Please try again."
+        : 'Could not reach Church Sync Pro. Check your connection and try again.',
+    )
   }
 }
 
+// Removes a connection. Throws with the server's sentence; a reply without `success` is a failure too.
 const deleteUserToken = async (id: number) => {
   const url = userRoutes.deleteUserToken
   const data = JSON.stringify({ id })
 
+  let response
   try {
-    const response = await apiCall.post(url, data)
-    return response.data
+    response = await apiCall.post(url, data)
   } catch (e: any) {
-    return null
+    const said = e?.response?.data?.message
+    throw new Error(
+      typeof said === 'string' && said
+        ? said
+        : e?.response
+        ? "Couldn't disconnect. Please try again."
+        : 'Could not reach Church Sync Pro. Check your connection and try again.',
+    )
   }
+  if (!response.data?.success) {
+    throw new Error("Couldn't disconnect. Please try again.")
+  }
+  return response.data
 }
 
 // A bookkeeper adding a church. Done through the backend rather than the browser

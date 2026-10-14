@@ -6,13 +6,17 @@ import { setPendingConnection } from '@/redux/common'
 import { persistor } from '@/redux/store'
 
 const START = { qbo: 'authQB', pco: 'authPC', stripe: 'authStripe' } as const
-const NAME = {
+/** What each service is called in sentences. */
+export const INTEGRATION_NAME = {
   qbo: 'QuickBooks',
   pco: 'Planning Center',
   stripe: 'Stripe',
 } as const
 
 export type IntegrationType = keyof typeof START
+
+/** A pending connection older than this is treated as missing: the person walked away from it. */
+export const PENDING_CONNECTION_MAX_AGE_MS = 30 * 60 * 1000
 
 /** authApi hands back the sign-in address, or [] when the call failed. */
 const isUrl = (v: unknown): v is string =>
@@ -29,10 +33,13 @@ export const useConnectIntegration = () => {
     async (type: IntegrationType, church: MyChurch, returnTo: string) => {
       dispatch(
         setPendingConnection({
+          type,
           churchId: church.id,
+          churchName: church.name,
           accountEmail: church.accountEmail,
           accountUserId: church.accountUserId,
           returnTo,
+          startedAt: Date.now(),
         }),
       )
       // redux-persist writes to localStorage asynchronously; leaving the page before it has
@@ -42,7 +49,7 @@ export const useConnectIntegration = () => {
       if (!isUrl(authUri)) {
         dispatch(setPendingConnection(null))
         throw new Error(
-          `Couldn't start connecting ${NAME[type]}. Please try again.`,
+          `Couldn't start connecting ${INTEGRATION_NAME[type]}. Please try again.`,
         )
       }
       window.location.href = authUri
