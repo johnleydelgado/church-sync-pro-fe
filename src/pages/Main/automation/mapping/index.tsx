@@ -24,7 +24,7 @@ import FieldStatus, { FieldSaveStatus } from './component/FieldStatus'
 import { failNotification, successNotification } from '@/common/utils/toast'
 import { isEmpty } from 'lodash'
 import { RootState } from '@/redux/store'
-import { useChurch } from '@/common/hooks/useChurch'
+import { selectSelectedChurch, useChurch } from '@/common/hooks/useChurch'
 import { BiSortDown } from 'react-icons/bi'
 import { AiOutlineCloudSync, AiOutlineUserAdd } from 'react-icons/ai'
 import { Link, useSearchParams } from 'react-router-dom'
@@ -32,7 +32,7 @@ import { mainRoute, routeSettings } from '@/common/constant/route'
 import { Tooltip } from '@material-tailwind/react'
 import { MdAppRegistration } from 'react-icons/md'
 import { BsQuestionCircle } from 'react-icons/bs'
-import { useDispatch } from 'react-redux'
+import { useDispatch, useStore } from 'react-redux'
 import {
   BankAccountExpensesProps,
   BankAccountProps,
@@ -110,7 +110,9 @@ const tabSubtitles: Record<string, string> = {
 
 const HelpTip: FC<{ text: string }> = ({ text }) => (
   <Tooltip
-    content={<span className="block max-w-xs text-xs leading-snug">{text}</span>}
+    content={
+      <span className="block max-w-xs text-xs leading-snug">{text}</span>
+    }
     placement="top"
   >
     <span className="inline-flex cursor-help text-gray-400 hover:text-gray-600">
@@ -181,9 +183,8 @@ const Mapping: FC<SettingsProps> = () => {
     }
   >(enableAutoSyncSetting)
 
-  // The cached settings were read before this save. Mark every copy stale without refetching the
-  // page in front of the person, so the next visit - or a switch back to this church - reads
-  // what was saved instead of filling the bank fields from the old copy.
+  // Mark every cached copy of the settings stale without refetching the page in front of the
+  // person, so the next visit - or a switch back to this church - asks the server.
   const markSettingsStale = () =>
     queryClient.invalidateQueries('getUserRelatedSettings', {
       refetchActive: false,
@@ -202,9 +203,10 @@ const Mapping: FC<SettingsProps> = () => {
     expense: BankAccountExpensesProps | null
   }>({ accounts: null, expense: null })
 
-  // react-query v3 still runs a mutation's callbacks after the page unmounts. After a church
-  // switch (which remounts every page) a late answer must not write the old church's bank or
-  // fee values into the shared redux fields the new church's Mapping reads.
+  // react-query v3 still runs a mutation's callbacks after the page unmounts. A late answer
+  // touches this page's state and the shared redux bank/fee fields only while this page is up
+  // AND the selected church is still the one the save was for - read from the store at that
+  // moment, not from this render.
   const mounted = useRef(false)
   useEffect(() => {
     mounted.current = true
@@ -212,45 +214,88 @@ const Mapping: FC<SettingsProps> = () => {
       mounted.current = false
     }
   }, [])
+  const store = useStore<RootState>()
+  const stillOn = (forChurch: number) =>
+    mounted.current && selectSelectedChurch(store.getState())?.id === forChurch
+
+  // A saved value goes into every cached copy of that church's settings, so nothing read from
+  // the cache - a remount, the load effect below - can put the pre-save value back over a pick.
+  const writeSettingsCache = (
+    forChurch: number,
+    change: Partial<UserSettingsProps['UserSetting']>,
+  ) =>
+    queryClient.setQueriesData<UserSettingsProps | undefined>(
+      {
+        predicate: (q) =>
+          q.queryKey[0] === 'getUserRelatedSettings' &&
+          q.queryKey[2] === forChurch,
+      },
+      (old) =>
+        old && {
+          ...old,
+          UserSetting: {
+            ...old.UserSetting,
+            ...change,
+          } as UserSettingsProps['UserSetting'],
+        },
+    )
 
   const { mutate: saveBankData } = useMutation<
     unknown,
     Error,
-    { field: BankField; email: string; data: BankAccountProps[] }
+    {
+      field: BankField
+      churchId: number
+      email: string
+      data: BankAccountProps[]
+    }
   >(({ email, data }) => addUpdateBankSettings({ email, data }), {
     onMutate: ({ field }) => setFieldStatus(field, 'saving'),
-    onSuccess: (_, { field, data }) => {
-      if (!mounted.current) return
+    onSuccess: (_, { field, churchId: forChurch, data }) => {
+      writeSettingsCache(forChurch, { settingBankData: data })
+      if (!stillOn(forChurch)) return
       savedBank.current.accounts = data
       setFieldStatus(field, 'saved')
     },
-    onError: (e, { field }) => {
+    onError: (e, { field, churchId: forChurch }) => {
       failNotification({ title: e.message })
-      if (!mounted.current) return
+      if (!stillOn(forChurch)) return
       setFieldStatus(field, 'error')
       dispatch(setSelectedBankAccount(savedBank.current.accounts))
     },
-    onSettled: markSettingsStale,
+    // A failed request may still have landed; the next read of these settings asks the server.
+    onSettled: (_, error) => {
+      if (error) markSettingsStale()
+    },
   })
 
   const { mutate: saveBankCharges } = useMutation<
     unknown,
     Error,
-    { field: BankField; email: string; data: BankAccountExpensesProps }
+    {
+      field: BankField
+      churchId: number
+      email: string
+      data: BankAccountExpensesProps
+    }
   >(({ email, data }) => addUpdateBankCharges({ email, data }), {
     onMutate: ({ field }) => setFieldStatus(field, 'saving'),
-    onSuccess: (_, { field, data }) => {
-      if (!mounted.current) return
+    onSuccess: (_, { field, churchId: forChurch, data }) => {
+      writeSettingsCache(forChurch, { settingBankCharges: data })
+      if (!stillOn(forChurch)) return
       savedBank.current.expense = data
       setFieldStatus(field, 'saved')
     },
-    onError: (e, { field }) => {
+    onError: (e, { field, churchId: forChurch }) => {
       failNotification({ title: e.message })
-      if (!mounted.current) return
+      if (!stillOn(forChurch)) return
       setFieldStatus(field, 'error')
       dispatch(setSelectedBankExpense(savedBank.current.expense))
     },
-    onSettled: markSettingsStale,
+    // A failed request may still have landed; the next read of these settings asks the server.
+    onSettled: (_, error) => {
+      if (error) markSettingsStale()
+    },
   })
 
   // Each pick builds on what is on screen, so while one save is out the four dropdowns wait: a
@@ -288,7 +333,14 @@ const Mapping: FC<SettingsProps> = () => {
         return res.data
       }
     },
-    { enabled: !!churchId, staleTime: Infinity },
+    {
+      enabled: !!churchId,
+      staleTime: Infinity,
+      // Not behind the person's back: a refetch landing during a save could put the pre-save
+      // bank or fee value back over their pick.
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+    },
   )
 
   const {
@@ -298,11 +350,16 @@ const Mapping: FC<SettingsProps> = () => {
     isFetching: isFetchingFunds,
     refetch: refetchFunds,
   } = useQuery<FundAttProps[]>(
-    ['getFunds', churchId, userData],
+    // Only what the list depends on: a bank or fee save rewrites the cached settings, and with
+    // the whole object in the key that reloaded the funds and blanked the page.
+    ['getFunds', churchId, userData?.UserSetting?.settingsData],
     async () => {
       if (!isEmpty(userData?.UserSetting?.settingsData)) {
         if (email) {
-          const res = (await pcGetFunds({ email, throwOnError: true })) as FundAttProps[]
+          const res = (await pcGetFunds({
+            email,
+            throwOnError: true,
+          })) as FundAttProps[]
           // Apply the filter and return the filtered array
           const filteredFunds = res.filter((a) => {
             // Find fund with matching name and ensure isActive is either true or undefined
@@ -319,7 +376,10 @@ const Mapping: FC<SettingsProps> = () => {
           return filteredFunds // Return the filtered array
         }
       } else {
-        const res = (await pcGetFunds({ email, throwOnError: true })) as FundAttProps[]
+        const res = (await pcGetFunds({
+          email,
+          throwOnError: true,
+        })) as FundAttProps[]
         return res
       }
 
@@ -457,59 +517,76 @@ const Mapping: FC<SettingsProps> = () => {
       : null
   }
 
+  // Each loader below follows only the values it puts on screen. A bank save writes its value into
+  // the cached settings object; following the whole object would re-run them all and put loaded
+  // auto-sync switches and start dates (changed here without the cache) back on screen.
+  const settingsLoaded = !!userData
+  const serverSetting = userData?.UserSetting
+  const serverBankData = serverSetting?.settingBankData
+  const serverBankCharges = serverSetting?.settingBankCharges
+  const serverFunds = serverSetting?.settingsData
+  const serverAutoSync = serverSetting?.isAutomationEnable
+  const serverAutoSyncRegistration = serverSetting?.isAutomationRegistration
+  const serverStartRegistration = serverSetting?.startDateAutomationRegistration
+  const serverStartFund = serverSetting?.startDateAutomationFund
+
+  // The server's bank and fee choices for this church, or none: an empty setting clears the
+  // fields rather than leaving a value persisted from before.
   useEffect(() => {
-    if (!isEmpty(userData?.UserSetting?.settingsData)) {
-      setIsAutomationEnable(userData?.UserSetting.isAutomationEnable || false)
-      setIsAutomationRegistration(
-        userData?.UserSetting.isAutomationRegistration || false,
-      )
+    if (!settingsLoaded) return
+    const accounts = isEmpty(serverBankData) ? null : serverBankData ?? null
+    const expense = isEmpty(serverBankCharges)
+      ? null
+      : serverBankCharges ?? null
+    savedBank.current = { accounts, expense }
+    dispatch(setSelectedBankAccount(accounts))
+    dispatch(setSelectedBankExpense(expense))
+  }, [settingsLoaded, serverBankData, serverBankCharges, dispatch])
+
+  // Auto-sync switches and start dates.
+  useEffect(() => {
+    if (!isEmpty(serverFunds)) {
+      setIsAutomationEnable(serverAutoSync || false)
+      setIsAutomationRegistration(serverAutoSyncRegistration || false)
     }
 
-    // The server's bank and fee choices for this church, or none: an empty setting clears the
-    // fields rather than leaving a value persisted from before.
-    if (userData) {
-      const accounts = isEmpty(userData.UserSetting?.settingBankData)
-        ? null
-        : userData.UserSetting?.settingBankData ?? null
-      const expense = isEmpty(userData.UserSetting?.settingBankCharges)
-        ? null
-        : userData.UserSetting?.settingBankCharges ?? null
-      savedBank.current = { accounts, expense }
-      dispatch(setSelectedBankAccount(accounts))
-      dispatch(setSelectedBankExpense(expense))
-    }
-
-    if (!isEmpty(userData?.UserSetting?.startDateAutomationRegistration)) {
+    if (!isEmpty(serverStartRegistration)) {
       setStartDates((prevStartDates) => ({
         ...prevStartDates,
-        ['startDateRegistration']:
-          userData?.UserSetting?.startDateAutomationRegistration || null,
+        ['startDateRegistration']: serverStartRegistration || null,
       }))
     }
 
-    if (!isEmpty(userData?.UserSetting?.startDateAutomationFund)) {
+    if (!isEmpty(serverStartFund)) {
       setStartDates((prevStartDates) => ({
         ...prevStartDates,
-        ['startDateDonation']:
-          userData?.UserSetting?.startDateAutomationFund || null,
+        ['startDateDonation']: serverStartFund || null,
       }))
     }
-  }, [userData])
+  }, [
+    serverFunds,
+    serverAutoSync,
+    serverAutoSyncRegistration,
+    serverStartRegistration,
+    serverStartFund,
+  ])
 
   // Bank and fee choices are saved where the person makes them, to the church on screen. They
   // used to be saved by effects watching the persisted redux values, which also fired on mount:
   // opening Mapping after a switch saved the previous church's choice into this one.
   const pickBankAccounts = (field: BankField, next: BankAccountProps[]) => {
+    if (!churchId) return
     dispatch(setSelectedBankAccount(next))
-    saveBankData({ field, email, data: next })
+    saveBankData({ field, churchId, email, data: next })
   }
 
   const pickBankExpense = (
     field: BankField,
     next: BankAccountExpensesProps,
   ) => {
+    if (!churchId) return
     dispatch(setSelectedBankExpense(next))
-    saveBankCharges({ field, email, data: next })
+    saveBankCharges({ field, churchId, email, data: next })
   }
 
   return (
@@ -706,8 +783,8 @@ const Mapping: FC<SettingsProps> = () => {
                         revenue accounts (the gross gifts),{' '}
                         <span className="font-semibold">debit</span> the Stripe
                         fees account (Stripe&apos;s processing cut), and{' '}
-                        <span className="font-semibold">debit</span> the clearing
-                        account for the net amount Stripe will deposit.
+                        <span className="font-semibold">debit</span> the
+                        clearing account for the net amount Stripe will deposit.
                       </p>
                       <p className="pt-2">
                         Example: $699.20 in gifts − $10.58 in fees = $688.62 to
@@ -732,9 +809,12 @@ const Mapping: FC<SettingsProps> = () => {
                           <Dropdown<{ value: string; label: string } | null>
                             options={qboData?.accounts
                               ?.filter((a: { type: string }) =>
-                                ['Bank', 'Other Current Asset', 'Fixed Asset', 'Other Asset'].includes(
-                                  a.type,
-                                ),
+                                [
+                                  'Bank',
+                                  'Other Current Asset',
+                                  'Fixed Asset',
+                                  'Other Asset',
+                                ].includes(a.type),
                               )
                               .map((a: { value: any; label: any }) => ({
                                 value: a.value,
@@ -775,9 +855,12 @@ const Mapping: FC<SettingsProps> = () => {
                           <Dropdown<{ value: string; label: string } | null>
                             options={qboData?.accounts
                               ?.filter((a: { type: string }) =>
-                                ['Bank', 'Other Current Asset', 'Fixed Asset', 'Other Asset'].includes(
-                                  a.type,
-                                ),
+                                [
+                                  'Bank',
+                                  'Other Current Asset',
+                                  'Fixed Asset',
+                                  'Other Asset',
+                                ].includes(a.type),
                               )
                               .map((a: { value: any; label: any }) => ({
                                 value: a.value,
