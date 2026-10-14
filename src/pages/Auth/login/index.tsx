@@ -21,7 +21,7 @@ import logo from '../../../common/assets/logo.png'
 import { mainRoute, route } from '../../../common/constant/route'
 import { useFormik } from 'formik'
 import { useDispatch } from 'react-redux'
-import { OPEN_MODAL, setBookkeeper, setUserData } from '@/redux/common'
+import { OPEN_MODAL, setUserData } from '@/redux/common'
 import {
   signInInitialValues,
   signInValidationSchema,
@@ -132,7 +132,6 @@ const Login: FC<LoginProps> = () => {
             img_url,
           }),
         )
-        // dispatch(setBookkeeper({clientEmail:}))
         setLoading(false)
         localStorage.setItem(storageKey.PERSONAL_TOKEN, role)
         window.location.href = mainRoute.QUICK_START_QUIDE

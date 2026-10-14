@@ -1,7 +1,6 @@
 import React, { FC, useEffect, useRef, useState } from 'react'
 
-import { useSelector } from 'react-redux'
-import { RootState } from '@/redux/store'
+import { useChurch } from '@/common/hooks/useChurch'
 
 import { useDispatch } from 'react-redux'
 import { Avatar, Button } from '@material-tailwind/react'
@@ -78,14 +77,10 @@ const Input = ({
 
 const Billing: FC<AccountProps> = ({}) => {
   const dispatch = useDispatch()
-  const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
-  const { email, id, role, firstName, lastName } = useSelector(
-    (item: RootState) => item.common.user,
-  )
+  // Billing is the church's: it is filed under the church's account, not the signed-in person.
+  const { churchId, accountUserId } = useChurch()
 
   const [isEdit, setIsEdit] = useState(false)
-
-  const user = useSelector((item: RootState) => item.common.user)
 
   const { mutate, isLoading } = useMutation<
     unknown,
@@ -116,16 +111,14 @@ const Billing: FC<AccountProps> = ({}) => {
     isLoading: isLoadingBilling,
     isRefetching,
   } = useQuery(
-    ['getBillingData', bookkeeper?.clientId],
+    ['getBillingData', churchId],
     async () => {
-      const userId =
-        user.role === 'bookkeeper' ? bookkeeper?.clientId || '' : id
-      if (userId) {
-        const res = await viewBilling({ userId })
+      if (accountUserId) {
+        const res = await viewBilling({ userId: accountUserId })
         return res.data
       }
     },
-    { staleTime: Infinity },
+    { enabled: !!churchId, staleTime: Infinity },
   )
 
   const initialValues = {
@@ -151,23 +144,22 @@ const Billing: FC<AccountProps> = ({}) => {
     validationSchema: validationSchema,
     onSubmit: (values) => {
       // Handle form submission
-      const userId = user.role === 'bookkeeper' ? bookkeeper?.clientId || 0 : id
-      const fValues = { ...values, userId: userId || 0 }
+      const fValues = { ...values, userId: accountUserId || 0 }
       mutate({ email: fValues.email, data: fValues })
       setIsEdit(false)
     },
   })
 
+  // Mirrors the selected church's billing contact, and empties the form for a church without
+  // one - otherwise the last church's contact stayed in the form, ready to be saved here.
   useEffect(() => {
-    if (billingData) {
-      formik.setValues({
-        name: billingData.name,
-        phone: billingData.phone,
-        address: billingData.address,
-        email: billingData.email,
-        zipCode: billingData.zipCode,
-      })
-    }
+    formik.setValues({
+      name: billingData?.name ?? '',
+      phone: billingData?.phone ?? '',
+      address: billingData?.address ?? '',
+      email: billingData?.email ?? '',
+      zipCode: billingData?.zipCode ?? '',
+    })
   }, [billingData])
 
   useEffect(() => {

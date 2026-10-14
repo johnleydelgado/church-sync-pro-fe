@@ -8,6 +8,7 @@ import { failNotification, successNotification } from '@/common/utils/toast'
 import { CLOSE_MODAL } from '@/redux/common'
 import { setProjectFieldValues } from '@/redux/nonPersistState'
 import { RootState } from '@/redux/store'
+import { useChurch } from '@/common/hooks/useChurch'
 import { Dialog, Transition } from '@headlessui/react'
 import { Button } from '@material-tailwind/react'
 
@@ -30,8 +31,7 @@ const DeleteModal: FC<ModalDeleteProps> = ({ size, refetch }) => {
   const { projectFieldValues } = useSelector(
     (state: RootState) => state.nonPersistState,
   )
-  const { user } = useSelector((state: RootState) => state.common)
-  const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
+  const { email } = useChurch()
 
   const openModals = useSelector((state: RootState) => state.common.openModals)
   const [isLoading, setIsLoading] = useState<boolean>(false)
@@ -44,9 +44,6 @@ const DeleteModal: FC<ModalDeleteProps> = ({ size, refetch }) => {
 
   const sendHandler = async () => {
     setIsLoading(true)
-    const email =
-      user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-
     try {
       if (projectFieldValues) {
         await updateProject(email, { ...projectFieldValues, active: false })

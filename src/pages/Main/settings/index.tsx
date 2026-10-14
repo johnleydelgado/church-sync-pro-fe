@@ -6,6 +6,7 @@ import { useSelector } from 'react-redux'
 import { RootState } from '../../../redux/store'
 
 import { getUserRelated } from '@/common/api/user'
+import { useChurch } from '@/common/hooks/useChurch'
 
 import Account from './component/Account'
 import { isEmpty } from 'lodash'
@@ -73,7 +74,7 @@ interface SettingsProps {}
 
 const Settings: FC<SettingsProps> = () => {
   const { user } = useSelector((state: RootState) => state.common)
-  const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
+  const { email, churchId } = useChurch()
 
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -92,16 +93,14 @@ const Settings: FC<SettingsProps> = () => {
 
   // to get settings data
   const { data: userData } = useQuery(
-    ['getUserRelatedSettings', reTriggerIsUserTokens, bookkeeper],
+    ['getUserRelatedSettings', reTriggerIsUserTokens, churchId],
     async () => {
-      const emailF =
-        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-      if (emailF) {
-        const res = await getUserRelated(emailF)
+      if (email) {
+        const res = await getUserRelated(email)
         return res.data
       }
     },
-    { staleTime: Infinity },
+    { enabled: !!churchId, staleTime: Infinity },
   )
 
   const [isAutomationEnable, setIsAutomationEnable] = useState<boolean>(false)

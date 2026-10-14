@@ -109,8 +109,7 @@ const ModalCreateUpdateProject: FC<ModalRegistrationProps> = ({ size }) => {
   }
 
   const [isLoading, setIsLoading] = useState<boolean>(false)
-  const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
-  const { user } = useSelector((state: RootState) => state.common)
+  // `churchEmail`: the form has its own `email` field (the project's).
   const { email: churchEmail, churchId } = useChurch()
   const isOpen = openModals.includes(MODALS_NAME.projectCU)
 
@@ -154,18 +153,14 @@ const ModalCreateUpdateProject: FC<ModalRegistrationProps> = ({ size }) => {
       // forgotPasswordHandler(values.email)
       try {
         setIsLoading(true)
-        const email =
-          user.role === 'bookkeeper'
-            ? bookkeeper?.clientEmail || ''
-            : user.email
 
         if (!projectFieldValues) {
-          await addProject(email, values)
+          await addProject(churchEmail, values)
           successNotification({ title: 'Project Successfully Created' })
         } else {
           console.log('obj', values, projectFieldValues)
 
-          await updateProject(email, values)
+          await updateProject(churchEmail, values)
           successNotification({ title: 'Project Successfully Updated' })
         }
 

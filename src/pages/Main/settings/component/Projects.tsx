@@ -77,8 +77,7 @@ const Projects: FC<AccountProps> = ({}) => {
   // }
 
   const user = useSelector((state: RootState) => state.common.user)
-  const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
-  const { email: churchEmail, churchId } = useChurch()
+  const { email, churchId } = useChurch()
   const { projectFieldValues } = useSelector(
     (state: RootState) => state.nonPersistState,
   )
@@ -110,7 +109,7 @@ const Projects: FC<AccountProps> = ({}) => {
     refetch: refetchQboData,
   } = useQuery<QboDataSelectProps>(
     useMemo(() => ['getAllQboData', churchId], [churchId]), // Memoize the key
-    async () => await getQboData(churchEmail),
+    async () => await getQboData(email),
     { enabled: !!churchId, staleTime: Infinity, refetchOnWindowFocus: false },
   )
 
@@ -139,8 +138,6 @@ const Projects: FC<AccountProps> = ({}) => {
   const openDeleteModal = async (Id: number | string) => {
     setRemoveLoading(true)
     setEditingCustomerId(Id)
-    const email =
-      user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
     try {
       const result = await findCustomers(email, Id)
       const payload = mappingPayload(result)
@@ -164,8 +161,6 @@ const Projects: FC<AccountProps> = ({}) => {
   const editHandler = async (Id: number | string) => {
     setEditLoading(true)
     setEditingCustomerId(Id)
-    const email =
-      user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
     try {
       const result = await findCustomers(email, Id)
       const payload = mappingPayload(result)
