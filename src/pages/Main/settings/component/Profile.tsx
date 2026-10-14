@@ -250,13 +250,13 @@ const Profile: FC<AccountProps> = ({}) => {
               hint="Rename it on the Churches page (owners)"
             />
             <TextInput
+              // Read-only: the sign-in email belongs to the login (SuperTokens), and the
+              // profile update no longer saves it.
               title="Email"
               defValue={email}
               isEditing={isEditing}
-              error={formik.errors.email}
-              onChange={(e: any) =>
-                formik.setFieldValue('email', e.target.value)
-              }
+              isDisabled
+              hint="Your sign-in email can't be changed here."
             />
           </div>
 

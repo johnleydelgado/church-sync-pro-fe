@@ -36,27 +36,6 @@ interface ItemSideBarProps {
   dropdownLinks?: DropdownLink[]
 }
 
-interface Token {
-  id?: number
-  userId: number
-  tokenEntityId: number
-  token_type: 'stripe' | 'qbo' | 'pco' | string
-  access_token: string | null
-  refresh_token: string | null
-  realm_id: string | null
-  isSelected: boolean
-  organization_name: string | null
-}
-
-interface AccountTokenDataProps {
-  id: number
-  isEnabled: false
-  email: string
-  tokens: Token[]
-  createAt?: string
-  updatedAt?: string
-}
-
 const isRouteActive = (pathName?: string, link?: string) => {
   if (!pathName || !link) return false
   return pathName === link || pathName.startsWith(link + '/')
@@ -202,14 +181,6 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
   const img_url = useSelector((item: RootState) => item.common.user.img_url)
   const isQuickStartHide = useSelector(
     (state: RootState) => state.common.isQuickStartHide,
-  )
-
-  const reTriggerIsUserTokens = useSelector(
-    (item: RootState) => item.common.reTriggerIsUserTokens,
-  )
-
-  const { isShowSettings, isShowTransaction } = useSelector(
-    (state: RootState) => state.common,
   )
 
   // useEffect(() => {

@@ -59,14 +59,23 @@ const selectStyles = {
   }),
 }
 
-const optionFor = (church: MyChurch): ChurchOption => ({
-  value: church.id,
-  label: church.isActive ? church.name : `${church.name} (inactive)`,
-  church,
-})
-
 const roleLabel = (church: MyChurch) =>
   church.role === 'owner' ? 'Owner' : 'Bookkeeper'
+
+const nameKey = (name: string) => name.trim().toLowerCase()
+
+/** `sameName`: another of the person's churches has this name, so the role tells them apart. */
+const optionFor = (church: MyChurch, sameName = false): ChurchOption => {
+  const notes = [
+    sameName ? roleLabel(church) : '',
+    church.isActive ? '' : 'inactive',
+  ].filter(Boolean)
+  return {
+    value: church.id,
+    label: notes.length ? `${church.name} (${notes.join(', ')})` : church.name,
+    church,
+  }
+}
 
 /** The church every page works on, and the way to switch to another. */
 const ChurchSwitcher: FC<ChurchSwitcherProps> = ({
@@ -75,10 +84,17 @@ const ChurchSwitcher: FC<ChurchSwitcherProps> = ({
   avatar,
 }) => {
   const { church } = useChurch()
-  const { data: churches, isError, refetch } = useMyChurches()
+  const { data: churches, isError, isFetching, refetch } = useMyChurches()
   const switchChurch = useSwitchChurch()
 
-  const options = useMemo(() => (churches ?? []).map(optionFor), [churches])
+  const options = useMemo(() => {
+    const list = churches ?? []
+    const counts = new Map<string, number>()
+    list.forEach((c) =>
+      counts.set(nameKey(c.name), (counts.get(nameKey(c.name)) ?? 0) + 1),
+    )
+    return list.map((c) => optionFor(c, (counts.get(nameKey(c.name)) ?? 0) > 1))
+  }, [churches])
   const value = church
     ? options.find((o) => o.value === church.id) ?? optionFor(church)
     : null
@@ -129,15 +145,16 @@ const ChurchSwitcher: FC<ChurchSwitcherProps> = ({
         <div className="flex flex-col pb-8">
           {nameRow(
             <div className="flex flex-col gap-1">
-              <p className="text-white text-xs">
+              <p className="text-white text-xs" role="alert">
                 Couldn&apos;t load your churches.
               </p>
               <button
                 type="button"
-                className="text-left text-white text-xs underline underline-offset-2 hover:text-secondaryYellow"
+                className="text-left text-white text-xs underline underline-offset-2 hover:text-secondaryYellow disabled:opacity-60 disabled:no-underline"
                 onClick={() => refetch()}
+                disabled={isFetching}
               >
-                Try again
+                {isFetching ? 'Trying again…' : 'Try again'}
               </button>
             </div>,
           )}
@@ -148,7 +165,10 @@ const ChurchSwitcher: FC<ChurchSwitcherProps> = ({
     return (
       <div className="flex flex-col pb-8" aria-busy="true">
         {nameRow(
-          <div className="h-4 w-32 rounded bg-white/20 animate-pulse" />,
+          <>
+            <div className="h-4 w-32 rounded bg-white/20 animate-pulse" />
+            <span className="sr-only">Loading your churches</span>
+          </>,
         )}
       </div>
     )

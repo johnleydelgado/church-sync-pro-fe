@@ -4,7 +4,7 @@ import { capitalAtFirstLetter } from '@/common/utils/helper'
 import { RootState } from '@/redux/store'
 import { Drawer, IconButton, Navbar } from '@material-tailwind/react'
 import { isEmpty } from 'lodash'
-import React, { FC, ReactNode, useState } from 'react'
+import React, { FC, ReactNode, useEffect, useState } from 'react'
 import { HiOutlineLogout, HiOutlineUserCircle } from 'react-icons/hi'
 import { useSelector } from 'react-redux'
 import { useMediaQuery } from 'react-responsive'
@@ -125,6 +125,9 @@ const ItemSideBar = ({
 const NavBar: FC<NavBarProps> = () => {
   const isTabletOrMobile = useMediaQuery({ query: '(max-width: 767px)' })
   const [openNav, setOpenNav] = useState(false)
+  // A link in the drawer moves to another page; the drawer closes behind it.
+  const { pathname } = useLocation()
+  useEffect(() => setOpenNav(false), [pathname])
   const { firstName, lastName } = useSelector(
     (item: RootState) => item.common.user,
   )
