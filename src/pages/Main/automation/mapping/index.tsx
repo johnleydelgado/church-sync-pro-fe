@@ -1,7 +1,7 @@
 import { pcGetFunds } from '@/common/api/planning-center'
 import Loading from '@/common/components/loading/Loading'
 import MainLayout from '@/common/components/main-layout/MainLayout'
-import React, { FC, useEffect, useMemo, useState } from 'react'
+import React, { FC, useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from 'react-query'
 import { useSelector } from 'react-redux'
 
@@ -20,7 +20,8 @@ import { Tab } from '@headlessui/react'
 
 import { AccountTokenDataProps } from './component/Account'
 import Donation from './component/Donation'
-import { successNotification } from '@/common/utils/toast'
+import FieldStatus, { FieldSaveStatus } from './component/FieldStatus'
+import { failNotification, successNotification } from '@/common/utils/toast'
 import { isEmpty } from 'lodash'
 import { RootState } from '@/redux/store'
 import { useChurch } from '@/common/hooks/useChurch'
@@ -28,7 +29,7 @@ import { BiSortDown } from 'react-icons/bi'
 import { AiOutlineCloudSync, AiOutlineUserAdd } from 'react-icons/ai'
 import { Link, useSearchParams } from 'react-router-dom'
 import { mainRoute, routeSettings } from '@/common/constant/route'
-import { Button, Tooltip } from '@material-tailwind/react'
+import { Tooltip } from '@material-tailwind/react'
 import { MdAppRegistration } from 'react-icons/md'
 import { BsQuestionCircle } from 'react-icons/bs'
 import { useDispatch } from 'react-redux'
@@ -118,6 +119,9 @@ const HelpTip: FC<{ text: string }> = ({ text }) => (
   </Tooltip>
 )
 
+/** One of the Bank tab's four dropdowns; each shows its own save status. */
+type BankField = 'donation' | 'registration' | 'feeAccount' | 'feeClass'
+
 const Mapping: FC<SettingsProps> = () => {
   const dispatch = useDispatch()
   const { selectedBankAccount, selectedBankExpense } = useSelector(
@@ -162,23 +166,72 @@ const Mapping: FC<SettingsProps> = () => {
       refetchActive: false,
     })
 
+  const [bankStatus, setBankStatus] = useState<
+    Partial<Record<BankField, FieldSaveStatus>>
+  >({})
+  const setFieldStatus = (field: BankField, status: FieldSaveStatus) =>
+    setBankStatus((prev) => ({ ...prev, [field]: status }))
+
+  // What the server last confirmed. A failed save puts the fields back to it, so the page never
+  // shows a choice as set when QuickBooks postings would not use it.
+  const savedBank = useRef<{
+    accounts: BankAccountProps[] | null
+    expense: BankAccountExpensesProps | null
+  }>({ accounts: null, expense: null })
+
   const { mutate: saveBankData } = useMutation<
     unknown,
-    unknown,
-    {
-      email: string
-      data: BankAccountProps[] | null
-    }
-  >(addUpdateBankSettings, { onSettled: markSettingsStale })
+    Error,
+    { field: BankField; email: string; data: BankAccountProps[] }
+  >(({ email, data }) => addUpdateBankSettings({ email, data }), {
+    onMutate: ({ field }) => setFieldStatus(field, 'saving'),
+    onSuccess: (_, { field, data }) => {
+      savedBank.current.accounts = data
+      setFieldStatus(field, 'saved')
+    },
+    onError: (e, { field }) => {
+      setFieldStatus(field, 'error')
+      dispatch(setSelectedBankAccount(savedBank.current.accounts))
+      failNotification({ title: e.message })
+    },
+    onSettled: markSettingsStale,
+  })
 
   const { mutate: saveBankCharges } = useMutation<
     unknown,
-    unknown,
-    {
-      email: string
-      data: BankAccountExpensesProps | null
-    }
-  >(addUpdateBankCharges, { onSettled: markSettingsStale })
+    Error,
+    { field: BankField; email: string; data: BankAccountExpensesProps }
+  >(({ email, data }) => addUpdateBankCharges({ email, data }), {
+    onMutate: ({ field }) => setFieldStatus(field, 'saving'),
+    onSuccess: (_, { field, data }) => {
+      savedBank.current.expense = data
+      setFieldStatus(field, 'saved')
+    },
+    onError: (e, { field }) => {
+      setFieldStatus(field, 'error')
+      dispatch(setSelectedBankExpense(savedBank.current.expense))
+      failNotification({ title: e.message })
+    },
+    onSettled: markSettingsStale,
+  })
+
+  // "Saved" fades after a moment; "Not saved" stays until that field is picked again.
+  useEffect(() => {
+    if (!Object.values(bankStatus).includes('saved')) return
+    const timer = setTimeout(
+      () =>
+        setBankStatus((prev) =>
+          Object.fromEntries(
+            Object.entries(prev).map(([k, v]) => [
+              k,
+              v === 'saved' ? 'idle' : v,
+            ]),
+          ),
+        ),
+      2500,
+    )
+    return () => clearTimeout(timer)
+  }, [bankStatus])
 
   // to get settings data. Keyed by church, so a switch refills the bank and fee fields below.
   const {
@@ -231,7 +284,7 @@ const Mapping: FC<SettingsProps> = () => {
       // Return an empty array if no matching data
       return []
     },
-    { staleTime: Infinity },
+    { enabled: !!churchId, staleTime: Infinity },
   )
 
   const { data: qboData, isLoading: isQboDataLoading } = useQuery(
@@ -362,16 +415,23 @@ const Mapping: FC<SettingsProps> = () => {
       : null
   }
 
-  const handleSaveBankBtn = () => {
-    successNotification({ title: 'Settings successfully saved !' })
-  }
-
   useEffect(() => {
     if (!isEmpty(userData?.UserSetting?.settingsData)) {
       setIsAutomationEnable(userData?.UserSetting.isAutomationEnable || false)
       setIsAutomationRegistration(
         userData?.UserSetting.isAutomationRegistration || false,
       )
+    }
+
+    if (userData) {
+      savedBank.current = {
+        accounts: isEmpty(userData.UserSetting?.settingBankData)
+          ? null
+          : userData.UserSetting?.settingBankData ?? null,
+        expense: isEmpty(userData.UserSetting?.settingBankCharges)
+          ? null
+          : userData.UserSetting?.settingBankCharges ?? null,
+      }
     }
 
     if (!isEmpty(userData?.UserSetting?.settingBankData)) {
@@ -408,14 +468,17 @@ const Mapping: FC<SettingsProps> = () => {
   // Bank and fee choices are saved where the person makes them, to the church on screen. They
   // used to be saved by effects watching the persisted redux values, which also fired on mount:
   // opening Mapping after a switch saved the previous church's choice into this one.
-  const pickBankAccounts = (next: BankAccountProps[]) => {
+  const pickBankAccounts = (field: BankField, next: BankAccountProps[]) => {
     dispatch(setSelectedBankAccount(next))
-    saveBankData({ email, data: next })
+    saveBankData({ field, email, data: next })
   }
 
-  const pickBankExpense = (next: BankAccountExpensesProps) => {
+  const pickBankExpense = (
+    field: BankField,
+    next: BankAccountExpensesProps,
+  ) => {
     dispatch(setSelectedBankExpense(next))
-    saveBankCharges({ email, data: next })
+    saveBankCharges({ field, email, data: next })
   }
 
   return (
@@ -644,6 +707,11 @@ const Mapping: FC<SettingsProps> = () => {
                           <div className="flex items-center gap-1 pb-2">
                             <p>Select Clearing Account</p>
                             <HelpTip text="A holding account for money that has left Stripe but hasn't reached your bank yet. Pick (or create in QuickBooks) an account like 'Stripe Clearing' — usually an Other Current Asset." />
+                            <span className="ml-2">
+                              <FieldStatus
+                                status={bankStatus.donation ?? 'idle'}
+                              />
+                            </span>
                           </div>
                           <Dropdown<{ value: string; label: string } | null>
                             options={qboData?.accounts
@@ -667,7 +735,7 @@ const Mapping: FC<SettingsProps> = () => {
                                 label: val?.label || '',
                                 value: val?.value || '',
                               })
-                              pickBankAccounts(updatedBankAccounts)
+                              pickBankAccounts('donation', updatedBankAccounts)
                             }}
                             value={donationAccountValue('donation')}
                             className="w-72"
@@ -681,6 +749,11 @@ const Mapping: FC<SettingsProps> = () => {
                           <div className="flex items-center gap-1 pb-2">
                             <p>Select Clearing Account</p>
                             <HelpTip text="A holding account for money that has left Stripe but hasn't reached your bank yet. Pick (or create in QuickBooks) an account like 'Stripe Clearing' — usually an Other Current Asset." />
+                            <span className="ml-2">
+                              <FieldStatus
+                                status={bankStatus.registration ?? 'idle'}
+                              />
+                            </span>
                           </div>
                           <Dropdown<{ value: string; label: string } | null>
                             options={qboData?.accounts
@@ -706,7 +779,10 @@ const Mapping: FC<SettingsProps> = () => {
                                 label: val?.label || '',
                                 value: val?.value || '',
                               })
-                              pickBankAccounts(updatedBankAccounts)
+                              pickBankAccounts(
+                                'registration',
+                                updatedBankAccounts,
+                              )
                             }}
                             value={donationAccountValue('registration')}
                             className="w-72"
@@ -724,6 +800,11 @@ const Mapping: FC<SettingsProps> = () => {
                               <div className="flex items-center gap-1 pb-2">
                                 <p>Select Account</p>
                                 <HelpTip text="Where Stripe's processing fees are recorded as an expense, e.g. 'Merchant Fees' or 'Bank Charges'." />
+                                <span className="ml-2">
+                                  <FieldStatus
+                                    status={bankStatus.feeAccount ?? 'idle'}
+                                  />
+                                </span>
                               </div>
                               <Dropdown<{ value: string; label: string } | null>
                                 options={qboData?.accounts
@@ -738,7 +819,7 @@ const Mapping: FC<SettingsProps> = () => {
                                 placeholder="Select Account"
                                 components={{ Input }}
                                 onChange={(val) => {
-                                  pickBankExpense({
+                                  pickBankExpense('feeAccount', {
                                     account: {
                                       label: val?.label || '',
                                       value: val?.value || '',
@@ -757,7 +838,14 @@ const Mapping: FC<SettingsProps> = () => {
                               />
                             </div>
                             <div>
-                              <p className="pb-2">Select Classes</p>
+                              <div className="flex items-center gap-1 pb-2">
+                                <p>Select Classes</p>
+                                <span className="ml-2">
+                                  <FieldStatus
+                                    status={bankStatus.feeClass ?? 'idle'}
+                                  />
+                                </span>
+                              </div>
                               <Dropdown<{ value: string; label: string } | null>
                                 options={qboData?.classes.map(
                                   (a: { value: any; label: any }) => ({
@@ -768,7 +856,7 @@ const Mapping: FC<SettingsProps> = () => {
                                 placeholder="Select Classes"
                                 components={{ Input }}
                                 onChange={(val) => {
-                                  pickBankExpense({
+                                  pickBankExpense('feeClass', {
                                     account: {
                                       label:
                                         selectedBankExpense?.account.label ||
@@ -792,14 +880,9 @@ const Mapping: FC<SettingsProps> = () => {
                         </div>
                       </div>
                     </div>
-                    <div className="flex justify-end pt-8">
-                      <Button
-                        className="bg-green-400"
-                        onClick={() => handleSaveBankBtn()}
-                      >
-                        Save
-                      </Button>
-                    </div>
+                    <p className="pt-4 text-sm text-gray-500">
+                      Each choice is saved as soon as you pick it.
+                    </p>
                   </div>
                 )}
               </Tab.Panel>

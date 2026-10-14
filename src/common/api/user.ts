@@ -215,6 +215,21 @@ const enableAutoSyncSetting = async ({
   }
 }
 
+/**
+ * Why a settings write failed: the server's sentence, or that it was never reached. Thrown, not
+ * returned - a value returned on failure let the page report saves that never landed.
+ */
+const settingsSaveError = (e: any, fallback: string) => {
+  const said = e?.response?.data?.message ?? e?.response?.data?.error
+  return new Error(
+    typeof said === 'string' && said
+      ? said
+      : e?.response
+      ? fallback
+      : 'Could not reach Church Sync Pro. Check your connection and try again.',
+  )
+}
+
 const addUpdateBankSettings = async ({
   email,
   data,
@@ -222,7 +237,6 @@ const addUpdateBankSettings = async ({
   email: string
   data: BankAccountProps[] | null
 }) => {
-  // await axios.get
   const url = userRoutes.addUpdateBankSettings
   const dataJson = JSON.stringify({
     email,
@@ -232,7 +246,7 @@ const addUpdateBankSettings = async ({
     const response = await apiCall.post(url, dataJson)
     return response.data
   } catch (e: any) {
-    return []
+    throw settingsSaveError(e, "Couldn't save the clearing account.")
   }
 }
 
@@ -276,7 +290,6 @@ const addUpdateBankCharges = async ({
   email: string
   data: BankAccountExpensesProps | null
 }) => {
-  // await axios.get
   const url = userRoutes.addUpdateBankCharges
   const dataJson = JSON.stringify({
     email,
@@ -286,7 +299,7 @@ const addUpdateBankCharges = async ({
     const response = await apiCall.post(url, dataJson)
     return response.data
   } catch (e: any) {
-    return []
+    throw settingsSaveError(e, "Couldn't save the Stripe fees account.")
   }
 }
 
