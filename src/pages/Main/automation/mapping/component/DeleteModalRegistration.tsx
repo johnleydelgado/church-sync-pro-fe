@@ -51,19 +51,6 @@ const DeleteModalRegistration: FC<ModalRegistrationProps> = ({
 
   const isOpen = openModals.includes(MODALS_NAME.modalDeleteRegistration)
 
-  // const { data: userData } = useQuery(
-  //   ['getUserRelatedSettings', reTriggerIsUserTokens, bookkeeper],
-  //   async () => {
-  //     const emailF =
-  //       user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-  //     if (emailF) {
-  //       const res = await getUserRelated(emailF)
-  //       return res.data
-  //     }
-  //   },
-  //   { staleTime: Infinity },
-  // )
-
   const { mutate, isLoading: isSavingSettings } = useMutation<
     unknown,
     unknown,

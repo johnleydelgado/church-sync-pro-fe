@@ -350,10 +350,19 @@ export const common = createSlice({
     ) => {
       state.pendingConnection = action.payload
     },
-    /** Bank and fee choices belong to one church; clear them when the church changes. */
+    /**
+     * Everything here belongs to one church; put it back when the church changes. Bank and fee
+     * choices, and the legacy batch / Stripe payout views' data, cursor, page, start date and
+     * date filter.
+     */
     resetChurchScopedState: (state) => {
       state.selectedBankAccount = null
       state.selectedBankExpense = null
+      state.stripeCurrentData = initialState.stripeCurrentData
+      state.lastObjectId = initialState.lastObjectId
+      state.persistPage = initialState.persistPage
+      state.selectedStartDate = initialState.selectedStartDate
+      state.dateRangeTransaction = initialState.dateRangeTransaction
     },
   },
 })

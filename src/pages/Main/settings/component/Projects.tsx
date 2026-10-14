@@ -17,16 +17,11 @@ import { capitalAtFirstLetter } from '@/common/utils/helper'
 import { OPEN_MODAL } from '@/redux/common'
 import { MODALS_NAME } from '@/common/constant/modal'
 import { useQuery } from 'react-query'
-import { bookkeeperList } from '@/common/api/user'
 import { format } from 'date-fns'
 import Lottie from 'lottie-react'
 import empty from '@/common/assets/empty.json'
 import { AiOutlineUserAdd } from 'react-icons/ai'
-import ModalInvitation from '../../bookkeeper/components/Modal'
-import {
-  setDeleteBookkeeper,
-  setProjectFieldValues,
-} from '@/redux/nonPersistState'
+import { setProjectFieldValues } from '@/redux/nonPersistState'
 import { QboGetAllQboData, findCustomers, getQboData } from '@/common/api/qbo'
 import { BiChevronLeft, BiChevronRight } from 'react-icons/bi'
 import ModalCreateUpdateProject from '@/common/components/modal/ModalCreateUpdateProject'
@@ -36,14 +31,6 @@ import DeleteModal from '../modal/DeleteModal'
 import { QboDataSelectProps } from '../../automation/mapping'
 
 interface AccountProps {}
-
-interface BookkeeperProps {
-  email: string
-  id: number
-  createdAt: string
-  userId: number | null
-  User: { email: string; firstName: string; lastName: string }
-}
 
 const mappingPayload = (obj: any): CustomerProps => ({
   email: obj?.PrimaryEmailAddr?.Address || '',
@@ -67,16 +54,6 @@ const ITEMS_PER_PAGE = 5
 const Projects: FC<AccountProps> = ({}) => {
   const dispatch = useDispatch()
   const [searchTerm, setSearchTerm] = useState<string>('')
-  const openModal = () => {
-    dispatch(OPEN_MODAL(MODALS_NAME.invitation))
-  }
-
-  // const openDeleteModal = () => {
-  //   dispatch(OPEN_MODAL(MODALS_NAME.deleteBookeeper))
-  //   // dispatch(setDeleteBookkeeper({ id, email }))
-  // }
-
-  const user = useSelector((state: RootState) => state.common.user)
   const { email, churchId } = useChurch()
   const { projectFieldValues } = useSelector(
     (state: RootState) => state.nonPersistState,
@@ -92,15 +69,6 @@ const Projects: FC<AccountProps> = ({}) => {
 
   const [editingCustomerId, setEditingCustomerId] = useState<number | string>(
     '',
-  )
-
-  const { data, refetch, isLoading } = useQuery<BookkeeperProps[]>(
-    ['bookkeeperList'],
-    async () => {
-      const res = await bookkeeperList({ clientId: user?.id })
-      return res.data
-    },
-    { staleTime: Infinity, refetchOnWindowFocus: false },
   )
 
   const {

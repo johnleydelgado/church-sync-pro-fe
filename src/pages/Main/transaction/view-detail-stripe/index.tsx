@@ -161,24 +161,6 @@ const ViewDetails: FC<indexProps> = ({}) => {
     }[]
   >([{ id: null, batchId: null, createdAt: null, donationId: null }])
 
-  // const {
-  //   data: batchesData,
-  //   isLoading: isLoadingBatchData,
-  //   isRefetching: isRefetchingBatchData,
-  //   refetch,
-  // } = useQuery(
-  //   ['getBatchStripeViewDetails'], // Same query key as in the first page
-  //   async () => {
-  //     const email =
-  //       user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-  //     if (email) return await pcGetBatches(email, '', 0)
-  //   },
-  //   {
-  //     staleTime: Infinity, // The data will be considered fresh indefinitely
-  //     refetchOnWindowFocus: false,
-  //   },
-  // )
-
   const {
     synchedBatches: synchedBatchesF,
     isLoading: isLoadingBatchData,

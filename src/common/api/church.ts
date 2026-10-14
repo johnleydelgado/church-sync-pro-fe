@@ -76,11 +76,16 @@ const call = async <T>(p: Promise<any>, fallback: string): Promise<T> => {
   }
 }
 
-export const getMyChurches = () =>
-  call<MyChurch[]>(
+export const getMyChurches = async () => {
+  const fallback = 'Could not load your churches.'
+  const churches = await call<MyChurch[]>(
     apiCall.get(churchRoutes.mine),
-    'Could not load your churches.',
+    fallback,
   )
+  // Anything but a list (an HTML error page, an old server) is a failure, not "no churches".
+  if (!Array.isArray(churches)) throw new ChurchApiError(fallback)
+  return churches
+}
 
 export const createChurch = (name: string) =>
   call<MyChurch>(

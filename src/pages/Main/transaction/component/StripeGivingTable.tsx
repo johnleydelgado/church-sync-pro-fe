@@ -175,9 +175,12 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({
     {
       onMutate: (day: string) => {
         setPostingDay(day)
+        // The row as it was when Post was pressed: by the time the answer arrives the list may
+        // already have been refetched with this day's new totals.
+        return { before: (data?.days ?? []).find((d) => d.date === day) }
       },
       onSettled: () => setPostingDay(null),
-      onSuccess: (result, day) => {
+      onSuccess: (result, day, context) => {
         // Gifts whose fund has no QuickBooks account are left out entirely. Say so - by fund and
         // amount - instead of calling the day up to date (Active, Legacy Offering, 2026-10-10).
         const unmapped = (result?.unmapped ?? []).filter((u) => u.day === day)
@@ -188,7 +191,8 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({
           failNotification({
             title: `Nothing posted for ${formatDate(day)}: ${unmappedText} has no QuickBooks account. Map it on the Mapping page, then press the button again.`,
           })
-          queryClient.invalidateQueries(queryKey)
+          // By prefix: the dates may have changed while the post was running.
+          queryClient.invalidateQueries('getStripeGivingByDay')
           return
         }
         if (unmapped.length) {
@@ -197,7 +201,7 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({
           })
         }
         if (result?.postedDays?.length) {
-          const before = (data?.days ?? []).find((d) => d.date === day)
+          const before = context?.before
           const difference = before ? unpostedDifference(before) : 0
           successNotification({
             title:
@@ -218,7 +222,7 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({
             title: `${formatDate(day)} is already up to date in QuickBooks`,
           })
         }
-        queryClient.invalidateQueries(queryKey)
+        queryClient.invalidateQueries('getStripeGivingByDay')
         queryClient.invalidateQueries('getDailyJournalEntries')
       },
       onError: () => {
@@ -243,7 +247,7 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({
     {
       onSuccess: () => {
         successNotification({ title: 'Sync start date saved' })
-        queryClient.invalidateQueries(queryKey)
+        queryClient.invalidateQueries('getStripeGivingByDay')
       },
       onError: (e: any) => {
         failNotification({

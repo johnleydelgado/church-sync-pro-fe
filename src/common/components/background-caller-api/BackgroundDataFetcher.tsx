@@ -15,6 +15,10 @@ const BackgroundDataFetcher = () => {
   const { email, churchId } = useChurch()
 
   useEffect(() => {
+    // Set when the route or church changes again before the answers arrive: a late answer
+    // belongs to the church being left and must not overwrite the new one's lists.
+    let cancelled = false
+
     const fetchData = async () => {
       dispatch(CLOSE_MODAL(MODALS_NAME.subscriptionModal))
 
@@ -26,12 +30,16 @@ const BackgroundDataFetcher = () => {
         const fetchedQBOData = await getQboData(email)
 
         const fetchedStripeListData = await getActiveStripeList(email)
+        if (cancelled) return
         dispatch(setReduxQboData(fetchedQBOData))
         dispatch(setReduxStripeData(fetchedStripeListData))
       }
     }
 
     fetchData() // Call the async function inside useEffect
+    return () => {
+      cancelled = true
+    }
     // churchId: a switch reloads the selected church's QuickBooks and Stripe lists.
   }, [location, churchId]) // eslint-disable-line react-hooks/exhaustive-deps
 
