@@ -64,9 +64,24 @@ import AskUs from './Main/ask-us/AskUs'
 import Home from './Main/home/Home'
 import QuickStartGuide from './Main/quick-start-guide/QuickStartGuide'
 import ChurchesPage from './Main/churches'
+import MainLayout from '@/common/components/main-layout/MainLayout'
+import NoChurchYet from '@/common/components/NoChurchYet'
 import BackgroundDataFetcher from '@/common/components/background-caller-api/BackgroundDataFetcher'
 
 interface indexProps {}
+
+/**
+ * Pages that work on a church. Someone on no church sees NoChurchYet there instead. The rest -
+ * Churches and Settings, sign-in, the invite link, the connect callback, Ask Us - work without one.
+ */
+const NEEDS_CHURCH = [
+  mainRoute.DASHBOARD,
+  mainRoute.HOME,
+  mainRoute.QUICK_START_QUIDE,
+  mainRoute.TRANSACTION,
+  mainRoute.DAILY,
+  mainRoute.AUTOMATION,
+]
 
 const MainPage: FC<indexProps> = () => {
   // const { isConnected } = useApiConnectivityCheck()
@@ -196,6 +211,26 @@ const MainPage: FC<indexProps> = () => {
   }
 
   if (isLoading || waitingForChurch) return <Loading />
+
+  // The list loaded and the person is on no church: a page that needs one says so, with a way to
+  // add one. The sidebar stays, so Churches and Settings are a click away.
+  const onNoChurch =
+    !!personalToken &&
+    Array.isArray(churches) &&
+    churches.length === 0 &&
+    NEEDS_CHURCH.some(
+      (path) =>
+        location.pathname === path || location.pathname.startsWith(`${path}/`),
+    )
+  if (onNoChurch) {
+    return (
+      <div className="h-screen bg-slate-100">
+        <MainLayout>
+          <NoChurchYet />
+        </MainLayout>
+      </div>
+    )
+  }
 
   return (
     // Keyed by church: a switch remounts every page, so no form, debounced save or local state
@@ -376,9 +411,7 @@ const MainPage: FC<indexProps> = () => {
         />
         <Route
           path={routeSettings.BOOKKEEPER}
-          element={
-            <Navigate to={`${mainRoute.SETTINGS}?tab=bookkeeper`} replace />
-          }
+          element={<Navigate to={`${mainRoute.SETTINGS}?tab=people`} replace />}
         />
         <Route
           path={routeSettings.PROJECTS}
