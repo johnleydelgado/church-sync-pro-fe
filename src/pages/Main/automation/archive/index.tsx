@@ -30,8 +30,7 @@ const Index: FC<indexProps> = ({}) => {
     Registration: [],
   })
 
-  const { bookkeeper, user } = useSelector((item: RootState) => item.common)
-  const { email: churchEmail, churchId } = useChurch()
+  const { email, churchId } = useChurch()
 
   const [isLoadingTrigger, setIsLoadingTrigger] = useState<boolean>(false)
 
@@ -67,7 +66,7 @@ const Index: FC<indexProps> = ({}) => {
       ),
       async () => {
         // Assuming getUserRelated is an asynchronous function
-        const result = await getUserRelatedSettings(churchEmail)
+        const result = await getUserRelatedSettings(email)
         return result.data
       },
       { enabled: !!churchId, staleTime: Infinity },
@@ -100,9 +99,6 @@ const Index: FC<indexProps> = ({}) => {
         : undefined
       // Nothing to re-activate, and the mapping object must never be overwritten from here.
       if (type === 'stripe' && !updatedSettingRegistrationData) return
-
-      const email =
-        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
 
       // Condition to update the correct data field based on 'type'
       const mutationData =

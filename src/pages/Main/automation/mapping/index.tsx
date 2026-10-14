@@ -120,15 +120,14 @@ const HelpTip: FC<{ text: string }> = ({ text }) => (
 
 const Mapping: FC<SettingsProps> = () => {
   const dispatch = useDispatch()
-  const { user, selectedBankAccount, selectedBankExpense } = useSelector(
+  const { selectedBankAccount, selectedBankExpense } = useSelector(
     (state: RootState) => state.common,
   )
 
   const reduxStripeData = useSelector(
     (state: RootState) => state.stripeData.reduxStripeData,
   )
-  const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
-  const { email: churchEmail, churchId } = useChurch()
+  const { email, churchId } = useChurch()
   const mappingNumber = useSelector(
     (item: RootState) => item.common.mappingNumber,
   )
@@ -155,6 +154,14 @@ const Mapping: FC<SettingsProps> = () => {
     }
   >(enableAutoSyncSetting)
 
+  // The cached settings were read before this save. Mark every copy stale without refetching the
+  // page in front of the person, so the next visit - or a switch back to this church - reads
+  // what was saved instead of filling the bank fields from the old copy.
+  const markSettingsStale = () =>
+    queryClient.invalidateQueries('getUserRelatedSettings', {
+      refetchActive: false,
+    })
+
   const { mutate: saveBankData } = useMutation<
     unknown,
     unknown,
@@ -162,7 +169,7 @@ const Mapping: FC<SettingsProps> = () => {
       email: string
       data: BankAccountProps[] | null
     }
-  >(addUpdateBankSettings)
+  >(addUpdateBankSettings, { onSettled: markSettingsStale })
 
   const { mutate: saveBankCharges } = useMutation<
     unknown,
@@ -171,24 +178,23 @@ const Mapping: FC<SettingsProps> = () => {
       email: string
       data: BankAccountExpensesProps | null
     }
-  >(addUpdateBankCharges)
+  >(addUpdateBankCharges, { onSettled: markSettingsStale })
 
-  // to get settings data
-  const { data: userData, refetch: refetchUserData } =
-    useQuery<UserSettingsProps>(
-      ['getUserRelatedSettings', reTriggerIsUserTokens, bookkeeper],
-      async () => {
-        const emailF =
-          user.role === 'bookkeeper'
-            ? bookkeeper?.clientEmail || ''
-            : user.email
-        if (emailF) {
-          const res = await getUserRelated(emailF)
-          return res.data
-        }
-      },
-      { staleTime: Infinity },
-    )
+  // to get settings data. Keyed by church, so a switch refills the bank and fee fields below.
+  const {
+    data: userData,
+    refetch: refetchUserData,
+    isFetching: isFetchingUserData,
+  } = useQuery<UserSettingsProps>(
+    ['getUserRelatedSettings', reTriggerIsUserTokens, churchId],
+    async () => {
+      if (email) {
+        const res = await getUserRelated(email)
+        return res.data
+      }
+    },
+    { enabled: !!churchId, staleTime: Infinity },
+  )
 
   const {
     data: fundData,
@@ -197,11 +203,8 @@ const Mapping: FC<SettingsProps> = () => {
     isFetching: isFetchingFunds,
     refetch: refetchFunds,
   } = useQuery<FundAttProps[]>(
-    ['getFunds', bookkeeper, userData], // Same query key as on the first page
+    ['getFunds', churchId, userData],
     async () => {
-      const email =
-        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-
       if (!isEmpty(userData?.UserSetting?.settingsData)) {
         if (email) {
           const res = (await pcGetFunds({ email, throwOnError: true })) as FundAttProps[]
@@ -233,7 +236,7 @@ const Mapping: FC<SettingsProps> = () => {
 
   const { data: qboData, isLoading: isQboDataLoading } = useQuery(
     useMemo(() => ['getAllQboData', churchId], [churchId]), // Memoize the key
-    async () => await getQboData(churchEmail),
+    async () => await getQboData(email),
     { enabled: !!churchId, staleTime: Infinity, refetchOnWindowFocus: false },
   )
 
@@ -241,8 +244,8 @@ const Mapping: FC<SettingsProps> = () => {
     { name: string; category: 'stripe' | 'batch'; date: string }[]
   >(
     useMemo(
-      () => ['getStripeListInRegistration', bookkeeper, reduxStripeData],
-      [bookkeeper, reduxStripeData],
+      () => ['getStripeListInRegistration', churchId, reduxStripeData],
+      [churchId, reduxStripeData],
     ), // Stable key
     async () => {
       // If accounts array has elements, use the Redux data
@@ -255,8 +258,6 @@ const Mapping: FC<SettingsProps> = () => {
         return filterData
       }
 
-      const email =
-        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
       if (email) {
         const fetchedData = await getStripeList({ email }) // Fetch only if needed
         dispatch(setReduxStripeData(fetchedData.data))
@@ -314,17 +315,7 @@ const Mapping: FC<SettingsProps> = () => {
     },
   )
 
-  useEffect(() => {
-    if (user.role === 'client') {
-      const newCat = { ...categories }
-      setCategories(newCat)
-    }
-  }, [user])
-
   const enableDisableAutomation = async (type: 'donation' | 'registration') => {
-    const email =
-      user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
-
     if (type === 'donation') {
       await mutate({ email, isAutomationEnable: !isAutomationEnable })
       setIsAutomationEnable(!isAutomationEnable)
@@ -344,8 +335,6 @@ const Mapping: FC<SettingsProps> = () => {
     date: string | undefined,
   ) => {
     if (date) {
-      const email =
-        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
       mutation.mutate({
         email,
         type: type === 'startDateDonation' ? 'donation' : 'registration',
@@ -416,33 +405,18 @@ const Mapping: FC<SettingsProps> = () => {
     }
   }, [userData])
 
-  useEffect(() => {
-    const save = async () => {
-      if (selectedBankAccount) {
-        const email =
-          user.role === 'bookkeeper'
-            ? bookkeeper?.clientEmail || ''
-            : user.email
-        await saveBankData({ email, data: selectedBankAccount })
-      }
-    }
+  // Bank and fee choices are saved where the person makes them, to the church on screen. They
+  // used to be saved by effects watching the persisted redux values, which also fired on mount:
+  // opening Mapping after a switch saved the previous church's choice into this one.
+  const pickBankAccounts = (next: BankAccountProps[]) => {
+    dispatch(setSelectedBankAccount(next))
+    saveBankData({ email, data: next })
+  }
 
-    save()
-  }, [selectedBankAccount])
-
-  useEffect(() => {
-    const save = async () => {
-      if (selectedBankExpense) {
-        const email =
-          user.role === 'bookkeeper'
-            ? bookkeeper?.clientEmail || ''
-            : user.email
-        await saveBankCharges({ email, data: selectedBankExpense })
-      }
-    }
-
-    save()
-  }, [selectedBankExpense])
+  const pickBankExpense = (next: BankAccountExpensesProps) => {
+    dispatch(setSelectedBankExpense(next))
+    saveBankCharges({ email, data: next })
+  }
 
   return (
     <MainLayout>
@@ -572,7 +546,13 @@ const Mapping: FC<SettingsProps> = () => {
                       </div>
                     </div>
 
-                    <Donation fundData={fundData || []} userData={userData} />
+                    {/* Keyed by church: its autosave must never send one church's mapping
+                        to another's email when the switch lands on a cached page. */}
+                    <Donation
+                      key={churchId ?? 'none'}
+                      fundData={fundData || []}
+                      userData={userData}
+                    />
                   </div>
                 )}
               </Tab.Panel>
@@ -595,7 +575,7 @@ const Mapping: FC<SettingsProps> = () => {
                     </Link>
                   </div>
                 ) : (
-                  // Keyed by church: a bookkeeper switching client gets a fresh form.
+                  // Keyed by the church's account: switching church gets a fresh form.
                   <RegistrationMapping
                     key={userData?.id ?? 'loading'}
                     userData={userData}
@@ -620,6 +600,26 @@ const Mapping: FC<SettingsProps> = () => {
                     >
                       Click Here !
                     </Link>
+                  </div>
+                ) : isFetchingUserData ? (
+                  // Each pick saves the whole list, built from what is shown. Until this church's
+                  // saved choices are in, a pick would save a partial list over them.
+                  <Loading />
+                ) : !userData ? (
+                  <div className="flex flex-col items-center justify-center gap-3 h-96">
+                    <p className="text-2xl text-center font-thin">
+                      Couldn&apos;t load this church&apos;s settings.
+                    </p>
+                    <p className="text-center text-sm text-gray-500">
+                      Nothing has been changed.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => refetchUserData()}
+                      className="rounded-lg bg-yellow px-4 py-2 text-sm font-medium text-white"
+                    >
+                      Try again
+                    </button>
                   </div>
                 ) : (
                   <div>
@@ -673,9 +673,7 @@ const Mapping: FC<SettingsProps> = () => {
                                 label: val?.label || '',
                                 value: val?.value || '',
                               })
-                              dispatch(
-                                setSelectedBankAccount(updatedBankAccounts),
-                              )
+                              pickBankAccounts(updatedBankAccounts)
                             }}
                             value={donationAccountValue('donation')}
                             className="w-72"
@@ -714,9 +712,7 @@ const Mapping: FC<SettingsProps> = () => {
                                 label: val?.label || '',
                                 value: val?.value || '',
                               })
-                              dispatch(
-                                setSelectedBankAccount(updatedBankAccounts),
-                              )
+                              pickBankAccounts(updatedBankAccounts)
                             }}
                             value={donationAccountValue('registration')}
                             className="w-72"
@@ -748,23 +744,19 @@ const Mapping: FC<SettingsProps> = () => {
                                 placeholder="Select Account"
                                 components={{ Input }}
                                 onChange={(val) => {
-                                  dispatch(
-                                    setSelectedBankExpense({
-                                      account: {
-                                        label: val?.label || '',
-                                        value: val?.value || '',
-                                      },
-                                      class: {
-                                        // Here, you retain the class information from the current state
-                                        label:
-                                          selectedBankExpense?.class.label ||
-                                          '',
-                                        value:
-                                          selectedBankExpense?.class.value ||
-                                          '',
-                                      },
-                                    }),
-                                  )
+                                  pickBankExpense({
+                                    account: {
+                                      label: val?.label || '',
+                                      value: val?.value || '',
+                                    },
+                                    class: {
+                                      // Here, you retain the class information from the current state
+                                      label:
+                                        selectedBankExpense?.class.label || '',
+                                      value:
+                                        selectedBankExpense?.class.value || '',
+                                    },
+                                  })
                                 }}
                                 value={selectedBankExpense?.account} // Only send the account part to the Dropdown
                                 className="w-72"
@@ -782,23 +774,21 @@ const Mapping: FC<SettingsProps> = () => {
                                 placeholder="Select Classes"
                                 components={{ Input }}
                                 onChange={(val) => {
-                                  dispatch(
-                                    setSelectedBankExpense({
-                                      account: {
-                                        label:
-                                          selectedBankExpense?.account.label ||
-                                          '',
-                                        value:
-                                          selectedBankExpense?.account.value ||
-                                          '',
-                                      },
-                                      class: {
-                                        label: val?.label || '',
-                                        value: val?.value || '',
-                                        // Here, you retain the class information from the current state
-                                      },
-                                    }),
-                                  )
+                                  pickBankExpense({
+                                    account: {
+                                      label:
+                                        selectedBankExpense?.account.label ||
+                                        '',
+                                      value:
+                                        selectedBankExpense?.account.value ||
+                                        '',
+                                    },
+                                    class: {
+                                      label: val?.label || '',
+                                      value: val?.value || '',
+                                      // Here, you retain the class information from the current state
+                                    },
+                                  })
                                 }}
                                 value={selectedBankExpense?.class} // Only send the account part to the Dropdown
                                 className="w-72"

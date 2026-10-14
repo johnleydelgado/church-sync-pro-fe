@@ -95,7 +95,7 @@ const HelpTip: FC<{ text: string }> = ({ text }) => (
 )
 
 const Registration: FC<DonationProps> = ({ stripeEvents, userData }) => {
-  const { user, selectedStartDate } = useSelector(
+  const { selectedStartDate } = useSelector(
     (state: RootState) => state.common,
   )
 
@@ -109,8 +109,7 @@ const Registration: FC<DonationProps> = ({ stripeEvents, userData }) => {
   const [openStates, setOpenStates] = useState<Record<number, boolean>>({})
 
   const dispatch = useDispatch()
-  const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
-  const { email: churchEmail, churchId } = useChurch()
+  const { email, churchId } = useChurch()
   const reTriggerIsUserTokens = useSelector(
     (item: RootState) => item.common.reTriggerIsUserTokens,
   )
@@ -131,7 +130,7 @@ const Registration: FC<DonationProps> = ({ stripeEvents, userData }) => {
       //   return reduxQboData
       // }
 
-      const fetchedData = await getQboData(churchEmail) // Fetch only if needed
+      const fetchedData = await getQboData(email) // Fetch only if needed
       dispatch(setReduxQboData(fetchedData))
       return fetchedData
     },
@@ -247,8 +246,6 @@ const Registration: FC<DonationProps> = ({ stripeEvents, userData }) => {
 
     try {
       setOnGoingSaving(true)
-      const email =
-        user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
       await mutate({
         email,
         settingRegistrationData: settingsData,
@@ -308,8 +305,6 @@ const Registration: FC<DonationProps> = ({ stripeEvents, userData }) => {
       return item // Otherwise, return the item as is.
     })
 
-    const email =
-      user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
     await mutate({
       email,
       settingRegistrationData: updatedSettingsData,

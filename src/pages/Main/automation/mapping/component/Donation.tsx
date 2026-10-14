@@ -148,7 +148,7 @@ const fieldKey = (fundName: string | null | undefined, category: string) =>
   `${fundName ?? ''}::${category}`
 
 const Donation: FC<DonationProps> = ({ fundData, userData }) => {
-  const { user, selectedStartDate } = useSelector(
+  const { selectedStartDate } = useSelector(
     (state: RootState) => state.common,
   )
   const [settingsData, setSettingsData] = useState<qboSettings[]>([])
@@ -164,8 +164,8 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
   const [openStates, setOpenStates] = useState<Record<number, boolean>>({})
 
   const dispatch = useDispatch()
-  const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
-  const { email: churchEmail, churchId } = useChurch()
+  // The parent keys this component by church, so these never change under a mounted form.
+  const { email, churchId } = useChurch()
   const reTriggerIsUserTokens = useSelector(
     (item: RootState) => item.common.reTriggerIsUserTokens,
   )
@@ -179,7 +179,7 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
 
   const { data: qboData, isLoading: isQboDataLoading } = useQuery(
     useMemo(() => ['getAllQboData', churchId], [churchId]), // Memoize the key
-    async () => await getQboData(churchEmail),
+    async () => await getQboData(email),
     { enabled: !!churchId, staleTime: Infinity, refetchOnWindowFocus: false },
   )
 
@@ -187,9 +187,6 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
   const modifiedOptionsCustomer = qboData?.customers
     ? [{ value: 'Add Project', label: 'Add Project' }, ...qboData.customers]
     : []
-
-  const email =
-    user.role === 'bookkeeper' ? bookkeeper?.clientEmail || '' : user.email
 
   const selectHandler = ({
     val,

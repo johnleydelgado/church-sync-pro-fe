@@ -7,6 +7,7 @@ import { capitalAtFirstLetter } from '@/common/utils/helper'
 import { failNotification, successNotification } from '@/common/utils/toast'
 import { CLOSE_MODAL } from '@/redux/common'
 import { RootState } from '@/redux/store'
+import { useChurch } from '@/common/hooks/useChurch'
 import { Dialog, Transition } from '@headlessui/react'
 import { Button } from '@material-tailwind/react'
 
@@ -31,10 +32,9 @@ const AddUpdateModalRegistration: FC<ModalRegistrationProps> = ({
   refetch,
 }) => {
   const dispatch = useDispatch()
-  const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
+  const { accountUserId } = useChurch()
   const [name, setName] = useState<string>('')
   const [isSending, setIsSending] = useState<boolean>(false)
-  const user = useSelector((state: RootState) => state.common.user)
   const openModals = useSelector((state: RootState) => state.common.openModals)
 
   const handleCloseModals = () => {
@@ -47,8 +47,7 @@ const AddUpdateModalRegistration: FC<ModalRegistrationProps> = ({
     setIsSending(true)
 
     try {
-      const id =
-        user.role === 'bookkeeper' ? bookkeeper?.clientId || '' : user.id
+      const id = accountUserId
       if (id && name) {
         const res = await pcHandleRegistrationEvents({
           action: 'create',
