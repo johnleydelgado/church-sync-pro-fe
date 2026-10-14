@@ -32,6 +32,7 @@ export const mainRoute = {
   AUTOMATION_MAPPING: '/automation/mapping',
   AUTOMATION_ARCHIVE: '/automation/archive',
   CLIENT_LIST: '/client-management/client-list',
+  CHURCHES: '/churches',
 }
 
 export const routeSettings = {

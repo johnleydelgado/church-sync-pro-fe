@@ -69,8 +69,8 @@ export const dropdownArrLinkSettings: DropdownLink[] = [
     childrenIcon: <MdIntegrationInstructions size={22} className="ml-2" />,
   },
   {
-    name: 'Bookkeeper',
-    link: routeSettings.BOOKKEEPER,
+    name: 'People',
+    link: `${mainRoute.SETTINGS}?tab=people`,
     childrenIcon: <BsPeopleFill size={22} className="ml-2" />,
   },
   {
@@ -111,8 +111,8 @@ const pages: PageProps[] = [
     dropdownLinks: dropdownArrLinkAutomation,
   },
   {
-    name: 'Clients',
-    link: mainRoute.CLIENT_LIST,
+    name: 'Churches',
+    link: mainRoute.CHURCHES,
     icon: <FiUsers size={30} />,
   },
   {

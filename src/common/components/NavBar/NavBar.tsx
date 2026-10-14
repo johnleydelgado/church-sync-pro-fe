@@ -1,32 +1,20 @@
-import { bookkeeperList } from '@/common/api/user'
 import useLogoutHandler from '@/common/hooks/useLogoutHandler'
+import { useChurch } from '@/common/hooks/useChurch'
 import { capitalAtFirstLetter } from '@/common/utils/helper'
-import { setBookkeeper } from '@/redux/common'
 import { RootState } from '@/redux/store'
 import { Drawer, IconButton, Navbar } from '@material-tailwind/react'
 import { isEmpty } from 'lodash'
-import React, { FC, ReactNode, useEffect, useState } from 'react'
+import React, { FC, ReactNode, useState } from 'react'
 import { HiOutlineLogout, HiOutlineUserCircle } from 'react-icons/hi'
-import { useQueries, useQuery } from 'react-query'
-import { useDispatch } from 'react-redux'
 import { useSelector } from 'react-redux'
 import { useMediaQuery } from 'react-responsive'
 import { Link, useLocation } from 'react-router-dom'
-import Dropdown, { components } from 'react-select'
-import { customStyles } from '../SideBar/SideBar'
 import { mainRoute } from '@/common/constant/route'
 import { BiHelpCircle, BiSortDown } from 'react-icons/bi'
 import { FaChevronDown, FaChevronUp, FaTimes } from 'react-icons/fa'
 import pages, { DropdownLink } from '../SideBar/constant'
-import { useBookkeeperListSidebar } from '@/common/hooks/useQueries'
+import ChurchSwitcher from '../ChurchSwitcher/ChurchSwitcher'
 interface NavBarProps {}
-
-const Input = (props: any) => (
-  <components.Input
-    {...props}
-    inputClassName="outline-none border-none shadow-none focus:ring-transparent"
-  />
-)
 
 const isRouteActive = (pathName?: string, link?: string) => {
   if (!pathName || !link) return false
@@ -136,59 +124,16 @@ const ItemSideBar = ({
 
 const NavBar: FC<NavBarProps> = () => {
   const isTabletOrMobile = useMediaQuery({ query: '(max-width: 767px)' })
-  const dispatch = useDispatch()
   const [openNav, setOpenNav] = useState(false)
-  const { id, role, firstName, lastName, churchName } = useSelector(
+  const { firstName, lastName } = useSelector(
     (item: RootState) => item.common.user,
   )
-  const userData = useSelector((item: RootState) => item.common.user)
-
-  const bookkeeper = useSelector((item: RootState) => item.common.bookkeeper)
-
-  const { data = [] } = useBookkeeperListSidebar(id, role)
-  const [organizationList, setOrginazationList] = useState([
-    { value: '', label: '' },
-  ])
+  const { church } = useChurch()
   const logoutHandler = useLogoutHandler()
 
   const handleLogout = () => {
     logoutHandler()
   }
-
-  const selectOrganizationHandler = async (val: string, churchName: string) => {
-    if (bookkeeper)
-      dispatch(setBookkeeper({ ...bookkeeper, clientEmail: val, churchName }))
-  }
-
-  useEffect(() => {
-    if (!isEmpty(data)) {
-      // Mapping data to `temp`
-      const temp = data.map((a) => ({
-        value: String(a.Client.email) || '',
-        label: a.Client.churchName,
-        clientId: a.Client.id,
-        bookkeeperIntegrationAccessEnabled:
-          a.bookkeeperIntegrationAccessEnabled,
-      }))
-
-      if (!isEmpty(temp)) {
-        setOrginazationList(temp)
-
-        // Check if temp[0] exists before accessing its properties
-        if (!bookkeeper?.churchName && temp[0]) {
-          dispatch(
-            setBookkeeper({
-              clientEmail: temp[0].value,
-              churchName: temp[0].label,
-              clientId: temp[0].clientId,
-              bookkeeperIntegrationAccessEnabled:
-                temp[0].bookkeeperIntegrationAccessEnabled,
-            }),
-          )
-        }
-      }
-    }
-  }, [data, bookkeeper, dispatch, setOrginazationList])
 
   return (
     <React.Fragment>
@@ -202,9 +147,9 @@ const NavBar: FC<NavBarProps> = () => {
             <span className="text-sm font-bold text-primary">
               Church Sync Pro
             </span>
-            {(role === 'bookkeeper' ? bookkeeper?.churchName : churchName) ? (
+            {church?.name ? (
               <span className="text-xs text-gray-500 truncate max-w-[180px]">
-                {role === 'bookkeeper' ? bookkeeper?.churchName : churchName}
+                {church.name}
               </span>
             ) : null}
           </div>
@@ -269,37 +214,7 @@ const NavBar: FC<NavBarProps> = () => {
             </p>
           </div>
 
-          <div className="flex gap-2 items-center px-8 pb-8 pl-14">
-            <div className="rounded-lg bg-green-400 p-2 w-2 h-2" />
-            <p className="text-white text-xs">
-              {role === 'client' ? "Client's account" : 'Bookkeeper account'}
-            </p>
-          </div>
-
-          {!isEmpty(data) ? (
-            <div className="flex flex-col items-center w-full gap-4 pb-8">
-              <Dropdown
-                options={organizationList}
-                components={{ Input }}
-                placeholder="Search...."
-                className="w-full"
-                onChange={(val) => {
-                  if (typeof val === 'object' && val !== null) {
-                    selectOrganizationHandler(val.value || '', val.label || '')
-                  }
-                }}
-                styles={customStyles}
-                defaultValue={
-                  bookkeeper?.clientEmail
-                    ? {
-                        value: bookkeeper?.clientEmail,
-                        label: bookkeeper?.churchName,
-                      }
-                    : organizationList[0]
-                }
-              />
-            </div>
-          ) : null}
+          <ChurchSwitcher variant="drawer" />
 
           <div
             className={`text-white transform transition-all delay-300 duration-200 px-8 flex flex-col gap-8`}
@@ -309,7 +224,6 @@ const NavBar: FC<NavBarProps> = () => {
                 {...el}
                 pathName={location.pathname}
                 key={el.name}
-                isHide={el.name === 'Clients' && userData.role === 'client'}
               />
             ))}
           </div>
