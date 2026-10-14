@@ -7,6 +7,7 @@ import { RootState } from '../../../redux/store'
 
 import { getUserRelated } from '@/common/api/user'
 import { useChurch } from '@/common/hooks/useChurch'
+import { MyChurch } from '@/common/api/church'
 
 import Account from './component/Account'
 import { isEmpty } from 'lodash'
@@ -57,17 +58,32 @@ interface TabItem {
   key: string
   label: string
   Component: FC
-  clientOnly?: boolean
+  /** Whether the tab is shown for the selected church (null: none selected). */
+  visible: (church: MyChurch | null) => boolean
 }
+
+const always = () => true
+const withChurch = (church: MyChurch | null) => !!church
 
 // Tab keys are used as the `?tab=` value so tabs are deep-linkable.
 const TABS: TabItem[] = [
-  { key: 'profile', label: 'Profile', Component: Profile },
-  { key: 'billing', label: 'Billing', Component: Billing },
-  { key: 'integrations', label: 'Integrations', Component: Account, clientOnly: true },
-  { key: 'people', label: 'People', Component: People },
-  { key: 'projects', label: 'Projects', Component: Projects, clientOnly: true },
-  { key: 'email', label: 'Email', Component: Email },
+  { key: 'profile', label: 'Profile', Component: Profile, visible: always },
+  { key: 'billing', label: 'Billing', Component: Billing, visible: always },
+  {
+    key: 'integrations',
+    label: 'Integrations',
+    Component: Account,
+    // Owners, and bookkeepers an owner allowed to connect integrations.
+    visible: (church) => !!church?.canConnectIntegrations,
+  },
+  { key: 'people', label: 'People', Component: People, visible: withChurch },
+  {
+    key: 'projects',
+    label: 'Projects',
+    Component: Projects,
+    visible: withChurch,
+  },
+  { key: 'email', label: 'Email', Component: Email, visible: withChurch },
 ]
 
 // Older links name a tab that was since replaced.
@@ -76,17 +92,15 @@ const TAB_ALIASES: Record<string, string> = { bookkeeper: 'people' }
 interface SettingsProps {}
 
 const Settings: FC<SettingsProps> = () => {
-  const { user } = useSelector((state: RootState) => state.common)
-  const { email, churchId } = useChurch()
+  const { church, email, churchId } = useChurch()
 
   const [searchParams, setSearchParams] = useSearchParams()
 
-  const visibleTabs = TABS.filter(
-    (tab) => !tab.clientOnly || user.role === 'client',
-  )
+  const visibleTabs = TABS.filter((tab) => tab.visible(church))
 
   const requestedTab = searchParams.get('tab') || ''
   const tabFromUrl = TAB_ALIASES[requestedTab] ?? requestedTab
+  // An unknown tab, or one this church doesn't show the person, opens the first visible tab.
   const activeTab = visibleTabs.some((tab) => tab.key === tabFromUrl)
     ? tabFromUrl
     : visibleTabs[0]?.key || 'profile'

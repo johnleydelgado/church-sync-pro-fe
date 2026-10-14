@@ -119,6 +119,29 @@ const HelpTip: FC<{ text: string }> = ({ text }) => (
   </Tooltip>
 )
 
+/**
+ * Where to connect QuickBooks / Planning Center. Only people who may connect this church's
+ * integrations get the link; anyone else is told who can.
+ */
+const ConnectAccountsLink: FC = () => {
+  const { church, canConnectIntegrations } = useChurch()
+  if (!canConnectIntegrations) {
+    return (
+      <p className="text-xl pt-4 text-gray-600">
+        Ask an owner of {church?.name ?? 'this church'} to connect it
+      </p>
+    )
+  }
+  return (
+    <Link
+      to={routeSettings.INTEGRATIONS}
+      className="text-xl pt-4 underline text-blue-400"
+    >
+      Click Here !
+    </Link>
+  )
+}
+
 /** One of the Bank tab's four dropdowns; each shows its own save status. */
 type BankField = 'donation' | 'registration' | 'feeAccount' | 'feeClass'
 
@@ -558,12 +581,7 @@ const Mapping: FC<SettingsProps> = () => {
                       Please set up your accounts in order to continue with the
                       donation mapping process.
                     </p>
-                    <Link
-                      to={routeSettings.INTEGRATIONS}
-                      className="text-xl pt-4 underline text-blue-400"
-                    >
-                      Click Here !
-                    </Link>
+                    <ConnectAccountsLink />
                   </div>
                 ) : (
                   <div>
@@ -624,12 +642,7 @@ const Mapping: FC<SettingsProps> = () => {
                       Please set up your accounts in order to continue with the
                       registration mapping process.
                     </p>
-                    <Link
-                      to={routeSettings.INTEGRATIONS}
-                      className="text-xl pt-4 underline text-blue-400"
-                    >
-                      Click Here !
-                    </Link>
+                    <ConnectAccountsLink />
                   </div>
                 ) : (
                   // Keyed by the loaded settings: the form reads them once, when it mounts.
@@ -651,12 +664,7 @@ const Mapping: FC<SettingsProps> = () => {
                       Please set up your accounts in order to continue with the
                       registration mapping process.
                     </p>
-                    <Link
-                      to={routeSettings.INTEGRATIONS}
-                      className="text-xl pt-4 underline text-blue-400"
-                    >
-                      Click Here !
-                    </Link>
+                    <ConnectAccountsLink />
                   </div>
                 ) : isFetchingUserData ? (
                   // Each pick saves the whole list, built from what is shown. Until this church's
