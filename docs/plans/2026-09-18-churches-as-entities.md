@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 >
+> **SUPERSEDED (2026-10-14): Phases 2-4 below are replaced by `docs/plans/2026-10-14-church-access-and-bookkeeper-screens.md`** - no churchId re-key; a church keeps filing its data under its account row, and access is checked through ChurchMembers. Phase 1 (tables, columns, backfill) stands as built.
+>
 > **STATUS (2026-09-25): Phase 1 in progress, local + staging only.** Jake was given a
 > heads-up by Johnley on 2026-09-25; nothing here runs against production until CFP says so.
 >
