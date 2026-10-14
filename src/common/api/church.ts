@@ -65,10 +65,14 @@ const call = async <T>(p: Promise<any>, fallback: string): Promise<T> => {
     return (await p).data.data as T
   } catch (e: any) {
     const said = e?.response?.data?.message
-    throw new ChurchApiError(
-      typeof said === 'string' && said ? said : fallback,
-      e?.response?.status,
-    )
+    const message =
+      typeof said === 'string' && said
+        ? said
+        : e?.response
+        ? fallback
+        : // The server was never reached: no status, no body.
+          'Could not reach Church Sync Pro. Check your connection and try again.'
+    throw new ChurchApiError(message, e?.response?.status)
   }
 }
 
