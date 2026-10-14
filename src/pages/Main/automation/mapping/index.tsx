@@ -21,6 +21,7 @@ import { Tab } from '@headlessui/react'
 import { AccountTokenDataProps } from '@/common/hooks/useGetTokenList'
 import Donation from './component/Donation'
 import FieldStatus, { FieldSaveStatus } from './component/FieldStatus'
+import { writeSettingsCache } from './settingsCache'
 import { failNotification, successNotification } from '@/common/utils/toast'
 import { isEmpty } from 'lodash'
 import { RootState } from '@/redux/store'
@@ -218,28 +219,6 @@ const Mapping: FC<SettingsProps> = () => {
   const stillOn = (forChurch: number) =>
     mounted.current && selectSelectedChurch(store.getState())?.id === forChurch
 
-  // A saved value goes into every cached copy of that church's settings, so nothing read from
-  // the cache - a remount, the load effect below - can put the pre-save value back over a pick.
-  const writeSettingsCache = (
-    forChurch: number,
-    change: Partial<UserSettingsProps['UserSetting']>,
-  ) =>
-    queryClient.setQueriesData<UserSettingsProps | undefined>(
-      {
-        predicate: (q) =>
-          q.queryKey[0] === 'getUserRelatedSettings' &&
-          q.queryKey[2] === forChurch,
-      },
-      (old) =>
-        old && {
-          ...old,
-          UserSetting: {
-            ...old.UserSetting,
-            ...change,
-          } as UserSettingsProps['UserSetting'],
-        },
-    )
-
   const { mutate: saveBankData } = useMutation<
     unknown,
     Error,
@@ -252,7 +231,7 @@ const Mapping: FC<SettingsProps> = () => {
   >(({ email, data }) => addUpdateBankSettings({ email, data }), {
     onMutate: ({ field }) => setFieldStatus(field, 'saving'),
     onSuccess: (_, { field, churchId: forChurch, data }) => {
-      writeSettingsCache(forChurch, { settingBankData: data })
+      writeSettingsCache(queryClient, forChurch, { settingBankData: data })
       if (!stillOn(forChurch)) return
       savedBank.current.accounts = data
       setFieldStatus(field, 'saved')
@@ -281,7 +260,7 @@ const Mapping: FC<SettingsProps> = () => {
   >(({ email, data }) => addUpdateBankCharges({ email, data }), {
     onMutate: ({ field }) => setFieldStatus(field, 'saving'),
     onSuccess: (_, { field, churchId: forChurch, data }) => {
-      writeSettingsCache(forChurch, { settingBankCharges: data })
+      writeSettingsCache(queryClient, forChurch, { settingBankCharges: data })
       if (!stillOn(forChurch)) return
       savedBank.current.expense = data
       setFieldStatus(field, 'saved')
@@ -343,6 +322,19 @@ const Mapping: FC<SettingsProps> = () => {
     },
   )
 
+  // Funds archived in the mapping: each name's first entry says isActive false.
+  const archivedFunds = useMemo(() => {
+    const seen = new Set<string>()
+    const archived: string[] = []
+    const mapping = userData?.UserSetting?.settingsData ?? []
+    for (const s of mapping) {
+      if (seen.has(s.fundName)) continue
+      seen.add(s.fundName)
+      if (s.isActive === false) archived.push(s.fundName)
+    }
+    return archived
+  }, [userData?.UserSetting?.settingsData])
+
   const {
     data: fundData,
     isLoading,
@@ -350,41 +342,20 @@ const Mapping: FC<SettingsProps> = () => {
     isFetching: isFetchingFunds,
     refetch: refetchFunds,
   } = useQuery<FundAttProps[]>(
-    // Only what the list depends on: a bank or fee save rewrites the cached settings, and with
-    // the whole object in the key that reloaded the funds and blanked the page.
-    ['getFunds', churchId, userData?.UserSetting?.settingsData],
+    // Keyed on the archived names only - the one thing the list depends on. Mapping or bank
+    // saves rewrite the cached settings; with them in the key the funds reloaded and the page
+    // went blank on every save.
+    ['getFunds', churchId, archivedFunds],
     async () => {
-      if (!isEmpty(userData?.UserSetting?.settingsData)) {
-        if (email) {
-          const res = (await pcGetFunds({
-            email,
-            throwOnError: true,
-          })) as FundAttProps[]
-          // Apply the filter and return the filtered array
-          const filteredFunds = res.filter((a) => {
-            // Find fund with matching name and ensure isActive is either true or undefined
-            const fundSetting = userData?.UserSetting?.settingsData?.find(
-              (b) => b.fundName === a.attributes.name,
-            )
-
-            // Show the fund unless it has been explicitly deactivated. A fund added
-            // in Planning Center after the mapping was first saved has no entry here
-            // yet, and requiring one hid every new fund from this page for good.
-            return !fundSetting || fundSetting.isActive !== false
-          })
-
-          return filteredFunds // Return the filtered array
-        }
-      } else {
-        const res = (await pcGetFunds({
-          email,
-          throwOnError: true,
-        })) as FundAttProps[]
-        return res
-      }
-
-      // Return an empty array if no matching data
-      return []
+      if (!email) return []
+      const res = (await pcGetFunds({
+        email,
+        throwOnError: true,
+      })) as FundAttProps[]
+      // Show every fund unless it has been explicitly archived. A fund added in Planning Center
+      // after the mapping was first saved has no entry yet, and requiring one hid every new
+      // fund from this page for good.
+      return res.filter((a) => !archivedFunds.includes(a.attributes.name))
     },
     { enabled: !!churchId, staleTime: Infinity },
   )
@@ -517,14 +488,15 @@ const Mapping: FC<SettingsProps> = () => {
       : null
   }
 
-  // Each loader below follows only the values it puts on screen. A bank save writes its value into
-  // the cached settings object; following the whole object would re-run them all and put loaded
-  // auto-sync switches and start dates (changed here without the cache) back on screen.
+  // Each loader below follows only the values it puts on screen. Bank, fee and fund-mapping saves
+  // write into the cached settings object; following the whole object would re-run them all and
+  // put loaded auto-sync switches and start dates (changed here without the cache) back on screen.
   const settingsLoaded = !!userData
   const serverSetting = userData?.UserSetting
   const serverBankData = serverSetting?.settingBankData
   const serverBankCharges = serverSetting?.settingBankCharges
-  const serverFunds = serverSetting?.settingsData
+  // Whether any fund is mapped, not the list: a mapping save writes a new list into the cache.
+  const hasFundMapping = !isEmpty(serverSetting?.settingsData)
   const serverAutoSync = serverSetting?.isAutomationEnable
   const serverAutoSyncRegistration = serverSetting?.isAutomationRegistration
   const serverStartRegistration = serverSetting?.startDateAutomationRegistration
@@ -545,7 +517,7 @@ const Mapping: FC<SettingsProps> = () => {
 
   // Auto-sync switches and start dates.
   useEffect(() => {
-    if (!isEmpty(serverFunds)) {
+    if (hasFundMapping) {
       setIsAutomationEnable(serverAutoSync || false)
       setIsAutomationRegistration(serverAutoSyncRegistration || false)
     }
@@ -564,7 +536,7 @@ const Mapping: FC<SettingsProps> = () => {
       }))
     }
   }, [
-    serverFunds,
+    hasFundMapping,
     serverAutoSync,
     serverAutoSyncRegistration,
     serverStartRegistration,

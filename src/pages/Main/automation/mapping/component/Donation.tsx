@@ -1,12 +1,14 @@
 import { isEmpty } from 'lodash'
 import React, { FC, useEffect, useMemo, useState } from 'react'
-import { useMutation, useQuery } from 'react-query'
+import { useMutation, useQuery, useQueryClient } from 'react-query'
 import Dropdown, { components } from 'react-select'
 import { QboGetAllQboData, getQboData } from '@/common/api/qbo'
 import { RootState } from '@/redux/store'
 import { useChurch } from '@/common/hooks/useChurch'
 import { useSelector } from 'react-redux'
 import { SettingQBOProps, createSettings, qboSettings } from '@/common/api/user'
+import { UserSettingsProps } from '@/common/constant/interfaces'
+import { writeSettingsCache } from '../settingsCache'
 import {
   Button,
   IconButton,
@@ -81,7 +83,9 @@ const delay = (ms: any) => new Promise((res) => setTimeout(res, ms))
 
 const HelpTip: FC<{ text: string }> = ({ text }) => (
   <Tooltip
-    content={<span className="block max-w-xs text-xs leading-snug">{text}</span>}
+    content={
+      <span className="block max-w-xs text-xs leading-snug">{text}</span>
+    }
     placement="top"
   >
     <span className="inline-flex cursor-help text-gray-400 hover:text-gray-600">
@@ -95,9 +99,7 @@ const fieldKey = (fundName: string | null | undefined, category: string) =>
   `${fundName ?? ''}::${category}`
 
 const Donation: FC<DonationProps> = ({ fundData, userData }) => {
-  const { selectedStartDate } = useSelector(
-    (state: RootState) => state.common,
-  )
+  const { selectedStartDate } = useSelector((state: RootState) => state.common)
   const [settingsData, setSettingsData] = useState<qboSettings[]>([])
   const [onGoingSaving, setOnGoingSaving] = useState<boolean>(false)
   // Which dropdowns have an edit that has not reached the server yet, and which just landed.
@@ -117,12 +119,31 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
     (item: RootState) => item.common.reTriggerIsUserTokens,
   )
 
+  const queryClient = useQueryClient()
+  // The list this page last wrote into the cached settings. When it comes back through
+  // `userData`, it is this page's own save: the form already shows it, and maybe newer edits.
+  const writtenMapping = React.useRef<unknown>(null)
+
   // create user settings
-  const { mutate, mutateAsync, isLoading: isSavingSettings } = useMutation<
-    unknown,
-    unknown,
-    SettingQBOProps
-  >(createSettings)
+  const {
+    mutate,
+    mutateAsync,
+    isLoading: isSavingSettings,
+  } = useMutation<unknown, unknown, SettingQBOProps & { churchId: number }>(
+    ({ email, settingsData }) => createSettings({ email, settingsData }),
+    {
+      // What was saved is what the cache holds, so a tab switch or a return visit shows it
+      // instead of the mapping loaded before - which the next edit would then save over it.
+      onSuccess: (_, { churchId: forChurch, settingsData }) => {
+        if (!settingsData) return
+        writtenMapping.current = settingsData
+        writeSettingsCache(queryClient, forChurch, {
+          settingsData:
+            settingsData as unknown as UserSettingsProps['UserSetting']['settingsData'],
+        })
+      },
+    },
+  )
 
   const { data: qboData, isLoading: isQboDataLoading } = useQuery(
     useMemo(() => ['getAllQboData', churchId], [churchId]), // Memoize the key
@@ -154,12 +175,10 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
       const currentItem = tempData[index]
 
       if (currentItem) {
-        // Check if currentItem is defined
-        if (val) {
-          const { value, label } = val
-          currentItem[category] = { value, label }
-        } else {
-          currentItem[category] = undefined
+        // A copy: the item is shared with the cached settings and with any save in flight.
+        tempData[index] = {
+          ...currentItem,
+          [category]: val ? { value: val.value, label: val.label } : undefined,
         }
       }
     } else {
@@ -224,10 +243,12 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
       return
     }
 
+    if (!churchId) return
     try {
       setOnGoingSaving(true)
 
       await mutate({
+        churchId,
         email,
         settingsData,
       })
@@ -272,6 +293,7 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
   }
 
   const deactivateFund = async (fundName: string) => {
+    if (!churchId) return
     if (isEmpty(settingsData)) {
       failNotification({ title: 'Please save the settings first' })
       return
@@ -287,6 +309,7 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
     })
 
     await mutate({
+      churchId,
       email,
       settingsData: updatedSettingsData,
     })
@@ -297,12 +320,14 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
     return ''
   }
 
+  // Follows the mapping list itself, not the settings object: a bank or fee save also rewrites
+  // that object in the cache, and reloading then replaced edits made here since.
+  const serverMapping = userData?.UserSetting?.settingsData
   useEffect(() => {
-    if (!isEmpty(userData?.UserSetting?.settingsData)) {
-      const settingsData = userData.UserSetting.settingsData
-      setSettingsData(settingsData)
-    }
-  }, [userData])
+    // This page's own save coming back from the cache.
+    if (serverMapping === writtenMapping.current) return
+    if (!isEmpty(serverMapping)) setSettingsData(serverMapping)
+  }, [serverMapping])
 
   /**
    * Save the mapping as it is edited.
@@ -320,7 +345,7 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
       if (settingsData.length > 0) hasLoadedSettings.current = true
       return
     }
-    if (!email || settingsData.length === 0) return
+    if (!email || !churchId || settingsData.length === 0) return
 
     const timer = setTimeout(async () => {
       // Snapshot what this write covers. More edits can land while it is in flight, and those
@@ -329,7 +354,7 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
       try {
         // mutateAsync, not mutate: mutate returns void, so the old `await mutate(...)` resolved
         // immediately and reported success before the request had even been sent.
-        await mutateAsync({ email, settingsData })
+        await mutateAsync({ churchId, email, settingsData })
         setPendingFields((prev) => {
           const next = new Set(prev)
           inFlight.forEach((k) => next.delete(k))
