@@ -13,7 +13,7 @@ import { isEmpty } from 'lodash'
 import { MdSettings } from 'react-icons/md'
 import Profile from './component/Profile'
 import Billing from './component/Billing'
-import Bookkeeper from './component/Bookkeeper'
+import People from './component/People'
 import Projects from './component/Projects'
 import Email from './component/Email'
 import { useSearchParams } from 'react-router-dom'
@@ -65,10 +65,13 @@ const TABS: TabItem[] = [
   { key: 'profile', label: 'Profile', Component: Profile },
   { key: 'billing', label: 'Billing', Component: Billing },
   { key: 'integrations', label: 'Integrations', Component: Account, clientOnly: true },
-  { key: 'bookkeeper', label: 'Bookkeepers', Component: Bookkeeper, clientOnly: true },
+  { key: 'people', label: 'People', Component: People },
   { key: 'projects', label: 'Projects', Component: Projects, clientOnly: true },
   { key: 'email', label: 'Email', Component: Email },
 ]
+
+// Older links name a tab that was since replaced.
+const TAB_ALIASES: Record<string, string> = { bookkeeper: 'people' }
 
 interface SettingsProps {}
 
@@ -82,7 +85,8 @@ const Settings: FC<SettingsProps> = () => {
     (tab) => !tab.clientOnly || user.role === 'client',
   )
 
-  const tabFromUrl = searchParams.get('tab') || ''
+  const requestedTab = searchParams.get('tab') || ''
+  const tabFromUrl = TAB_ALIASES[requestedTab] ?? requestedTab
   const activeTab = visibleTabs.some((tab) => tab.key === tabFromUrl)
     ? tabFromUrl
     : visibleTabs[0]?.key || 'profile'
