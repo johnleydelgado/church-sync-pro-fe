@@ -13,28 +13,70 @@ import {
   InviteResult,
   inviteToChurch,
 } from '@/common/api/church'
+import { CHURCH_PEOPLE_KEY } from '@/common/hooks/useChurch'
 import { successNotification } from '@/common/utils/toast'
 
 const EMAIL_FORMAT = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-/**
- * Puts `text` on the clipboard. False when the browser has no clipboard API (an http page that
- * isn't localhost) or refuses; the caller then shows the text selected so it can be copied by hand.
- */
-export const copyText = async (text: string): Promise<boolean> => {
-  try {
-    if (!navigator.clipboard?.writeText) return false
-    await navigator.clipboard.writeText(text)
-    return true
-  } catch {
-    return false
+/** The older copy command, run on `field` or, without one, on a hidden box made for the purpose. */
+const copyBySelecting = (text: string, field?: HTMLInputElement | null) => {
+  const previous = document.activeElement as HTMLElement | null
+  let box: HTMLTextAreaElement | null = null
+  if (field) {
+    field.focus()
+    field.select()
+  } else {
+    box = document.createElement('textarea')
+    box.value = text
+    box.setAttribute('readonly', '')
+    box.style.position = 'fixed'
+    box.style.top = '0'
+    box.style.left = '0'
+    box.style.opacity = '0'
+    document.body.appendChild(box)
+    box.select()
   }
+  let copied = false
+  try {
+    copied = document.execCommand('copy')
+  } catch {
+    copied = false
+  }
+  if (box) {
+    document.body.removeChild(box)
+    previous?.focus()
+  }
+  return copied
+}
+
+/**
+ * Copies an invite link and says so. The clipboard API first; where the browser has none (an
+ * http page that isn't localhost) or refuses, the older copy command. False when both fail: the
+ * caller then shows the link selected, to copy by hand. With `field`, a failure leaves it selected.
+ */
+export const copyLink = async (
+  text: string,
+  field?: HTMLInputElement | null,
+): Promise<boolean> => {
+  let copied = false
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text)
+      copied = true
+    }
+  } catch {
+    copied = false
+  }
+  if (!copied) copied = copyBySelecting(text, field)
+  if (copied) successNotification({ title: 'Link copied' })
+  return copied
 }
 
 interface InviteLinkFieldProps {
   link: string
   /** Select the link as soon as it shows: used when it appears because copying failed. */
   selectOnShow?: boolean
+  copyButtonRef?: React.Ref<HTMLButtonElement>
 }
 
 /**
@@ -44,14 +86,11 @@ interface InviteLinkFieldProps {
 export const InviteLinkField: FC<InviteLinkFieldProps> = ({
   link,
   selectOnShow = false,
+  copyButtonRef,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null)
-  const [copyFailed, setCopyFailed] = useState(false)
-
-  const selectLink = () => {
-    inputRef.current?.focus()
-    inputRef.current?.select()
-  }
+  // Shown from the start when the box appears because copying already failed.
+  const [copyFailed, setCopyFailed] = useState(selectOnShow)
 
   useEffect(() => {
     if (!selectOnShow) return
@@ -60,25 +99,7 @@ export const InviteLinkField: FC<InviteLinkFieldProps> = ({
   }, [selectOnShow])
 
   const copy = async () => {
-    if (await copyText(link)) {
-      setCopyFailed(false)
-      successNotification({ title: 'Link copied' })
-      return
-    }
-    // No clipboard API: select the text and try the older copy command on the selection.
-    selectLink()
-    let copied = false
-    try {
-      copied = document.execCommand('copy')
-    } catch {
-      copied = false
-    }
-    if (copied) {
-      setCopyFailed(false)
-      successNotification({ title: 'Link copied' })
-    } else {
-      setCopyFailed(true)
-    }
+    setCopyFailed(!(await copyLink(link, inputRef.current)))
   }
 
   return (
@@ -94,6 +115,7 @@ export const InviteLinkField: FC<InviteLinkFieldProps> = ({
           className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 font-mono text-xs text-gray-700 focus:border-primary focus:ring-0"
         />
         <button
+          ref={copyButtonRef}
           type="button"
           onClick={copy}
           className="shrink-0 rounded-lg bg-yellow px-4 py-2 text-sm font-medium text-white hover:opacity-90"
@@ -101,8 +123,8 @@ export const InviteLinkField: FC<InviteLinkFieldProps> = ({
           Copy
         </button>
       </div>
-      {copyFailed || selectOnShow ? (
-        <p className="pt-1 text-xs text-gray-500">
+      {copyFailed ? (
+        <p role="status" className="pt-1 text-xs text-gray-500">
           Your browser didn&apos;t let us copy it. The link is selected: press
           Ctrl+C (Cmd+C on a Mac) to copy it.
         </p>
@@ -118,7 +140,16 @@ interface InvitePersonModalProps {
   onClose: () => void
 }
 
-type Invited = InviteResult & { email: string }
+interface InviteRequest {
+  churchId: number
+  churchName: string
+  email: string
+  /** Which opening of the dialog asked; an answer for an earlier one is not shown. */
+  opening: number
+}
+
+/** The answer, with the church it was for: the text never names whichever church is selected now. */
+type Invited = InviteResult & { email: string; churchName: string }
 
 /**
  * Invite someone to a church as a bookkeeper. A person who already has a login is added straight
@@ -135,28 +166,44 @@ const InvitePersonModal: FC<InvitePersonModalProps> = ({
   // Under the input rather than a toast: "already on this church" has to stay readable.
   const [error, setError] = useState<string | null>(null)
   const [invited, setInvited] = useState<Invited | null>(null)
+  const opening = useRef(0)
+  const emailRef = useRef<HTMLInputElement>(null)
+  const copyRef = useRef<HTMLButtonElement>(null)
+  const doneRef = useRef<HTMLButtonElement>(null)
 
-  // Every opening starts clean: the last person's link must never be the one shown.
-  useEffect(() => {
-    if (open) {
-      setEmail('')
-      setError(null)
-      setInvited(null)
-    }
-  }, [open])
-
-  const invite = useMutation<InviteResult, ChurchApiError, string>(
-    (address) => inviteToChurch(churchId, address),
+  const invite = useMutation<InviteResult, ChurchApiError, InviteRequest>(
+    (req) => inviteToChurch(req.churchId, req.email),
     {
       onMutate: () => setError(null),
-      onSuccess: (result, address) => {
-        setInvited({ ...result, email: address })
-        queryClient.invalidateQueries(['churchPeople', churchId])
+      onSuccess: (result, req) => {
+        queryClient.invalidateQueries([CHURCH_PEOPLE_KEY, req.churchId])
+        if (req.opening !== opening.current) return
+        setInvited({ ...result, email: req.email, churchName: req.churchName })
       },
-      onError: (e) =>
-        setError(e?.message || 'Could not send the invite. Try again.'),
+      onError: (e, req) => {
+        if (req.opening !== opening.current) return
+        setError(e?.message || 'Could not send the invite. Try again.')
+        emailRef.current?.focus()
+      },
     },
   )
+
+  // The answer replaces the form, so focus would fall to the page: put it on what to do next.
+  useEffect(() => {
+    if (!invited) return
+    if (invited.inviteLink) copyRef.current?.focus()
+    else doneRef.current?.focus()
+  }, [invited])
+
+  // Cleared once the dialog has faded out, so a reopened one never shows the last link, even
+  // for a frame. An invite still in flight from this opening is then ignored.
+  const resetAfterClose = () => {
+    opening.current += 1
+    invite.reset()
+    setEmail('')
+    setError(null)
+    setInvited(null)
+  }
 
   // Not while the invite is in flight: closing then would hide whether it was made.
   const close = () => {
@@ -165,16 +212,27 @@ const InvitePersonModal: FC<InvitePersonModalProps> = ({
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
+    if (invite.isLoading) return
     const address = email.trim()
     if (!EMAIL_FORMAT.test(address)) {
       setError("That doesn't look like an email address.")
       return
     }
-    invite.mutate(address)
+    invite.mutate({
+      churchId,
+      churchName,
+      email: address,
+      opening: opening.current,
+    })
   }
 
   return (
-    <Transition appear show={open} as={React.Fragment}>
+    <Transition
+      appear
+      show={open}
+      as={React.Fragment}
+      afterLeave={resetAfterClose}
+    >
       <Dialog as="div" className="relative z-50" onClose={close}>
         <Transition.Child
           as={React.Fragment}
@@ -224,13 +282,15 @@ const InvitePersonModal: FC<InvitePersonModalProps> = ({
                     >
                       Their email
                     </label>
+                    {/* Read-only, not disabled, while sending: disabling would drop the focus. */}
                     <input
+                      ref={emailRef}
                       id="invite-email"
                       type="email"
                       autoComplete="off"
                       autoFocus
                       value={email}
-                      disabled={invite.isLoading}
+                      readOnly={invite.isLoading}
                       onChange={(e) => {
                         setEmail(e.target.value)
                         if (error) setError(null)
@@ -244,11 +304,12 @@ const InvitePersonModal: FC<InvitePersonModalProps> = ({
                         error
                           ? 'border-red-400 focus:border-red-500'
                           : 'border-gray-300 focus:border-primary'
-                      }`}
+                      } ${invite.isLoading ? 'bg-gray-50 text-gray-500' : ''}`}
                     />
                     {error ? (
                       <p
                         id="invite-email-error"
+                        role="alert"
                         className="pt-1 text-sm text-red-600"
                       >
                         {error}
@@ -294,20 +355,24 @@ const InvitePersonModal: FC<InvitePersonModalProps> = ({
                         <span>
                           {invited.email} already has a Church Sync Pro login,
                           so they&apos;ve been added. They&apos;ll see{' '}
-                          {churchName} in their church list.
+                          {invited.churchName} in their church list.
                         </span>
                       </p>
                     ) : (
                       <>
                         <p className="pt-3 text-sm text-gray-700">
-                          {invited.email} has been invited to {churchName}.
+                          {invited.email} has been invited to{' '}
+                          {invited.churchName}.
                           {invited.inviteLink
                             ? ' They join by opening this link:'
                             : ''}
                         </p>
                         {invited.inviteLink ? (
                           <div className="pt-3">
-                            <InviteLinkField link={invited.inviteLink} />
+                            <InviteLinkField
+                              link={invited.inviteLink}
+                              copyButtonRef={copyRef}
+                            />
                           </div>
                         ) : null}
                         {invited.emailSent ? (
@@ -332,6 +397,7 @@ const InvitePersonModal: FC<InvitePersonModalProps> = ({
 
                     <div className="flex items-center justify-end pt-6">
                       <Button
+                        ref={doneRef}
                         size="sm"
                         onClick={onClose}
                         className="bg-yellow normal-case"

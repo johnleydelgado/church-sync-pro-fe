@@ -1,4 +1,4 @@
-import React, { FC, useRef, useState } from 'react'
+import React, { FC, useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from 'react-query'
 import { Dialog, Transition } from '@headlessui/react'
 import { Button } from '@material-tailwind/react'
@@ -12,14 +12,16 @@ import {
   removeFromChurch,
   setPersonAccess,
 } from '@/common/api/church'
-import { MY_CHURCHES_KEY, useChurch } from '@/common/hooks/useChurch'
+import {
+  CHURCH_PEOPLE_KEY,
+  MY_CHURCHES_KEY,
+  useChurch,
+} from '@/common/hooks/useChurch'
 import { failNotification, successNotification } from '@/common/utils/toast'
 import InvitePersonModal, {
-  copyText,
+  copyLink,
   InviteLinkField,
 } from './InvitePersonModal'
-
-const PEOPLE_KEY = 'churchPeople'
 
 /** A 4xx is the server's answer (not on this church, signed out); asking again won't change it. */
 const isClientError = (e: unknown) =>
@@ -63,51 +65,58 @@ const AccessSwitch: FC<AccessSwitchProps> = ({
   </div>
 )
 
-interface RemoveDialogProps {
-  person: ChurchPerson | null
+/** Who is being removed, and from which church: kept together so a church switch can't mix them. */
+interface RemoveTarget {
+  churchId: number
   churchName: string
+  person: ChurchPerson
+}
+
+interface RemoveDialogProps {
+  open: boolean
+  /** Cleared by the parent in `afterLeave`, so the words stay while the dialog fades out. */
+  target: RemoveTarget | null
   busy: boolean
   error: string | null
   onConfirm: () => void
   onClose: () => void
+  afterLeave: () => void
 }
 
 /** Stays open while the removal runs, so a refusal ("A church needs at least one owner.") is read in place. */
 const RemoveDialog: FC<RemoveDialogProps> = ({
-  person,
-  churchName,
+  open,
+  target,
   busy,
   error,
   onConfirm,
   onClose,
+  afterLeave,
 }) => {
-  // Keeps the words on screen while the dialog fades out after `person` is cleared.
-  const last = useRef<ChurchPerson | null>(person)
-  if (person) last.current = person
-  const shown = person ?? last.current
-
   const close = () => {
     if (!busy) onClose()
   }
 
-  const invited = shown?.status === 'invited'
-  const title = !shown
+  const person = target?.person
+  const churchName = target?.churchName ?? ''
+  const invited = person?.status === 'invited'
+  const title = !person
     ? ''
     : invited
-    ? `Withdraw the invite to ${shown.email}?`
-    : shown.isYou
+    ? `Withdraw the invite to ${person.email}?`
+    : person.isYou
     ? `Remove yourself from ${churchName}?`
-    : `Remove ${who(shown)} from ${churchName}?`
-  const body = !shown
+    : `Remove ${who(person)} from ${churchName}?`
+  const body = !person
     ? ''
     : invited
     ? `They won't be added to ${churchName}. You can invite them again later.`
-    : shown.isYou
+    : person.isYou
     ? `You'll no longer see ${churchName}. Another owner can invite you back.`
     : `They'll no longer see ${churchName} or its data. You can invite them again later.`
 
   return (
-    <Transition appear show={!!person} as={React.Fragment}>
+    <Transition appear show={open} as={React.Fragment} afterLeave={afterLeave}>
       <Dialog as="div" className="relative z-50" onClose={close}>
         <Transition.Child
           as={React.Fragment}
@@ -141,7 +150,10 @@ const RemoveDialog: FC<RemoveDialogProps> = ({
                 </Dialog.Title>
                 <p className="pt-2 text-sm text-gray-600">{body}</p>
                 {error ? (
-                  <p className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+                  <p
+                    role="alert"
+                    className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700"
+                  >
                     {error}
                   </p>
                 ) : null}
@@ -158,7 +170,7 @@ const RemoveDialog: FC<RemoveDialogProps> = ({
                   <Button
                     size="sm"
                     onClick={onConfirm}
-                    disabled={busy}
+                    disabled={busy || !target}
                     className="flex items-center gap-2 bg-red-600 normal-case"
                   >
                     {busy ? (
@@ -190,11 +202,28 @@ const RemoveDialog: FC<RemoveDialogProps> = ({
 const People: FC = () => {
   const queryClient = useQueryClient()
   const { church, churchId, canManagePeople } = useChurch()
+  // Local state, not redux OPEN_MODAL: the common slice is persisted, and these dialogs can hold invite links.
   const [inviteOpen, setInviteOpen] = useState(false)
-  const [removing, setRemoving] = useState<ChurchPerson | null>(null)
+  const [removeOpen, setRemoveOpen] = useState(false)
+  const [removing, setRemoving] = useState<RemoveTarget | null>(null)
   const [removeError, setRemoveError] = useState<string | null>(null)
   // The row whose link is shown in a box because the browser wouldn't copy it.
   const [linkShownFor, setLinkShownFor] = useState<number | null>(null)
+  // A church you just removed yourself from: its list is not asked for again (it would only be
+  // refused) while the church list catches up and the selection moves on.
+  const [leftChurchId, setLeftChurchId] = useState<number | null>(null)
+
+  // Dialogs, a shown link and a pending removal all belong to the church they were opened on.
+  // `removing` itself is cleared by the remove dialog's afterLeave, once it has faded out.
+  useEffect(() => {
+    setInviteOpen(false)
+    setRemoveOpen(false)
+    setRemoveError(null)
+    setLinkShownFor(null)
+    setLeftChurchId(null)
+  }, [churchId])
+
+  const leftThisChurch = !!churchId && leftChurchId === churchId
 
   const {
     data: people,
@@ -204,10 +233,10 @@ const People: FC = () => {
     refetch,
     isFetching,
   } = useQuery<ChurchPerson[], ChurchApiError>(
-    [PEOPLE_KEY, churchId],
+    [CHURCH_PEOPLE_KEY, churchId],
     () => getChurchPeople(churchId as number),
     {
-      enabled: !!churchId,
+      enabled: !!churchId && !leftThisChurch,
       retry: (failureCount, e) => !isClientError(e) && failureCount < 3,
     },
   )
@@ -223,7 +252,7 @@ const People: FC = () => {
       onSuccess: (_, { churchId: id, person, enabled }) => {
         // Show the new state now rather than flick back until the refetch lands.
         queryClient.setQueryData<ChurchPerson[] | undefined>(
-          [PEOPLE_KEY, id],
+          [CHURCH_PEOPLE_KEY, id],
           (old) =>
             Array.isArray(old)
               ? old.map((p) =>
@@ -233,7 +262,7 @@ const People: FC = () => {
                 )
               : old,
         )
-        queryClient.invalidateQueries([PEOPLE_KEY, id])
+        queryClient.invalidateQueries([CHURCH_PEOPLE_KEY, id])
         queryClient.invalidateQueries(MY_CHURCHES_KEY)
         const name = who(person)
         successNotification({
@@ -248,29 +277,33 @@ const People: FC = () => {
     },
   )
 
-  const remove = useMutation<
-    'ok',
-    ChurchApiError,
-    { churchId: number; person: ChurchPerson }
-  >(({ churchId: id, person }) => removeFromChurch(id, person.memberId), {
-    onMutate: () => setRemoveError(null),
-    onSuccess: (_, { churchId: id, person }) => {
-      setRemoving(null)
-      // Leaving a church: the church list drops it and the selection moves on. Refetching this
-      // church's people would only fail now that you're not on it.
-      if (!person.isYou) queryClient.invalidateQueries([PEOPLE_KEY, id])
-      queryClient.invalidateQueries(MY_CHURCHES_KEY)
-      successNotification({
-        title:
-          person.status === 'invited'
-            ? `Invite to ${person.email} withdrawn`
-            : person.isYou
-            ? `You've left ${church?.name ?? 'the church'}`
-            : `${who(person)} removed`,
-      })
+  const remove = useMutation<'ok', ChurchApiError, RemoveTarget>(
+    ({ churchId: id, person }) => removeFromChurch(id, person.memberId),
+    {
+      onMutate: () => setRemoveError(null),
+      onSuccess: (_, { churchId: id, churchName, person }) => {
+        setRemoveOpen(false)
+        if (person.isYou) {
+          // Leaving a church: drop its list rather than refetch it (you're no longer allowed
+          // to read it); the church list drops the church and the selection moves on.
+          setLeftChurchId(id)
+          queryClient.removeQueries([CHURCH_PEOPLE_KEY, id])
+        } else {
+          queryClient.invalidateQueries([CHURCH_PEOPLE_KEY, id])
+        }
+        queryClient.invalidateQueries(MY_CHURCHES_KEY)
+        successNotification({
+          title:
+            person.status === 'invited'
+              ? `Invite to ${person.email} withdrawn`
+              : person.isYou
+              ? `You've left ${churchName}`
+              : `${who(person)} removed`,
+        })
+      },
+      onError: (e) => setRemoveError(e.message),
     },
-    onError: (e) => setRemoveError(e.message),
-  })
+  )
 
   if (!church || !churchId) {
     return (
@@ -282,18 +315,14 @@ const People: FC = () => {
 
   const copyInviteLink = async (p: ChurchPerson) => {
     if (!p.inviteLink) return
-    if (await copyText(p.inviteLink)) {
-      setLinkShownFor(null)
-      successNotification({ title: 'Link copied' })
-    } else {
-      // No clipboard here: show the link selected so it can be copied by hand.
-      setLinkShownFor(p.memberId)
-    }
+    // Neither way of copying worked: show the link selected so it can be copied by hand.
+    setLinkShownFor((await copyLink(p.inviteLink)) ? null : p.memberId)
   }
 
   const askToRemove = (p: ChurchPerson) => {
     setRemoveError(null)
-    setRemoving(p)
+    setRemoving({ churchId, churchName: church.name, person: p })
+    setRemoveOpen(true)
   }
 
   const list = Array.isArray(people) ? people : []
@@ -324,7 +353,13 @@ const People: FC = () => {
         ) : null}
       </div>
 
-      {isLoading ? (
+      {leftThisChurch ? (
+        <div className="py-16 text-center text-gray-600">
+          <p className="text-xl font-thin">
+            You&apos;re no longer on {church.name}.
+          </p>
+        </div>
+      ) : isLoading ? (
         <div className="flex items-center justify-center py-16">
           <Spinner size="lg" />
         </div>
@@ -492,14 +527,16 @@ const People: FC = () => {
         />
       ) : null}
       <RemoveDialog
-        person={removing}
-        churchName={church.name}
+        open={removeOpen}
+        target={removing}
         busy={remove.isLoading}
         error={removeError}
-        onConfirm={() =>
-          removing && remove.mutate({ churchId, person: removing })
-        }
-        onClose={() => setRemoving(null)}
+        onConfirm={() => removing && remove.mutate(removing)}
+        onClose={() => setRemoveOpen(false)}
+        afterLeave={() => {
+          setRemoving(null)
+          setRemoveError(null)
+        }}
       />
     </div>
   )

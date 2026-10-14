@@ -7,6 +7,8 @@ import { resetChurchScopedState, setSelectedChurch } from '@/redux/common'
 import { ChurchApiError, getMyChurches, MyChurch } from '@/common/api/church'
 
 export const MY_CHURCHES_KEY = 'myChurches'
+/** `[CHURCH_PEOPLE_KEY, churchId]`: the People tab's list for one church. */
+export const CHURCH_PEOPLE_KEY = 'churchPeople'
 
 /**
  * The selected church, or null. Read it only through this: a browser that ran an older build
