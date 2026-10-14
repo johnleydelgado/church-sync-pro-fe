@@ -27,17 +27,20 @@ const useGetDeactivatedMapping = () => {
   )
   const { email, churchId } = useChurch()
 
-  const { data: userData, refetch: refetchUserData } =
-    useQuery<UserSettingsProps>(
-      ['getUserRelatedSettings', reTriggerIsUserTokens, churchId],
-      async () => {
-        if (email) {
-          const res = await getUserRelated(email)
-          return res.data
-        }
-      },
-      { enabled: !!churchId, staleTime: Infinity },
-    )
+  const {
+    data: userData,
+    refetch: refetchUserData,
+    isLoading: isLoadingUserData,
+  } = useQuery<UserSettingsProps>(
+    ['getUserRelatedSettings', reTriggerIsUserTokens, churchId],
+    async () => {
+      if (email) {
+        const res = await getUserRelated(email)
+        return res.data
+      }
+    },
+    { enabled: !!churchId, staleTime: Infinity },
+  )
 
   const {
     data: stripeEvents,
@@ -103,7 +106,14 @@ const useGetDeactivatedMapping = () => {
     setIsLoading(isStripeEventsLoading || isStripeEventsRefetch) // Reflects both loading and refetching
   }, [isStripeEventsLoading, isStripeEventsRefetch])
 
-  return { archives, isLoading, refetch: refetchUserData }
+  // `userData`: the church's settings, the same cached copy the Mapping page reads and writes.
+  return {
+    archives,
+    isLoading,
+    refetch: refetchUserData,
+    userData,
+    isLoadingUserData,
+  }
 }
 
 export default useGetDeactivatedMapping
