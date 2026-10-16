@@ -21,6 +21,18 @@ export const PENDING_CONNECTION_MAX_AGE_MS = 30 * 60 * 1000
 const isUrl = (v: unknown): v is string =>
   typeof v === 'string' && /^https?:\/\//i.test(v)
 
+/**
+ * The sign-in address must carry this click's state: a server that dropped it (say, an older
+ * backend during a deploy) would send the person through the whole sign-in only to be refused here.
+ */
+const carriesState = (uri: string, nonce: string) => {
+  try {
+    return new URL(uri).searchParams.get('state') === nonce
+  } catch (e) {
+    return false
+  }
+}
+
 /** 16 random bytes as 32 lowercase hex characters: the OAuth `state` for one Connect click. */
 const newNonce = () =>
   Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) =>
@@ -55,7 +67,7 @@ export const useConnectIntegration = () => {
       await persistor.flush()
       // The server puts the state into the sign-in address; the service sends it back as is.
       const authUri = await authApi(`${START[type]}?state=${nonce}`)
-      if (!isUrl(authUri)) {
+      if (!isUrl(authUri) || !carriesState(authUri, nonce)) {
         dispatch(setPendingConnection(null))
         throw new Error(
           `Couldn't start connecting ${INTEGRATION_NAME[type]}. Please try again.`,
