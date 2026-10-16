@@ -1,4 +1,4 @@
-import type { QueryClient } from 'react-query'
+import type { Query, QueryClient } from 'react-query'
 import { createSettings, qboSettings } from '@/common/api/user'
 import { UserSettingsProps } from '@/common/constant/interfaces'
 import { writeSettingsCache } from './settingsCache'
@@ -9,14 +9,25 @@ import { writeSettingsCache } from './settingsCache'
  * level, so it outlives the components: a page mounted while an earlier page's save is still
  * on its way starts from that save's list and queues behind it.
  */
+
+/** One save asked for: its list, and the promise that settles when it has been saved or failed. */
+export interface PendingFundMappingSave {
+  list: qboSettings[]
+  done: Promise<void>
+}
+
 interface ChurchQueue {
   /** The last save asked for; the next one starts when it settles. */
   chain: Promise<unknown>
   /**
-   * The newest list asked to be saved this session, set before it is sent. Back to null when
-   * that save fails and nothing newer was asked for: the cache (the server's list) is then right.
+   * The newest save asked for that has not settled yet - set before it is sent, and back to
+   * null once it has (saved or failed) if nothing newer was asked for since. Only while it is
+   * set does it beat the cached settings: after that the cache holds the server's list, which
+   * someone else may have changed since.
    */
-  latest: qboSettings[] | null
+  latest: PendingFundMappingSave | null
+  /** Saves asked for and not settled yet. */
+  unsettled: number
 }
 
 const queues = new Map<number, ChurchQueue>()
@@ -24,7 +35,7 @@ const queues = new Map<number, ChurchQueue>()
 const queueFor = (churchId: number): ChurchQueue => {
   let queue = queues.get(churchId)
   if (!queue) {
-    queue = { chain: Promise.resolve(), latest: null }
+    queue = { chain: Promise.resolve(), latest: null, unsettled: 0 }
     queues.set(churchId, queue)
   }
   return queue
@@ -32,13 +43,29 @@ const queueFor = (churchId: number): ChurchQueue => {
 
 const ignore = () => undefined
 
-/** The newest list asked to be saved for this church this session, or null. */
+const isChurchSettings = (churchId: number) => (q: Query) =>
+  q.queryKey[0] === 'getUserRelatedSettings' && q.queryKey[2] === churchId
+
+/** The newest save for this church still on its way, or null. */
 export const latestFundMapping = (churchId: number) =>
   queues.get(churchId)?.latest ?? null
 
 /** Resolves (never rejects) once every save asked for so far for this church has settled. */
 export const fundMappingSettled = (churchId: number) =>
   (queues.get(churchId)?.chain ?? Promise.resolve()).then(ignore, ignore)
+
+/** Whether any church's fund mapping has a save on its way. */
+export const hasUnsettledFundMappingSave = () =>
+  Array.from(queues.values()).some((q) => q.unsettled > 0)
+
+// Closing or reloading the tab with a save still on its way would drop it: ask first.
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', (e) => {
+    if (!hasUnsettledFundMappingSave()) return
+    e.preventDefault()
+    e.returnValue = ''
+  })
+}
 
 /** The fund mapping in a church's settings object, or an empty list. */
 export const savedMappingOf = (userData: any): qboSettings[] =>
@@ -47,7 +74,7 @@ export const savedMappingOf = (userData: any): qboSettings[] =>
     : []
 
 /**
- * The church's fund mapping as it stands: the newest list asked to be saved, else the newest
+ * The church's fund mapping as it stands: the newest save still on its way, else the newest
  * cached copy of its settings. Read it after `fundMappingSettled` for the server's view.
  */
 export const currentFundMapping = (
@@ -55,14 +82,12 @@ export const currentFundMapping = (
   churchId: number,
 ): qboSettings[] => {
   const latest = latestFundMapping(churchId)
-  if (latest) return latest
+  if (latest) return latest.list
   const newest = queryClient
     .getQueryCache()
     .findAll({
       predicate: (q) =>
-        q.queryKey[0] === 'getUserRelatedSettings' &&
-        q.queryKey[2] === churchId &&
-        q.state.data !== undefined,
+        isChurchSettings(churchId)(q) && q.state.data !== undefined,
     })
     .sort((a, b) => b.state.dataUpdatedAt - a.state.dataUpdatedAt)[0]
   return savedMappingOf(newest?.state.data)
@@ -85,17 +110,43 @@ export const saveFundMapping = ({
   list: qboSettings[]
 }): Promise<void> => {
   const queue = queueFor(churchId)
-  queue.latest = list
+  // A ticket per call: compared by identity, so two saves of the same array stay apart.
+  const ticket = { list } as PendingFundMappingSave
+  queue.latest = ticket
+  queue.unsettled += 1
+
   const run = queue.chain.then(ignore, ignore).then(async () => {
     await createSettings({ email, settingsData: list })
+    // A settings fetch that left before this save landed would put the old list back.
+    const loadingWithoutData = queryClient.getQueryCache().findAll({
+      predicate: (q) =>
+        isChurchSettings(churchId)(q) &&
+        q.state.isFetching &&
+        q.state.data === undefined,
+    })
+    await queryClient.cancelQueries({ predicate: isChurchSettings(churchId) })
     writeSettingsCache(queryClient, churchId, {
       settingsData:
         list as unknown as UserSettingsProps['UserSetting']['settingsData'],
     })
+    // A first load that was cancelled has nothing to show: load it again, after the save.
+    if (loadingWithoutData.length > 0) {
+      queryClient.refetchQueries({
+        predicate: (q) => loadingWithoutData.includes(q),
+      })
+    }
+    if (queue.latest === ticket) queue.latest = null
   })
+  ticket.done = run
   queue.chain = run
-  run.catch(() => {
-    if (queue.latest === list) queue.latest = null
-  })
+  run.then(
+    () => {
+      queue.unsettled -= 1
+    },
+    () => {
+      queue.unsettled -= 1
+      if (queue.latest === ticket) queue.latest = null
+    },
+  )
   return run
 }

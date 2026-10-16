@@ -97,6 +97,9 @@ const HelpTip: FC<{ text: string }> = ({ text }) => (
   </Tooltip>
 )
 
+/** A pending marker for edits carried in from an earlier page's save that then failed. */
+const EARLIER_SAVE_KEY = '::earlier-save'
+
 /** Identifies one dropdown: a fund plus which of its three fields. */
 const fieldKey = (fundName: string | null | undefined, category: string) =>
   `${fundName ?? ''}::${category}`
@@ -105,17 +108,20 @@ const fieldKey = (fundName: string | null | undefined, category: string) =>
  * Donation fund mapping.
  *
  * The form is loaded ONCE per mount and is never overwritten afterwards: the form is the source
- * of truth while the page is open. It starts from the newest list asked to be saved for the
- * church this session (an earlier mount's save may still be on its way), else from the cached
- * settings. Every save goes through the church's queue (fundMappingQueue) and writes what it
- * saved into the cache. A church switch remounts the page.
+ * of truth while the page is open. It starts from the church's newest save still on its way (an
+ * earlier mount's, say), else from the cached settings. Every save goes through the church's
+ * queue (fundMappingQueue) and writes what it saved into the cache. A church switch remounts
+ * the page.
  */
 const Donation: FC<DonationProps> = ({ fundData, userData }) => {
   const { selectedStartDate } = useSelector((state: RootState) => state.common)
   // MainPage remounts every page on a church switch, so these never change under a mounted form.
   const { email, churchId } = useChurch()
-  const startingMapping = () =>
-    (churchId ? latestFundMapping(churchId) : null) ?? savedMappingOf(userData)
+  // The save this form starts from when one is still on its way; fixed for the mount.
+  const [startedFrom] = useState(() =>
+    churchId ? latestFundMapping(churchId) : null,
+  )
+  const startingMapping = () => startedFrom?.list ?? savedMappingOf(userData)
   const [settingsData, setSettingsData] =
     useState<qboSettings[]>(startingMapping)
   const [onGoingSaving, setOnGoingSaving] = useState<boolean>(false)
@@ -156,6 +162,33 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
     setMapping(startingMapping())
   }, [userData]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Started from a save still on its way: if it fails, this form shows edits the server doesn't
+  // have. Say so, and keep a pending marker so the next save - or leaving the page - sends them.
+  useEffect(() => {
+    if (!startedFrom) return
+    let mounted = true
+    startedFrom.done.catch((e: any) => {
+      if (!mounted) return
+      setSaveError(e?.message ?? 'Your mapping could not be saved.')
+      setPending(new Set(pendingKeys.current).add(EARLIER_SAVE_KEY))
+    })
+    return () => {
+      mounted = false
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Closing or reloading the tab with an edit not yet sent - waiting for its debounce, or left
+  // by a failed save - would drop it: ask first. (Saves on their way: fundMappingQueue asks.)
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!saveTimer.current && pendingKeys.current.size === 0) return
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [])
+
   /** Into the church's save queue: after every earlier save for it, from any page. */
   const enqueueSave = (list: qboSettings[]) =>
     saveFundMapping({
@@ -174,6 +207,9 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
   const markSaved = (done: Set<string>) => {
     const next = new Set(pendingKeys.current)
     done.forEach((k) => next.delete(k))
+    // Every save sends the whole form, so it also carried any edits inherited from an earlier
+    // page's failed save.
+    next.delete(EARLIER_SAVE_KEY)
     setPending(next)
     setJustSavedFields((prev) => {
       const shown = new Set(prev)

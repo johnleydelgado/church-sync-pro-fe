@@ -281,6 +281,18 @@ const Mapping: FC<SettingsProps> = () => {
   // second pick followed by a failure of the first would leave the screen and server apart.
   const bankSaving = Object.values(bankStatus).includes('saving')
 
+  // Closing or reloading the tab with a bank or fee save still on its way would drop it: ask
+  // first. (Fund mapping saves ask from Donation and fundMappingQueue.)
+  useEffect(() => {
+    if (!bankSaving) return
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [bankSaving])
+
   // "Saved" fades after a moment; "Not saved" stays until that field is picked again.
   useEffect(() => {
     if (!Object.values(bankStatus).includes('saved')) return
