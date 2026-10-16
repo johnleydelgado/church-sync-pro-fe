@@ -13,9 +13,8 @@ import Loading from '@/common/components/loading/Loading'
 import { failNotification, successNotification } from '@/common/utils/toast'
 import { writeSettingsCache } from '../mapping/settingsCache'
 import {
-  currentFundMapping,
-  fundMappingSettled,
-  saveFundMapping,
+  FundNotInMappingError,
+  reactivateFund,
 } from '../mapping/fundMappingQueue'
 
 interface indexProps {}
@@ -70,20 +69,14 @@ const Index: FC<indexProps> = ({}) => {
     setIsLoadingTrigger(true)
     try {
       if (type === 'batch') {
-        // Through the church's fund-mapping queue, from the mapping as it stands once every
-        // earlier save for it (say, one the Mapping page sent on the way here) has settled.
-        await fundMappingSettled(churchId)
-        const current = currentFundMapping(queryClient, churchId)
-        // Never save a list without the fund (or an empty one) over the church's mapping.
-        if (!current.some((item) => item.fundName === registration)) {
-          throw new Error(
-            `${registration} isn't in this church's fund mapping any more. Reload the page and try again.`,
-          )
-        }
-        const updated = current.map((item) =>
-          item.fundName === registration ? { ...item, isActive: true } : item,
-        )
-        await saveFundMapping({ queryClient, churchId, email, list: updated })
+        // Through the church's fund-mapping queue, from the mapping the server holds once every
+        // earlier save for the church has settled.
+        await reactivateFund({
+          queryClient,
+          churchId,
+          email,
+          fundName: registration,
+        })
       } else {
         // Only the Stripe-era list holds archived registrations. The payout-report mapping is
         // an object and must never be overwritten from here.
@@ -102,9 +95,17 @@ const Index: FC<indexProps> = ({}) => {
       refetch()
       successNotification({ title: `${registration} is active again.` })
     } catch (error: any) {
-      failNotification({
-        title: error?.message || `Couldn't reactivate ${registration}.`,
-      })
+      if (error instanceof FundNotInMappingError) {
+        // Someone changed the mapping since this list was loaded: show the list as it is now.
+        refetch()
+        failNotification({
+          title: `${error.message} The list has been updated.`,
+        })
+      } else {
+        failNotification({
+          title: error?.message || `Couldn't reactivate ${registration}.`,
+        })
+      }
     } finally {
       setIsLoadingTrigger(false) // Always set loading to false in the end
     }

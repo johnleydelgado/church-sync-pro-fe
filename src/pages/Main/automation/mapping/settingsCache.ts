@@ -16,10 +16,10 @@ export const isChurchSettings = (churchId: number) => (q: Query) =>
  *    save landed would otherwise put the old value back when it lands - and cancelling reverts a
  *    copy to what it held when its fetch started, so a write made during the fetch would be lost
  *    if it came before the cancel. Cancel first, then write.
- * 2. The value is written into every copy that has data (copies still loading are left alone).
- *    Copies marked stale by a failed save are written too and then marked stale again: writing
- *    clears the flag, and those copies must still ask the server next time (the failed write may
- *    have landed). `invalidate()` only sets the flag; it does not refetch.
+ * 2. The value goes into every copy that has data (copies still loading are left alone) with
+ *    `setState`, not `setData`: a write is not a read from the server. It doesn't count as a
+ *    fetch (`isFetchedAfterMount`, which the Mapping page waits on), and a copy marked stale by a
+ *    failed save stays marked - the failed write may have landed, so it must still ask the server.
  * 3. Every cancelled fetch runs again, now reading the server after this save.
  */
 export const writeSettingsCache = async (
@@ -34,22 +34,21 @@ export const writeSettingsCache = async (
   })
   await queryClient.cancelQueries({ predicate: ofChurch })
 
-  const withData = (q: Query) => ofChurch(q) && q.state.data !== undefined
-  const stale = cache.findAll({
-    predicate: (q) => withData(q) && q.state.isInvalidated,
-  })
-  const written = queryClient.setQueriesData<UserSettingsProps | undefined>(
-    { predicate: withData },
-    (old) =>
-      old && {
+  const copies = cache.findAll({
+    predicate: (q) => ofChurch(q) && q.state.data !== undefined,
+  }) as Query<UserSettingsProps>[]
+  copies.forEach((q) => {
+    const old = q.state.data as UserSettingsProps
+    q.setState({
+      ...q.state,
+      data: {
         ...old,
         UserSetting: { ...old.UserSetting, ...change } as UserSetting,
       },
-  )
-  stale.forEach((q) => q.invalidate())
+    })
+  })
 
   if (inFlight.length > 0) {
     queryClient.refetchQueries({ predicate: (q) => inFlight.includes(q) })
   }
-  return written
 }
