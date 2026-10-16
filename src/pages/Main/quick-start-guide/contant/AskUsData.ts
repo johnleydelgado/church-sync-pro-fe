@@ -4,7 +4,7 @@ const ASK_US_DATA = [
   {
     headerTitle: 'Connect your accounts',
     bodyTitle:
-      'Link Planning Center, QuickBooks, and Stripe so Church Sync Pro can read your giving and post entries. Nothing else works until these are connected.',
+      'Link Planning Center and QuickBooks so Church Sync Pro can read your giving and post entries. Nothing else works until both are connected.',
   },
   {
     headerTitle: 'Map your funds',
@@ -36,16 +36,15 @@ const ASK_US_DATA = [
 const INSTRUCTIONS = [
   {
     header:
-      'Connect all three giving and accounting systems before anything can sync.',
+      'Connect your giving (Planning Center) and your accounting (QuickBooks) before anything can sync.',
     steps: [
       {
         text: 'Go to',
         linkText: 'Integrations',
         link: routeSettings.INTEGRATIONS,
       },
-      'Click "Synced with QuickBooks" to log in and synchronize your account.',
-      'Click "Synced with Planning Center" to log in and synchronize your account.',
-      'Click "Synced with Stripe" to log in and synchronize your account.',
+      'On the QuickBooks card, click Connect and sign in.',
+      'On the Planning Center card, click Connect and sign in.',
     ],
   },
   {
