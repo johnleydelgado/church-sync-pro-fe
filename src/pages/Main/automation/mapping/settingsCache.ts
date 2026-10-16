@@ -10,7 +10,8 @@ export const isChurchSettings = (churchId: number) => (q: Query) =>
 /**
  * Put a value the server has just saved into every cached copy of one church's settings, so a
  * remount - a tab switch, a return visit - starts from what was saved, not from what was loaded
- * before it. Every writer (bank, fee, fund mapping, Archive) goes through here.
+ * before it. Every writer (bank, fee, fund mapping, registration mapping, Archive) goes through
+ * here.
  *
  * 1. Fetches of those settings still on their way are cancelled first. One that left before the
  *    save landed would otherwise put the old value back when it lands - and cancelling reverts a

@@ -109,23 +109,19 @@ export class FundNotInMappingError extends Error {
   }
 }
 
-/**
- * Reactivate an archived fund (the Archive page). Waits for every earlier save for the church -
- * say, one the Mapping page sent on the way here - then reads the mapping from the server, not
- * from the cache (a cached copy may predate someone else's change), and saves it back through
- * the queue with the fund active. Never saves a list without the fund, or an empty one.
- */
-export const reactivateFund = async ({
-  queryClient,
-  churchId,
-  email,
-  fundName,
-}: {
+interface ReactivateFundArgs {
   queryClient: QueryClient
   churchId: number
   email: string
   fundName: string
-}) => {
+}
+
+const readAndReactivate = async ({
+  queryClient,
+  churchId,
+  email,
+  fundName,
+}: ReactivateFundArgs) => {
   await fundMappingSettled(churchId)
   const res = await getUserRelated(email)
   if (!res?.data) {
@@ -146,3 +142,15 @@ export const reactivateFund = async ({
     ),
   })
 }
+
+/**
+ * Reactivate an archived fund (the Archive page). Waits for every earlier save for the church -
+ * say, one the Mapping page sent on the way here - then reads the mapping from the server, not
+ * from the cache (a cached copy may predate someone else's change), and saves it back through
+ * the queue with the fund active. Never saves a list without the fund, or an empty one.
+ *
+ * Counted from the click until it settles (pendingSaves), not only once the save is sent:
+ * closing the tab or signing out while the mapping is still being read asks first, or waits.
+ */
+export const reactivateFund = (args: ReactivateFundArgs): Promise<void> =>
+  trackSave(readAndReactivate(args))

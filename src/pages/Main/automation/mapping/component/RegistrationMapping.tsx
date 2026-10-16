@@ -19,10 +19,12 @@ import { failNotification, successNotification } from '@/common/utils/toast'
 import { trackSave } from '@/common/utils/pendingSaves'
 import { RootState } from '@/redux/store'
 import { useChurch } from '@/common/hooks/useChurch'
+import { writeSettingsCache } from '../settingsCache'
 import type { QboDataSelectProps } from '..'
 
 interface RegistrationMappingProps {
-  userData: UserSettingsProps | undefined
+  /** Required: a form started without the church's settings would save an empty mapping. */
+  userData: UserSettingsProps
   /** The page's QuickBooks lists (`getQboData`). */
   qboData: QboDataSelectProps | undefined
 }
@@ -218,24 +220,35 @@ const RegistrationMapping: FC<RegistrationMappingProps> = ({
       fingerprint(saved.default.account, saved.default.class, saved.events)
 
   // Counted until it settles (pendingSaves): closing the tab asks first, signing out waits for it.
-  const save = useMutation<void, Error>(() => trackSave(saveMapping()), {
-    onSuccess: () => {
-      successNotification({ title: 'Registration mapping saved' })
-      setAttempted(false)
+  const save = useMutation<void, Error, number>(
+    (forChurch) => trackSave(saveMapping(forChurch)),
+    {
+      onSuccess: () => {
+        successNotification({ title: 'Registration mapping saved' })
+        setAttempted(false)
+      },
+      onError: (e) => {
+        failNotification({ title: e.message })
+      },
+      onSettled: (_, error) => {
+        // A failed request may still have landed, so the next read of these settings asks the
+        // server. Not a refetch now: one that failed would take this form, edits and all, away.
+        if (error) {
+          queryClient.invalidateQueries('getUserRelatedSettings', {
+            refetchActive: false,
+          })
+        }
+        // Whether a payout report can be uploaded depends on this setup.
+        queryClient.invalidateQueries('payoutReportStatus')
+      },
     },
-    onError: (e) => {
-      failNotification({ title: e.message })
-    },
-    // Settled: the accounts can be saved while the start date is refused, and the form
-    // should then show only the date as unsaved.
-    onSettled: () => {
-      queryClient.invalidateQueries('getUserRelatedSettings')
-      // Whether a payout report can be uploaded depends on this setup.
-      queryClient.invalidateQueries('payoutReportStatus')
-    },
-  })
+  )
 
-  async function saveMapping() {
+  // Each part that saves goes into the cached settings as it lands, so the form remounts from it
+  // (another tab and back) and shows only what is still unsaved - the date alone when the
+  // accounts saved and the date was refused. Not a refetch: one already on its way may have read
+  // the server before this save, and react-query would hand back its answer.
+  async function saveMapping(forChurch: number) {
     const mapping: RegistrationMappingV2 = {
       version: 2,
       default: { account: defaultAccount, class: defaultClass },
@@ -246,13 +259,13 @@ const RegistrationMapping: FC<RegistrationMappingProps> = ({
       })),
     }
     await updateRegisterSettings({ email, data: mapping })
+    await writeSettingsCache(queryClient, forChurch, {
+      settingRegistrationData: mapping,
+    })
     if (startDate && startDate !== savedStartDate) {
+      const date = toStoredDate(startDate)
       try {
-        await setStartDataAutomation(
-          email,
-          'registration',
-          toStoredDate(startDate),
-        )
+        await setStartDataAutomation(email, 'registration', date)
       } catch (e: any) {
         throw new Error(
           `The accounts were saved, but the start date wasn't: ${
@@ -260,13 +273,16 @@ const RegistrationMapping: FC<RegistrationMappingProps> = ({
           }`,
         )
       }
+      await writeSettingsCache(queryClient, forChurch, {
+        startDateAutomationRegistration: date,
+      })
     }
   }
 
   const onSave = () => {
     setAttempted(true)
-    if (invalid || !email) return
-    save.mutate()
+    if (invalid || !email || !churchId) return
+    save.mutate(churchId)
   }
 
   const updateRow = (key: number, change: Partial<EventRow>) =>
