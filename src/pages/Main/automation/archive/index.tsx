@@ -74,7 +74,14 @@ const Index: FC<indexProps> = ({}) => {
         // Through the church's fund-mapping queue, from the mapping as it stands once every
         // earlier save for it (say, one the Mapping page sent on the way here) has settled.
         await fundMappingSettled(churchId)
-        const updated = currentFundMapping(queryClient, churchId).map((item) =>
+        const current = currentFundMapping(queryClient, churchId)
+        // Never save a list without the fund (or an empty one) over the church's mapping.
+        if (!current.some((item) => item.fundName === registration)) {
+          throw new Error(
+            `${registration} isn't in this church's fund mapping any more. Reload the page and try again.`,
+          )
+        }
+        const updated = current.map((item) =>
           item.fundName === registration ? { ...item, isActive: true } : item,
         )
         await saveFundMapping({ queryClient, churchId, email, list: updated })
