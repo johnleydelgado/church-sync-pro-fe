@@ -12,25 +12,39 @@ import {
   savesSettled,
 } from '@/common/utils/pendingSaves'
 
-/** How long signing out waits for saves on their way: a save request gives up after 30s. */
+/**
+ * The longest signing out waits for saves on their way before asking. Only fund mapping and
+ * Archive saves (createSettings) give up by themselves, after 30s; bank, fee and registration
+ * saves have no timeout, so this is what bounds the wait.
+ */
 const SAVE_WAIT_MS = 30_000
+
+// One sign-out at a time, whichever button started it: a second click while the first waits
+// would send the same edits again, show a second notice and ask twice.
+let signingOut = false
 
 const useLogoutHandler = () => {
   const dispatch = useDispatch()
 
   const logoutHandler = async () => {
+    if (signingOut) return
+    signingOut = true
+    // Set once the page is on its way out; until then a later click can start again.
+    let leaving = false
     try {
       // Changes not yet saved would go with the session. Send the ones a page is still holding,
       // give saves on their way time to land, and ask before dropping anything that didn't.
       if (hasUnsavedWork()) {
         flushUnsentEdits()
-        if (hasSavesOnTheirWay()) {
-          toast.info('Saving your last changes before signing out…', {
-            position: 'top-center',
-            autoClose: 2000,
-          })
-        }
+        // Up for as long as the wait lasts, which can be the whole SAVE_WAIT_MS.
+        const notice = hasSavesOnTheirWay()
+          ? toast.info('Saving your last changes before signing out…', {
+              position: 'top-center',
+              autoClose: false,
+            })
+          : null
         await savesSettled(SAVE_WAIT_MS)
+        if (notice !== null) toast.dismiss(notice)
         // No session (it expired): nothing more can be saved, so there is nothing to ask.
         if (
           hasUnsavedWork() &&
@@ -54,10 +68,13 @@ const useLogoutHandler = () => {
       await persistor.flush().catch(() => undefined)
       // Signing out on purpose: the reload must not ask "Leave site?".
       leaveWithoutAsking()
+      leaving = true
       // Redirect the user to the login page or reload the page to update the authentication status
       window.location.reload()
     } catch (error) {
       console.error('Logout failed:', error)
+    } finally {
+      if (!leaving) signingOut = false
     }
   }
 

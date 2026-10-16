@@ -168,7 +168,9 @@ const Mapping: FC<SettingsProps> = () => {
   const reduxStripeData = useSelector(
     (state: RootState) => state.stripeData.reduxStripeData,
   )
-  const { email, churchId } = useChurch()
+  const { email, churchId, church } = useChurch()
+  // Without Planning Center there are no funds to read (refreshed after a connect or disconnect).
+  const pcoConnected = !!church?.connections?.pco
   const mappingNumber = useSelector(
     (item: RootState) => item.common.mappingNumber,
   )
@@ -328,6 +330,7 @@ const Mapping: FC<SettingsProps> = () => {
     refetch: refetchUserData,
     isFetching: isFetchingUserData,
     isFetchedAfterMount: settingsReadSinceOpened,
+    isError: settingsReadFailed,
   } = useQuery<UserSettingsProps>(
     ['getUserRelatedSettings', reTriggerIsUserTokens, churchId],
     async () => {
@@ -347,10 +350,15 @@ const Mapping: FC<SettingsProps> = () => {
 
   // The forms on the Donation and Registration tabs read their settings once, when they mount,
   // and save whole lists. So they mount only from settings read from the server since this page
-  // opened (or its key last changed), and not while being read again. Latched per key: a later
-  // refetch doesn't take a form away from under the person.
+  // opened (or its key last changed), and not while being read again. A read that failed counts
+  // as fetched to react-query and leaves the copy cached before it, so it never opens the gate.
+  // Latched per key: a later refetch doesn't take a form away from under the person, unless it
+  // leaves no settings at all (see the tabs).
   const settingsFresh = useLatch(
-    !!userData && settingsReadSinceOpened && !isFetchingUserData,
+    !!userData &&
+      settingsReadSinceOpened &&
+      !settingsReadFailed &&
+      !isFetchingUserData,
     settingsKeyId,
   )
   // Donation may also start from this church's fund-mapping save still on its way: it is newer
@@ -360,9 +368,12 @@ const Mapping: FC<SettingsProps> = () => {
     settingsKeyId,
   )
   const donationReady = settingsFresh || fundSaveOnItsWay
-  // Until then: a spinner while the settings are on their way, or the "couldn't load" panel.
+  // Until then: a spinner while the settings are on their way, or the "couldn't load" panel -
+  // also after a read that failed, whatever copy it left cached.
   const waitingForSettings =
-    !userData && !isFetchingUserData ? 'unavailable' : 'loading'
+    !isFetchingUserData && (!userData || settingsReadFailed)
+      ? 'unavailable'
+      : 'loading'
 
   // Funds archived in the mapping: each name's first entry says isActive false.
   const archivedFunds = useMemo(() => {
@@ -385,12 +396,15 @@ const Mapping: FC<SettingsProps> = () => {
     isFetching: isFetchingFunds,
     refetch: refetchFunds,
   } = useQuery<FundAttProps[]>(
-    // Keyed on the archived names only - the one thing the list depends on. Mapping or bank
-    // saves rewrite the cached settings; with them in the key the funds reloaded and the page
-    // went blank on every save.
-    ['getFunds', churchId, archivedFunds],
+    // Keyed on the archived names - the one thing the list depends on - and on the Planning
+    // Center connection, so connecting it later loads the funds. Mapping or bank saves rewrite
+    // the cached settings; with them in the key the funds reloaded and the page went blank on
+    // every save.
+    ['getFunds', churchId, pcoConnected, archivedFunds],
     async () => {
-      if (!email) return []
+      // Not connected: the server answers with an error, which read as Planning Center being
+      // down. No funds shows "Please set up your accounts", and who can connect it.
+      if (!email || !pcoConnected) return []
       const res = (await pcGetFunds({
         email,
         throwOnError: true,
@@ -770,7 +784,9 @@ const Mapping: FC<SettingsProps> = () => {
                     </p>
                     <ConnectAccountsLink />
                   </div>
-                ) : !settingsFresh ? (
+                ) : !settingsFresh || !userData ? (
+                  // Never a form without settings: a refetch that fails leaves none, and a form
+                  // started from none would save an empty mapping over the church's.
                   waitingForSettings === 'unavailable' ? (
                     settingsUnavailable
                   ) : (
@@ -779,7 +795,7 @@ const Mapping: FC<SettingsProps> = () => {
                 ) : (
                   // Keyed by the loaded settings: the form reads them once, when it mounts.
                   <RegistrationMapping
-                    key={userData?.id ?? 'loading'}
+                    key={userData.id}
                     userData={userData}
                     qboData={qboData}
                   />
@@ -802,7 +818,8 @@ const Mapping: FC<SettingsProps> = () => {
                   // Each pick saves the whole list, built from what is shown. Until this church's
                   // saved choices are in, a pick would save a partial list over them.
                   <Loading />
-                ) : !userData ? (
+                ) : !userData || settingsReadFailed ? (
+                  // A failed read leaves whatever copy was cached before it: not the server's.
                   settingsUnavailable
                 ) : (
                   <div>
