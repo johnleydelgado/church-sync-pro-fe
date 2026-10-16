@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { FC, ReactNode, useState } from 'react'
 import { CgArrowLeft } from 'react-icons/cg'
-import { HiOutlineLogout, HiOutlineUserCircle } from 'react-icons/hi'
+import { HiOutlineLogout } from 'react-icons/hi'
 import { useMediaQuery } from 'react-responsive'
 import { useLocation } from 'react-router'
 import { FaChevronDown, FaChevronUp, FaTimes } from 'react-icons/fa'
@@ -11,7 +11,7 @@ import { useDispatch } from 'react-redux'
 import { OPEN_MODAL } from '@/redux/common'
 import { useSelector } from 'react-redux'
 import { RootState } from '@/redux/store'
-import { Avatar, IconButton } from '@material-tailwind/react'
+import { IconButton } from '@material-tailwind/react'
 import { BiHelpCircle } from 'react-icons/bi'
 import { isEmpty } from 'lodash'
 import useLogoutHandler from '@/common/hooks/useLogoutHandler'
@@ -20,6 +20,7 @@ import { mainRoute } from '@/common/constant/route'
 import { MODALS_NAME } from '@/common/constant/modal'
 import HideQuickGuideModal from '../modal/HideQuickGuideModal'
 import ChurchSwitcher from '../ChurchSwitcher/ChurchSwitcher'
+import PersonBlock from './PersonBlock'
 
 interface SideBarProps {
   isTrigger: boolean
@@ -180,7 +181,6 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
   const location = useLocation()
   const { church } = useChurch()
   const isTabletOrMobile = useMediaQuery({ query: '(max-width: 767px)' })
-  const img_url = useSelector((item: RootState) => item.common.user.img_url)
   const isQuickStartHide = useSelector(
     (state: RootState) => state.common.isQuickStartHide,
   )
@@ -229,21 +229,10 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
               </p>
             </div>
 
-            <ChurchSwitcher
-              variant="sidebar"
-              collapsed={isTrigger}
-              avatar={
-                img_url ? (
-                  <Avatar
-                    src={img_url}
-                    size="lg"
-                    className={isTrigger ? '' : 'mb-4'}
-                  />
-                ) : (
-                  <HiOutlineUserCircle size={32} color="white" />
-                )
-              }
-            />
+            {/* Clear of the collapse toggle that sits on the sidebar's edge above it. */}
+            <div className={isTrigger ? 'pt-4 pb-6' : 'px-6 pt-4 pb-6'}>
+              <ChurchSwitcher variant="sidebar" collapsed={isTrigger} />
+            </div>
 
             <div
               className={` text-white transform transition-all delay-300 duration-200  ${
@@ -279,6 +268,7 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
                   </div>
                 </Link>
                 <div className="mx-4 border-t border-white/20" />
+                <PersonBlock collapsed />
                 <button
                   title="Log-out"
                   className="mt-auto transition transform duration-100 hover:bg-red-500/20 text-red-300 hover:text-red-200"
@@ -308,6 +298,7 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
                   </div>
                 </Link>
                 <div className="mx-8 border-t border-white/20" />
+                <PersonBlock />
                 <button
                   className="group transition transform duration-100 hover:bg-red-500/20 text-red-300 hover:text-red-200"
                   onClick={handleLogout}

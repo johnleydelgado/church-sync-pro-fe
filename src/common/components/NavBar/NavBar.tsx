@@ -1,12 +1,9 @@
 import useLogoutHandler from '@/common/hooks/useLogoutHandler'
 import { useChurch } from '@/common/hooks/useChurch'
-import { capitalAtFirstLetter } from '@/common/utils/helper'
-import { RootState } from '@/redux/store'
 import { Drawer, IconButton, Navbar } from '@material-tailwind/react'
 import { isEmpty } from 'lodash'
 import React, { FC, ReactNode, useEffect, useState } from 'react'
-import { HiOutlineLogout, HiOutlineUserCircle } from 'react-icons/hi'
-import { useSelector } from 'react-redux'
+import { HiOutlineLogout } from 'react-icons/hi'
 import { useMediaQuery } from 'react-responsive'
 import { Link, useLocation } from 'react-router-dom'
 import { mainRoute } from '@/common/constant/route'
@@ -14,6 +11,7 @@ import { BiHelpCircle, BiSortDown } from 'react-icons/bi'
 import { FaChevronDown, FaChevronUp, FaTimes } from 'react-icons/fa'
 import pages, { DropdownLink, linksFor } from '../SideBar/constant'
 import ChurchSwitcher from '../ChurchSwitcher/ChurchSwitcher'
+import PersonBlock from '../SideBar/PersonBlock'
 interface NavBarProps {}
 
 const isRouteActive = (pathName?: string, link?: string) => {
@@ -128,9 +126,6 @@ const NavBar: FC<NavBarProps> = () => {
   // A link in the drawer moves to another page; the drawer closes behind it.
   const { pathname } = useLocation()
   useEffect(() => setOpenNav(false), [pathname])
-  const { firstName, lastName } = useSelector(
-    (item: RootState) => item.common.user,
-  )
   const { church } = useChurch()
   const logoutHandler = useLogoutHandler()
 
@@ -208,16 +203,9 @@ const NavBar: FC<NavBarProps> = () => {
             </IconButton>
           </div>
 
-          <div className="flex gap-2 items-center px-8 w-full">
-            <HiOutlineUserCircle size={32} color="white" />
-            <p className="text-white p-2">
-              {capitalAtFirstLetter(firstName) +
-                ' ' +
-                capitalAtFirstLetter(lastName)}
-            </p>
+          <div className="px-8 pt-4 pb-6">
+            <ChurchSwitcher variant="drawer" />
           </div>
-
-          <ChurchSwitcher variant="drawer" />
 
           <div
             className={`text-white transform transition-all delay-300 duration-200 px-8 flex flex-col gap-8`}
@@ -245,6 +233,11 @@ const NavBar: FC<NavBarProps> = () => {
                 <p className="font-normal group-hover:text-white">Ask Us</p>
               </div>
             </Link>
+            <div className="mx-8 border-t border-white/20" />
+            {/* Log-out below has p-8: as much room above the name as between it and Log-out. */}
+            <div className="pt-4">
+              <PersonBlock />
+            </div>
             <button
               className="group transition transform duration-100 hover:bg-secondaryYellow hover:text-primary text-white"
               onClick={handleLogout}

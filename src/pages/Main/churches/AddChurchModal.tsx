@@ -18,7 +18,8 @@ interface AddChurchModalProps {
 
 /**
  * Add a church: one name. The new church is selected straight away, so the next thing the
- * person sees is it, ready to connect. Used by the Churches page and the "no church yet" screen.
+ * person sees is it, ready to connect. Used by the Churches page, the "no church yet" screen and
+ * the church switcher.
  */
 const AddChurchModal: FC<AddChurchModalProps> = ({
   open,
@@ -97,7 +98,8 @@ const AddChurchModal: FC<AddChurchModalProps> = ({
     <Transition appear show={open} as={React.Fragment}>
       <Dialog
         as="div"
-        className="relative z-50"
+        // Above the mobile menu (z-[9999]): the church switcher in it opens this.
+        className="relative z-[10000]"
         onClose={close}
         initialFocus={inputRef}
       >
