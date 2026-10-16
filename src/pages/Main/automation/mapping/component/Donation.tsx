@@ -13,6 +13,7 @@ import {
   savedMappingOf,
 } from '../fundMappingQueue'
 import { registerUnsentEdits } from '@/common/utils/pendingSaves'
+import { createEditCounter } from '../fieldEdits'
 import {
   Button,
   IconButton,
@@ -133,6 +134,8 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
   const [justSavedFields, setJustSavedFields] = useState<Set<string>>(new Set())
   const [saveError, setSaveError] = useState<string | null>(null)
   const [openStates, setOpenStates] = useState<Record<number, boolean>>({})
+  // Edits per field, so a save marks saved only the fields not edited again while it was out.
+  const [edits] = useState(createEditCounter)
 
   const dispatch = useDispatch()
   const reTriggerIsUserTokens = useSelector(
@@ -192,17 +195,20 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
     saveTimer.current = null
   }
 
-  /** The fields in `done` reached the server. */
-  const markSaved = (done: Set<string>) => {
+  /** The fields a save carried (`edits.snapshot` as it started) reached the server. */
+  const markSaved = (carried: Map<string, number>) => {
+    // A field edited again while the save was out still has that edit to send: it stays
+    // pending, and its own save marks it.
+    const saved = edits.unchangedSince(carried)
     const next = new Set(pendingKeys.current)
-    done.forEach((k) => next.delete(k))
+    saved.forEach((k) => next.delete(k))
     // Every save sends the whole form, so it also carried any edits inherited from an earlier
     // page's failed save.
     next.delete(EARLIER_SAVE_KEY)
     setPending(next)
     setJustSavedFields((prev) => {
       const shown = new Set(prev)
-      done.forEach((k) => shown.add(k))
+      saved.forEach((k) => shown.add(k))
       return shown
     })
     setSaveError(null)
@@ -223,10 +229,10 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
     if (!email || !churchId) return
     // Snapshot what this write covers. More edits can land while it is in flight, and those
     // must stay pending rather than being marked saved by a request that did not include them.
-    const inFlight = new Set(pendingKeys.current)
+    const carried = edits.snapshot(pendingKeys.current)
     try {
       await enqueueSave(latestMapping.current)
-      markSaved(inFlight)
+      markSaved(carried)
     } catch (e: any) {
       // The fields stay pending, so their status flips to "Not saved" and the work is
       // visibly still outstanding. Typing is never interrupted.
@@ -315,6 +321,7 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
     // Mark this exact dropdown as in-flight straight away, so the spinner appears on the
     // control the person just used rather than after the debounce has elapsed.
     const key = fieldKey(fundName, category)
+    edits.edit(key)
     setPending(new Set(pendingKeys.current).add(key))
     setJustSavedFields((prev) => {
       if (!prev.has(key)) return prev
@@ -358,7 +365,7 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
 
     // This save covers any change still waiting for its debounce.
     cancelScheduledSave()
-    const covered = new Set(pendingKeys.current)
+    const covered = edits.snapshot(pendingKeys.current)
     setOnGoingSaving(true)
     try {
       await enqueueSave(latestMapping.current)
@@ -421,7 +428,7 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
     // change still waiting for its debounce.
     setMapping(updatedSettingsData)
     cancelScheduledSave()
-    const covered = new Set(pendingKeys.current)
+    const covered = edits.snapshot(pendingKeys.current)
     setOnGoingSaving(true)
     try {
       await enqueueSave(updatedSettingsData)
