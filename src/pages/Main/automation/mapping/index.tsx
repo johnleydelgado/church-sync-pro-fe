@@ -230,8 +230,10 @@ const Mapping: FC<SettingsProps> = () => {
     }
   >(({ email, data }) => addUpdateBankSettings({ email, data }), {
     onMutate: ({ field }) => setFieldStatus(field, 'saving'),
-    onSuccess: (_, { field, churchId: forChurch, data }) => {
-      writeSettingsCache(queryClient, forChurch, { settingBankData: data })
+    onSuccess: async (_, { field, churchId: forChurch, data }) => {
+      await writeSettingsCache(queryClient, forChurch, {
+        settingBankData: data,
+      })
       if (!stillOn(forChurch)) return
       savedBank.current.accounts = data
       setFieldStatus(field, 'saved')
@@ -259,8 +261,10 @@ const Mapping: FC<SettingsProps> = () => {
     }
   >(({ email, data }) => addUpdateBankCharges({ email, data }), {
     onMutate: ({ field }) => setFieldStatus(field, 'saving'),
-    onSuccess: (_, { field, churchId: forChurch, data }) => {
-      writeSettingsCache(queryClient, forChurch, { settingBankCharges: data })
+    onSuccess: async (_, { field, churchId: forChurch, data }) => {
+      await writeSettingsCache(queryClient, forChurch, {
+        settingBankCharges: data,
+      })
       if (!stillOn(forChurch)) return
       savedBank.current.expense = data
       setFieldStatus(field, 'saved')

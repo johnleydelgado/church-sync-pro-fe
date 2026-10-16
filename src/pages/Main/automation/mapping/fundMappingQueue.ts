@@ -1,7 +1,7 @@
-import type { Query, QueryClient } from 'react-query'
+import type { QueryClient } from 'react-query'
 import { createSettings, qboSettings } from '@/common/api/user'
 import { UserSettingsProps } from '@/common/constant/interfaces'
-import { writeSettingsCache } from './settingsCache'
+import { isChurchSettings, writeSettingsCache } from './settingsCache'
 
 /**
  * One save queue per church for its Donation fund mapping, shared by every screen that saves it
@@ -42,9 +42,6 @@ const queueFor = (churchId: number): ChurchQueue => {
 }
 
 const ignore = () => undefined
-
-const isChurchSettings = (churchId: number) => (q: Query) =>
-  q.queryKey[0] === 'getUserRelatedSettings' && q.queryKey[2] === churchId
 
 /** The newest save for this church still on its way, or null. */
 export const latestFundMapping = (churchId: number) =>
@@ -117,24 +114,11 @@ export const saveFundMapping = ({
 
   const run = queue.chain.then(ignore, ignore).then(async () => {
     await createSettings({ email, settingsData: list })
-    // A settings fetch that left before this save landed would put the old list back.
-    const loadingWithoutData = queryClient.getQueryCache().findAll({
-      predicate: (q) =>
-        isChurchSettings(churchId)(q) &&
-        q.state.isFetching &&
-        q.state.data === undefined,
-    })
-    await queryClient.cancelQueries({ predicate: isChurchSettings(churchId) })
-    writeSettingsCache(queryClient, churchId, {
+    // Cancels settings fetches still on their way, writes the list, then runs them again.
+    await writeSettingsCache(queryClient, churchId, {
       settingsData:
         list as unknown as UserSettingsProps['UserSetting']['settingsData'],
     })
-    // A first load that was cancelled has nothing to show: load it again, after the save.
-    if (loadingWithoutData.length > 0) {
-      queryClient.refetchQueries({
-        predicate: (q) => loadingWithoutData.includes(q),
-      })
-    }
     if (queue.latest === ticket) queue.latest = null
   })
   ticket.done = run

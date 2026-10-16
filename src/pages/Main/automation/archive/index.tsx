@@ -54,12 +54,11 @@ const Index: FC<indexProps> = ({}) => {
       ({ email, settingRegistrationData }) =>
         createSettings({ email, settingRegistrationData }),
       {
-        onSuccess: (_, { churchId: forChurch, settingRegistrationData }) => {
-          // What was saved is what the cache holds.
+        // What was saved is what the cache holds.
+        onSuccess: (_, { churchId: forChurch, settingRegistrationData }) =>
           writeSettingsCache(queryClient, forChurch, {
             settingRegistrationData,
-          } as Partial<UserSettingsProps['UserSetting']>)
-        },
+          } as Partial<UserSettingsProps['UserSetting']>),
       },
     )
 
