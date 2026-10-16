@@ -12,6 +12,7 @@ import {
   saveFundMapping,
   savedMappingOf,
 } from '../fundMappingQueue'
+import { registerUnsentEdits } from '@/common/utils/pendingSaves'
 import {
   Button,
   IconButton,
@@ -177,18 +178,6 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Closing or reloading the tab with an edit not yet sent - waiting for its debounce, or left
-  // by a failed save - would drop it: ask first. (Saves on their way: fundMappingQueue asks.)
-  useEffect(() => {
-    const onBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (!saveTimer.current && pendingKeys.current.size === 0) return
-      e.preventDefault()
-      e.returnValue = ''
-    }
-    window.addEventListener('beforeunload', onBeforeUnload)
-    return () => window.removeEventListener('beforeunload', onBeforeUnload)
-  }, [])
-
   /** Into the church's save queue: after every earlier save for it, from any page. */
   const enqueueSave = (list: qboSettings[]) =>
     saveFundMapping({
@@ -263,6 +252,22 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
         }),
       )
     },
+    [], // eslint-disable-line react-hooks/exhaustive-deps
+  )
+
+  // While this page is open, its unsent edits - waiting for the auto-save delay, or left by a
+  // failed save - make closing the tab ask first, and signing out sends them before it goes.
+  // (Saves already on their way are counted by the queue.)
+  useEffect(
+    () =>
+      registerUnsentEdits({
+        hasUnsent: () => !!saveTimer.current || pendingKeys.current.size > 0,
+        flush: () => {
+          if (!churchId || pendingKeys.current.size === 0) return
+          cancelScheduledSave()
+          void autoSave()
+        },
+      }),
     [], // eslint-disable-line react-hooks/exhaustive-deps
   )
 

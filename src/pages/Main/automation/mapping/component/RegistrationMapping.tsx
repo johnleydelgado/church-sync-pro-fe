@@ -16,6 +16,7 @@ import {
 } from '@/common/api/user'
 import { UserSettingsProps } from '@/common/constant/interfaces'
 import { failNotification, successNotification } from '@/common/utils/toast'
+import { trackSave } from '@/common/utils/pendingSaves'
 import { RootState } from '@/redux/store'
 import { useChurch } from '@/common/hooks/useChurch'
 import type { QboDataSelectProps } from '..'
@@ -216,51 +217,51 @@ const RegistrationMapping: FC<RegistrationMappingProps> = ({
     fingerprint(defaultAccount, defaultClass, events) !==
       fingerprint(saved.default.account, saved.default.class, saved.events)
 
-  const save = useMutation<void, Error>(
-    async () => {
-      const mapping: RegistrationMappingV2 = {
-        version: 2,
-        default: { account: defaultAccount, class: defaultClass },
-        events: events.map((e) => ({
-          signup: e.signup.trim(),
-          account: e.account,
-          class: e.class,
-        })),
-      }
-      await updateRegisterSettings({ email, data: mapping })
-      if (startDate && startDate !== savedStartDate) {
-        try {
-          await setStartDataAutomation(
-            email,
-            'registration',
-            toStoredDate(startDate),
-          )
-        } catch (e: any) {
-          throw new Error(
-            `The accounts were saved, but the start date wasn't: ${
-              e?.message ?? 'unknown error'
-            }`,
-          )
-        }
-      }
+  // Counted until it settles (pendingSaves): closing the tab asks first, signing out waits for it.
+  const save = useMutation<void, Error>(() => trackSave(saveMapping()), {
+    onSuccess: () => {
+      successNotification({ title: 'Registration mapping saved' })
+      setAttempted(false)
     },
-    {
-      onSuccess: () => {
-        successNotification({ title: 'Registration mapping saved' })
-        setAttempted(false)
-      },
-      onError: (e) => {
-        failNotification({ title: e.message })
-      },
-      // Settled: the accounts can be saved while the start date is refused, and the form
-      // should then show only the date as unsaved.
-      onSettled: () => {
-        queryClient.invalidateQueries('getUserRelatedSettings')
-        // Whether a payout report can be uploaded depends on this setup.
-        queryClient.invalidateQueries('payoutReportStatus')
-      },
+    onError: (e) => {
+      failNotification({ title: e.message })
     },
-  )
+    // Settled: the accounts can be saved while the start date is refused, and the form
+    // should then show only the date as unsaved.
+    onSettled: () => {
+      queryClient.invalidateQueries('getUserRelatedSettings')
+      // Whether a payout report can be uploaded depends on this setup.
+      queryClient.invalidateQueries('payoutReportStatus')
+    },
+  })
+
+  async function saveMapping() {
+    const mapping: RegistrationMappingV2 = {
+      version: 2,
+      default: { account: defaultAccount, class: defaultClass },
+      events: events.map((e) => ({
+        signup: e.signup.trim(),
+        account: e.account,
+        class: e.class,
+      })),
+    }
+    await updateRegisterSettings({ email, data: mapping })
+    if (startDate && startDate !== savedStartDate) {
+      try {
+        await setStartDataAutomation(
+          email,
+          'registration',
+          toStoredDate(startDate),
+        )
+      } catch (e: any) {
+        throw new Error(
+          `The accounts were saved, but the start date wasn't: ${
+            e?.message ?? 'unknown error'
+          }`,
+        )
+      }
+    }
+  }
 
   const onSave = () => {
     setAttempted(true)

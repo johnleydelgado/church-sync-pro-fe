@@ -11,6 +11,7 @@ import { useChurch } from '@/common/hooks/useChurch'
 import { createSettings, qboRegistrationSettings } from '@/common/api/user'
 import Loading from '@/common/components/loading/Loading'
 import { failNotification, successNotification } from '@/common/utils/toast'
+import { trackSave } from '@/common/utils/pendingSaves'
 import { writeSettingsCache } from '../mapping/settingsCache'
 import {
   FundNotInMappingError,
@@ -49,9 +50,9 @@ const Index: FC<indexProps> = ({}) => {
         settingRegistrationData: qboRegistrationSettings[]
       }
     >(
-      // Only the email and the list go to the server.
+      // Only the email and the list go to the server. Counted until it settles (pendingSaves).
       ({ email, settingRegistrationData }) =>
-        createSettings({ email, settingRegistrationData }),
+        trackSave(createSettings({ email, settingRegistrationData })),
       {
         // What was saved is what the cache holds.
         onSuccess: (_, { churchId: forChurch, settingRegistrationData }) =>

@@ -1,6 +1,7 @@
 import type { QueryClient } from 'react-query'
 import { createSettings, getUserRelated, qboSettings } from '@/common/api/user'
 import { UserSettingsProps } from '@/common/constant/interfaces'
+import { trackSave } from '@/common/utils/pendingSaves'
 import { writeSettingsCache } from './settingsCache'
 
 /**
@@ -30,8 +31,6 @@ interface ChurchQueue {
    * whenever it opens).
    */
   latest: PendingFundMappingSave | null
-  /** Saves asked for and not settled yet. */
-  unsettled: number
 }
 
 const queues = new Map<number, ChurchQueue>()
@@ -39,7 +38,7 @@ const queues = new Map<number, ChurchQueue>()
 const queueFor = (churchId: number): ChurchQueue => {
   let queue = queues.get(churchId)
   if (!queue) {
-    queue = { chain: Promise.resolve(), latest: null, unsettled: 0 }
+    queue = { chain: Promise.resolve(), latest: null }
     queues.set(churchId, queue)
   }
   return queue
@@ -54,19 +53,6 @@ export const latestFundMapping = (churchId: number) =>
 /** Resolves (never rejects) once every save asked for so far for this church has settled. */
 export const fundMappingSettled = (churchId: number) =>
   (queues.get(churchId)?.chain ?? Promise.resolve()).then(ignore, ignore)
-
-/** Whether any church's fund mapping has a save on its way. */
-export const hasUnsettledFundMappingSave = () =>
-  Array.from(queues.values()).some((q) => q.unsettled > 0)
-
-// Closing or reloading the tab with a save still on its way would drop it: ask first.
-if (typeof window !== 'undefined') {
-  window.addEventListener('beforeunload', (e) => {
-    if (!hasUnsettledFundMappingSave()) return
-    e.preventDefault()
-    e.returnValue = ''
-  })
-}
 
 /** The fund mapping in a church's settings object, or an empty list. */
 export const savedMappingOf = (userData: any): qboSettings[] =>
@@ -94,7 +80,6 @@ export const saveFundMapping = ({
   // A ticket per call: compared by identity, so two saves of the same array stay apart.
   const ticket = { list } as PendingFundMappingSave
   queue.latest = ticket
-  queue.unsettled += 1
 
   const run = queue.chain.then(ignore, ignore).then(async () => {
     await createSettings({ email, settingsData: list })
@@ -107,15 +92,11 @@ export const saveFundMapping = ({
   })
   ticket.done = run
   queue.chain = run
-  run.then(
-    () => {
-      queue.unsettled -= 1
-    },
-    () => {
-      queue.unsettled -= 1
-      if (queue.latest === ticket) queue.latest = null
-    },
-  )
+  // Counted from now until it settles: closing the tab or signing out waits for it (pendingSaves).
+  trackSave(run)
+  run.catch(() => {
+    if (queue.latest === ticket) queue.latest = null
+  })
   return run
 }
 

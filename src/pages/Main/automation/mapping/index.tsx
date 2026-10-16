@@ -23,6 +23,7 @@ import Donation from './component/Donation'
 import FieldStatus, { FieldSaveStatus } from './component/FieldStatus'
 import { writeSettingsCache } from './settingsCache'
 import { latestFundMapping } from './fundMappingQueue'
+import { trackSave } from '@/common/utils/pendingSaves'
 import { failNotification, successNotification } from '@/common/utils/toast'
 import { isEmpty } from 'lodash'
 import { RootState } from '@/redux/store'
@@ -229,6 +230,8 @@ const Mapping: FC<SettingsProps> = () => {
   const stillOn = (forChurch: number) =>
     mounted.current && selectSelectedChurch(store.getState())?.id === forChurch
 
+  // Each request is counted until it settles (trackSave), even after this page unmounts:
+  // closing the tab asks first, and signing out waits for it.
   const { mutate: saveBankData } = useMutation<
     unknown,
     Error,
@@ -238,7 +241,7 @@ const Mapping: FC<SettingsProps> = () => {
       email: string
       data: BankAccountProps[]
     }
-  >(({ email, data }) => addUpdateBankSettings({ email, data }), {
+  >(({ email, data }) => trackSave(addUpdateBankSettings({ email, data })), {
     onMutate: ({ field }) => setFieldStatus(field, 'saving'),
     onSuccess: async (_, { field, churchId: forChurch, data }) => {
       await writeSettingsCache(queryClient, forChurch, {
@@ -269,7 +272,7 @@ const Mapping: FC<SettingsProps> = () => {
       email: string
       data: BankAccountExpensesProps
     }
-  >(({ email, data }) => addUpdateBankCharges({ email, data }), {
+  >(({ email, data }) => trackSave(addUpdateBankCharges({ email, data })), {
     onMutate: ({ field }) => setFieldStatus(field, 'saving'),
     onSuccess: async (_, { field, churchId: forChurch, data }) => {
       await writeSettingsCache(queryClient, forChurch, {
@@ -294,18 +297,6 @@ const Mapping: FC<SettingsProps> = () => {
   // Each pick builds on what is on screen, so while one save is out the four dropdowns wait: a
   // second pick followed by a failure of the first would leave the screen and server apart.
   const bankSaving = Object.values(bankStatus).includes('saving')
-
-  // Closing or reloading the tab with a bank or fee save still on its way would drop it: ask
-  // first. (Fund mapping saves ask from Donation and fundMappingQueue.)
-  useEffect(() => {
-    if (!bankSaving) return
-    const onBeforeUnload = (e: BeforeUnloadEvent) => {
-      e.preventDefault()
-      e.returnValue = ''
-    }
-    window.addEventListener('beforeunload', onBeforeUnload)
-    return () => window.removeEventListener('beforeunload', onBeforeUnload)
-  }, [bankSaving])
 
   // "Saved" fades after a moment; "Not saved" stays until that field is picked again.
   useEffect(() => {
