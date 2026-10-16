@@ -29,8 +29,8 @@ The same rule holds in the backend repo (`quickplan-connect`), set up 2026-10-06
   backend's `make migrate-prd`) refuse to run unless the checkout is on `main`, clean,
   and equal to `origin/main`.
 - **`develop` is what runs on staging.** Everything lands there first. Work not ready
-  for the live church — sign-up email verification, churches-as-entities — stays on
-  `develop` only until it is released on purpose.
+  for the live church stays on `develop` only until it is released on purpose (sign-up
+  email verification and churches-as-entities waited there until 2026-10-16).
 - **Start new work from `main`, not `develop`:** `git switch -c feat/<thing> origin/main`.
   Merge it into `develop` to try it on staging; merge it into `main` when it should
   ship. A branch cut from `develop` drags all of develop's unreleased work with it and
@@ -85,8 +85,8 @@ rebuild rather than a cached no-op.
 recipe, `quickplan-connect/src/supertokensConfig.ts`). Before the first deploy of that
 to any environment, run `scripts/verifyExistingUsers.ts` from the backend repo against
 that environment's SuperTokens core (the script header has the exact command) or every
-existing login is refused with "invalid claim". Not yet deployed anywhere as of
-2026-09-18 — tested locally only.
+existing login is refused with "invalid claim". Live on staging since 2026-09-25 and on
+production since 2026-10-16; the script has been run on both, so only a new environment needs it.
 
 ## Conventions that bite
 
