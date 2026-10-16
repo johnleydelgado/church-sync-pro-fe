@@ -40,9 +40,9 @@ const isFresh = (p: PendingConnection | null): p is PendingConnection =>
   typeof p.startedAt === 'number' &&
   Date.now() - p.startedAt <= PENDING_CONNECTION_MAX_AGE_MS
 
-/** Which service the address says sent the person back: QuickBooks adds `realmId`, Stripe `scope`. */
+/** Which service the address says sent the person back: QuickBooks adds `realmId`. */
 const serviceInUrl = (params: URLSearchParams): IntegrationType =>
-  params.get('realmId') ? 'qbo' : params.get('scope') ? 'stripe' : 'pco'
+  params.get('realmId') ? 'qbo' : 'pco'
 
 /** Trades the code in the address for the service's tokens. */
 const exchangeCode = (
@@ -53,9 +53,6 @@ const exchangeCode = (
     return axios.post(`${REACT_APP_API_PATH}callBackQBO`, {
       url: window.location.href,
     })
-  }
-  if (type === 'stripe') {
-    return axios.post(`${REACT_APP_API_PATH}callBackStripe`, { code })
   }
   return axios.post(`${REACT_APP_API_PATH}callBackPC`, { code })
 }
@@ -96,15 +93,14 @@ const CallBack: FC = () => {
   const finish = async (record: PendingConnection | null) => {
     // This attempt is over whatever happens next; the next Connect click records its own church.
     if (record) dispatch(setPendingConnection(null))
-    if (!isFresh(record)) {
+    const lostTrack = () =>
       setFailure({
         heading: COULD_NOT_FINISH,
         message: LOST_TRACK,
         backTo: mainRoute.CHURCHES,
         backLabel: 'Go to Churches',
       })
-      return
-    }
+    if (!isFresh(record)) return lostTrack()
 
     const service = INTEGRATION_NAME[record.type]
     const backTo = record.returnTo || mainRoute.CHURCHES
@@ -129,6 +125,12 @@ const CallBack: FC = () => {
         return
       }
       return fail()
+    }
+    // The service hands back the `state` this tab's Connect click sent. Without that exact value
+    // (a link someone else started, or a click from before this check existed) nothing ties the
+    // code to this church, so it is never exchanged.
+    if (!record.nonce || params.get('state') !== record.nonce) {
+      return lostTrack()
     }
     // Never file one service's code as another's.
     if (serviceInUrl(params) !== record.type) {
@@ -174,7 +176,6 @@ const CallBack: FC = () => {
       { cancelRefetch: true },
     )
     queryClient.invalidateQueries('getTokenList')
-    queryClient.invalidateQueries('isUserTokens')
     // Leave first - replace, so Back can't land here again with a used code - then land on the
     // church the connection was for, not whichever was picked since. Switching remounts every
     // page; done the other way round it would remount this one (handledCodes covers that too).

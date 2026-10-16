@@ -3,36 +3,52 @@ import { UserSettingsProps } from '@/common/constant/interfaces'
 
 type UserSetting = UserSettingsProps['UserSetting']
 
+/** Every cached copy of one church's settings: `['getUserRelatedSettings', reTrigger, churchId]`. */
+export const isChurchSettings = (churchId: number) => (q: Query) =>
+  q.queryKey[0] === 'getUserRelatedSettings' && q.queryKey[2] === churchId
+
 /**
- * Put a value the server has just saved into every cached copy of one church's settings
- * (`['getUserRelatedSettings', reTrigger, churchId]`), so a remount - a tab switch, a return
- * visit - starts from what was saved, not from what was loaded before it.
+ * Put a value the server has just saved into every cached copy of one church's settings, so a
+ * remount - a tab switch, a return visit - starts from what was saved, not from what was loaded
+ * before it. Every writer (bank, fee, fund mapping, Archive) goes through here.
  *
- * Copies still loading (no data yet) are left alone. Copies marked stale by a failed save are
- * written too, and then marked stale again: writing data clears the flag, and those copies must
- * still ask the server next time (the failed write may have landed). `invalidate()` only sets
- * the flag; it does not refetch.
+ * 1. Fetches of those settings still on their way are cancelled first. One that left before the
+ *    save landed would otherwise put the old value back when it lands - and cancelling reverts a
+ *    copy to what it held when its fetch started, so a write made during the fetch would be lost
+ *    if it came before the cancel. Cancel first, then write.
+ * 2. The value goes into every copy that has data (copies still loading are left alone) with
+ *    `setState`, not `setData`: a write is not a read from the server. It doesn't count as a
+ *    fetch (`isFetchedAfterMount`, which the Mapping page waits on), and a copy marked stale by a
+ *    failed save stays marked - the failed write may have landed, so it must still ask the server.
+ * 3. Every cancelled fetch runs again, now reading the server after this save.
  */
-export const writeSettingsCache = (
+export const writeSettingsCache = async (
   queryClient: QueryClient,
   churchId: number,
   change: Partial<UserSetting>,
 ) => {
-  const isThisChurch = (q: Query) =>
-    q.queryKey[0] === 'getUserRelatedSettings' &&
-    q.queryKey[2] === churchId &&
-    q.state.data !== undefined
-  const stale = queryClient
-    .getQueryCache()
-    .findAll({ predicate: (q) => isThisChurch(q) && q.state.isInvalidated })
-  const written = queryClient.setQueriesData<UserSettingsProps | undefined>(
-    { predicate: isThisChurch },
-    (old) =>
-      old && {
+  const ofChurch = isChurchSettings(churchId)
+  const cache = queryClient.getQueryCache()
+  const inFlight = cache.findAll({
+    predicate: (q) => ofChurch(q) && q.state.isFetching,
+  })
+  await queryClient.cancelQueries({ predicate: ofChurch })
+
+  const copies = cache.findAll({
+    predicate: (q) => ofChurch(q) && q.state.data !== undefined,
+  }) as Query<UserSettingsProps>[]
+  copies.forEach((q) => {
+    const old = q.state.data as UserSettingsProps
+    q.setState({
+      ...q.state,
+      data: {
         ...old,
         UserSetting: { ...old.UserSetting, ...change } as UserSetting,
       },
-  )
-  stale.forEach((q) => q.invalidate())
-  return written
+    })
+  })
+
+  if (inFlight.length > 0) {
+    queryClient.refetchQueries({ predicate: (q) => inFlight.includes(q) })
+  }
 }

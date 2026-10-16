@@ -5,12 +5,11 @@ import { MyChurch } from '@/common/api/church'
 import { setPendingConnection } from '@/redux/common'
 import { persistor } from '@/redux/store'
 
-const START = { qbo: 'authQB', pco: 'authPC', stripe: 'authStripe' } as const
+const START = { qbo: 'authQB', pco: 'authPC' } as const
 /** What each service is called in sentences. */
 export const INTEGRATION_NAME = {
   qbo: 'QuickBooks',
   pco: 'Planning Center',
-  stripe: 'Stripe',
 } as const
 
 export type IntegrationType = keyof typeof START
@@ -22,15 +21,23 @@ export const PENDING_CONNECTION_MAX_AGE_MS = 30 * 60 * 1000
 const isUrl = (v: unknown): v is string =>
   typeof v === 'string' && /^https?:\/\//i.test(v)
 
+/** 16 random bytes as 32 lowercase hex characters: the OAuth `state` for one Connect click. */
+const newNonce = () =>
+  Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) =>
+    b.toString(16).padStart(2, '0'),
+  ).join('')
+
 /**
- * Remember which church the connection is for, then go to QuickBooks / Planning Center / Stripe.
- * `CallBack` reads it on the way back and files the connection under that church's account.
+ * Remember which church the connection is for, then go to QuickBooks / Planning Center.
+ * `CallBack` reads it on the way back and files the connection under that church's account,
+ * but only when the service hands back the same one-time `state` this click sent.
  * Throws (with a sentence to show) when the sign-in address can't be fetched.
  */
 export const useConnectIntegration = () => {
   const dispatch = useDispatch()
   return useCallback(
     async (type: IntegrationType, church: MyChurch, returnTo: string) => {
+      const nonce = newNonce()
       dispatch(
         setPendingConnection({
           type,
@@ -39,13 +46,15 @@ export const useConnectIntegration = () => {
           accountEmail: church.accountEmail,
           accountUserId: church.accountUserId,
           returnTo,
+          nonce,
           startedAt: Date.now(),
         }),
       )
       // redux-persist writes to localStorage asynchronously; leaving the page before it has
-      // would come back with no record of which church this was for.
+      // would come back with no record of which church this was for, or of the state it sent.
       await persistor.flush()
-      const authUri = await authApi(START[type])
+      // The server puts the state into the sign-in address; the service sends it back as is.
+      const authUri = await authApi(`${START[type]}?state=${nonce}`)
       if (!isUrl(authUri)) {
         dispatch(setPendingConnection(null))
         throw new Error(

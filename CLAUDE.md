@@ -278,8 +278,12 @@ sidebar `ChurchSwitcher` picks one; `useChurch()` (`src/common/hooks/useChurch.t
   link because SendGrid mail is unreliable, and a person who already has a login is added straight
   away), `NoChurchYet` in place of church pages when the list is empty.
 - **Connecting QuickBooks / Planning Center** goes through `useConnectIntegration()`, which saves a
-  `pendingConnection` (church, type, start time; 30-minute expiry) and flushes redux-persist before
-  the redirect; `accounts-token/CallBack.tsx` files the tokens under that church.
+  `pendingConnection` (church, type, a random one-time `nonce`, start time; 30-minute expiry),
+  flushes redux-persist, and asks for the sign-in address with that nonce as OAuth state
+  (`authQB?state=` / `authPC?state=`; the backend 400s without one). `accounts-token/CallBack.tsx`
+  exchanges the code only if the returned `state` equals the nonce, then files the tokens under
+  that church. Any new connect path must do the same. **Stripe Connect is gone** (2026-10-16: CSP
+  can't use it); only QuickBooks and Planning Center connect.
 - `user.role` (`client` | `bookkeeper`) now only matters at sign-up: a `client` login gets its own
   church created the first time it loads `/church/mine`.
 

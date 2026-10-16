@@ -5,7 +5,6 @@ import {
   ForgotPasswordPage,
   LoginPage,
   ResetPasswordPage,
-  SecondaryLoginPage,
   SignUpGooglePage,
   SignUpPage,
   SubscriptionPage,
@@ -40,7 +39,7 @@ import Session from 'supertokens-web-js/recipe/session'
 import { useQueries, useQuery } from 'react-query'
 import { useSelector } from 'react-redux'
 import { RootState } from '@/redux/store'
-import { getUserRelated, isUserHaveTokens } from '@/common/api/user'
+import { getUserRelated } from '@/common/api/user'
 import { storage, storageKey } from '@/common/utils/storage'
 import Loading from '@/common/components/loading/Loading'
 import 'react-tooltip/dist/react-tooltip.css'
@@ -54,7 +53,6 @@ import {
 } from '@/redux/common'
 import useLogoutHandler from '@/common/hooks/useLogoutHandler'
 import InviteLink from './Main/invite-link/InviteLink'
-import { useGetTokenList } from '@/common/hooks/useGetTokenList'
 import {
   useChurch,
   useKeepChurchSelected,
@@ -123,20 +121,9 @@ const MainPage: FC<indexProps> = () => {
     },
   )
 
-  const { tokenList } = useGetTokenList()
-
-  const { data: isUserTokens } = useQuery(
-    ['isUserTokens', tokenList, churchId],
-    async () => {
-      if (email) return await isUserHaveTokens(email)
-      return false
-    },
-    {
-      enabled: !!churchId,
-      staleTime: Infinity,
-      refetchOnWindowFocus: false,
-    },
-  )
+  // QuickBooks and Planning Center both connected for the selected church. The server's
+  // isUserHaveTokens counted three connections, Stripe's among them; CSP connects only these two.
+  const isUserTokens = !!church?.connections?.qbo && !!church?.connections?.pco
 
   const sessionCheck = async () => {
     if (await Session.doesSessionExist()) {
@@ -273,15 +260,6 @@ const MainPage: FC<indexProps> = () => {
           path={route.SUBSCRIPTION_PLAN}
           element={
             <PrivateRoute Component={SubscriptionPlanPage} guards={[]} />
-          }
-        />
-        <Route
-          path={route.SECONDARY_LOGIN}
-          element={
-            <PrivateRoute
-              Component={SecondaryLoginPage}
-              guards={[unAuthGuard]}
-            />
           }
         />
         <Route

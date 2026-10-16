@@ -48,12 +48,18 @@ export interface BankAccountExpensesProps {
 /** The church a QuickBooks / Planning Center connect was started for, kept across the redirect. */
 export interface PendingConnection {
   /** Which service the person was sent to. */
-  type: 'qbo' | 'pco' | 'stripe'
+  type: 'qbo' | 'pco'
   churchId: number
   churchName: string
   accountEmail: string
   accountUserId: number
   returnTo: string
+  /**
+   * The one-time OAuth `state` sent with this Connect click (32 hex characters). The return is
+   * finished only if the service hands this exact value back, so a code from a link someone
+   * else started is never saved to this church.
+   */
+  nonce: string
   /** Date.now() when Connect was clicked; an old record is treated as missing. */
   startedAt: number
 }

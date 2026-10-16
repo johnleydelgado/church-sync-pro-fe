@@ -22,6 +22,8 @@ import { AccountTokenDataProps } from '@/common/hooks/useGetTokenList'
 import Donation from './component/Donation'
 import FieldStatus, { FieldSaveStatus } from './component/FieldStatus'
 import { writeSettingsCache } from './settingsCache'
+import { latestFundMapping } from './fundMappingQueue'
+import { trackSave } from '@/common/utils/pendingSaves'
 import { failNotification, successNotification } from '@/common/utils/toast'
 import { isEmpty } from 'lodash'
 import { RootState } from '@/redux/store'
@@ -148,6 +150,15 @@ const ConnectAccountsLink: FC = () => {
 /** One of the Bank tab's four dropdowns; each shows its own save status. */
 type BankField = 'donation' | 'registration' | 'feeAccount' | 'feeClass'
 
+/** True from the first render where `ready` holds for `key`, until the key changes. */
+const useLatch = (ready: boolean, key: string) => {
+  const [latchedFor, setLatchedFor] = useState<string | null>(null)
+  useEffect(() => {
+    if (ready && latchedFor !== key) setLatchedFor(key)
+  }, [ready, latchedFor, key])
+  return ready || latchedFor === key
+}
+
 const Mapping: FC<SettingsProps> = () => {
   const dispatch = useDispatch()
   const { selectedBankAccount, selectedBankExpense } = useSelector(
@@ -219,6 +230,8 @@ const Mapping: FC<SettingsProps> = () => {
   const stillOn = (forChurch: number) =>
     mounted.current && selectSelectedChurch(store.getState())?.id === forChurch
 
+  // Each request is counted until it settles (trackSave), even after this page unmounts:
+  // closing the tab asks first, and signing out waits for it.
   const { mutate: saveBankData } = useMutation<
     unknown,
     Error,
@@ -228,10 +241,12 @@ const Mapping: FC<SettingsProps> = () => {
       email: string
       data: BankAccountProps[]
     }
-  >(({ email, data }) => addUpdateBankSettings({ email, data }), {
+  >(({ email, data }) => trackSave(addUpdateBankSettings({ email, data })), {
     onMutate: ({ field }) => setFieldStatus(field, 'saving'),
-    onSuccess: (_, { field, churchId: forChurch, data }) => {
-      writeSettingsCache(queryClient, forChurch, { settingBankData: data })
+    onSuccess: async (_, { field, churchId: forChurch, data }) => {
+      await writeSettingsCache(queryClient, forChurch, {
+        settingBankData: data,
+      })
       if (!stillOn(forChurch)) return
       savedBank.current.accounts = data
       setFieldStatus(field, 'saved')
@@ -257,10 +272,12 @@ const Mapping: FC<SettingsProps> = () => {
       email: string
       data: BankAccountExpensesProps
     }
-  >(({ email, data }) => addUpdateBankCharges({ email, data }), {
+  >(({ email, data }) => trackSave(addUpdateBankCharges({ email, data })), {
     onMutate: ({ field }) => setFieldStatus(field, 'saving'),
-    onSuccess: (_, { field, churchId: forChurch, data }) => {
-      writeSettingsCache(queryClient, forChurch, { settingBankCharges: data })
+    onSuccess: async (_, { field, churchId: forChurch, data }) => {
+      await writeSettingsCache(queryClient, forChurch, {
+        settingBankCharges: data,
+      })
       if (!stillOn(forChurch)) return
       savedBank.current.expense = data
       setFieldStatus(field, 'saved')
@@ -299,11 +316,18 @@ const Mapping: FC<SettingsProps> = () => {
     return () => clearTimeout(timer)
   }, [bankStatus])
 
-  // to get settings data. Keyed by church, so a switch refills the bank and fee fields below.
+  // The church's settings, keyed by church so a switch refills the bank and fee fields below.
+  // Read from the server whenever this page opens (refetchOnMount 'always') and whenever the key
+  // changes (staleTime 0: a church switch, or the reTrigger flip after a save) - a copy cached
+  // earlier in the session may predate someone else's change. Never behind the person's back
+  // (focus, reconnect), where a refetch landing during a save could put the pre-save bank or
+  // fee value back over their pick.
+  const settingsKeyId = `${reTriggerIsUserTokens}|${churchId}`
   const {
     data: userData,
     refetch: refetchUserData,
     isFetching: isFetchingUserData,
+    isFetchedAfterMount: settingsReadSinceOpened,
   } = useQuery<UserSettingsProps>(
     ['getUserRelatedSettings', reTriggerIsUserTokens, churchId],
     async () => {
@@ -314,13 +338,31 @@ const Mapping: FC<SettingsProps> = () => {
     },
     {
       enabled: !!churchId,
-      staleTime: Infinity,
-      // Not behind the person's back: a refetch landing during a save could put the pre-save
-      // bank or fee value back over their pick.
+      staleTime: 0,
+      refetchOnMount: 'always',
       refetchOnWindowFocus: false,
       refetchOnReconnect: false,
     },
   )
+
+  // The forms on the Donation and Registration tabs read their settings once, when they mount,
+  // and save whole lists. So they mount only from settings read from the server since this page
+  // opened (or its key last changed), and not while being read again. Latched per key: a later
+  // refetch doesn't take a form away from under the person.
+  const settingsFresh = useLatch(
+    !!userData && settingsReadSinceOpened && !isFetchingUserData,
+    settingsKeyId,
+  )
+  // Donation may also start from this church's fund-mapping save still on its way: it is newer
+  // than anything the server has, and the server will hold it once it lands.
+  const fundSaveOnItsWay = useLatch(
+    !!userData && !!churchId && !!latestFundMapping(churchId),
+    settingsKeyId,
+  )
+  const donationReady = settingsFresh || fundSaveOnItsWay
+  // Until then: a spinner while the settings are on their way, or the "couldn't load" panel.
+  const waitingForSettings =
+    !userData && !isFetchingUserData ? 'unavailable' : 'loading'
 
   // Funds archived in the mapping: each name's first entry says isActive false.
   const archivedFunds = useMemo(() => {
@@ -703,14 +745,14 @@ const Mapping: FC<SettingsProps> = () => {
                       </div>
                     </div>
 
-                    {/* Mounted once the settings are in: Donation loads its form from them
-                        once per mount and keeps it from then on. */}
-                    {userData ? (
+                    {/* Mounted once fresh settings are in (see donationReady): Donation loads
+                        its form from them once per mount and keeps it from then on. */}
+                    {userData && donationReady ? (
                       <Donation fundData={fundData || []} userData={userData} />
-                    ) : isFetchingUserData ? (
-                      <Loading />
-                    ) : (
+                    ) : waitingForSettings === 'unavailable' ? (
                       settingsUnavailable
+                    ) : (
+                      <Loading />
                     )}
                   </div>
                 )}
@@ -728,6 +770,12 @@ const Mapping: FC<SettingsProps> = () => {
                     </p>
                     <ConnectAccountsLink />
                   </div>
+                ) : !settingsFresh ? (
+                  waitingForSettings === 'unavailable' ? (
+                    settingsUnavailable
+                  ) : (
+                    <Loading />
+                  )
                 ) : (
                   // Keyed by the loaded settings: the form reads them once, when it mounts.
                   <RegistrationMapping

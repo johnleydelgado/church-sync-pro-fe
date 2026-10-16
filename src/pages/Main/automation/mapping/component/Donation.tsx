@@ -1,14 +1,19 @@
 import { isEmpty } from 'lodash'
 import React, { FC, useEffect, useMemo, useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from 'react-query'
+import { useQuery, useQueryClient } from 'react-query'
 import Dropdown, { components } from 'react-select'
 import { QboGetAllQboData, getQboData } from '@/common/api/qbo'
 import { RootState } from '@/redux/store'
 import { useChurch } from '@/common/hooks/useChurch'
 import { useSelector } from 'react-redux'
-import { SettingQBOProps, createSettings, qboSettings } from '@/common/api/user'
-import { UserSettingsProps } from '@/common/constant/interfaces'
-import { writeSettingsCache } from '../settingsCache'
+import { qboSettings } from '@/common/api/user'
+import {
+  latestFundMapping,
+  saveFundMapping,
+  savedMappingOf,
+} from '../fundMappingQueue'
+import { registerUnsentEdits } from '@/common/utils/pendingSaves'
+import { createEditCounter } from '../fieldEdits'
 import {
   Button,
   IconButton,
@@ -94,29 +99,33 @@ const HelpTip: FC<{ text: string }> = ({ text }) => (
   </Tooltip>
 )
 
+/** A pending marker for edits carried in from an earlier page's save that then failed. */
+const EARLIER_SAVE_KEY = '::earlier-save'
+
 /** Identifies one dropdown: a fund plus which of its three fields. */
 const fieldKey = (fundName: string | null | undefined, category: string) =>
   `${fundName ?? ''}::${category}`
 
-/** The fund mapping in a church's saved settings, or an empty list. */
-const savedMappingOf = (userData: any): qboSettings[] =>
-  Array.isArray(userData?.UserSetting?.settingsData)
-    ? userData.UserSetting.settingsData
-    : []
-
 /**
  * Donation fund mapping.
  *
- * The form is loaded ONCE per mount, from the church's cached settings, and is never overwritten
- * from the cache afterwards: the form is the source of truth while the page is open. Every save
- * writes what it saved into the cache, so the next mount (a tab switch, a return visit) starts
- * from it. A church switch remounts the page.
+ * The form is loaded ONCE per mount and is never overwritten afterwards: the form is the source
+ * of truth while the page is open. It starts from the church's newest save still on its way (an
+ * earlier mount's, say), else from the cached settings. Every save goes through the church's
+ * queue (fundMappingQueue) and writes what it saved into the cache. A church switch remounts
+ * the page.
  */
 const Donation: FC<DonationProps> = ({ fundData, userData }) => {
   const { selectedStartDate } = useSelector((state: RootState) => state.common)
-  const [settingsData, setSettingsData] = useState<qboSettings[]>(() =>
-    savedMappingOf(userData),
+  // MainPage remounts every page on a church switch, so these never change under a mounted form.
+  const { email, churchId } = useChurch()
+  // The save this form starts from when one is still on its way; fixed for the mount.
+  const [startedFrom] = useState(() =>
+    churchId ? latestFundMapping(churchId) : null,
   )
+  const startingMapping = () => startedFrom?.list ?? savedMappingOf(userData)
+  const [settingsData, setSettingsData] =
+    useState<qboSettings[]>(startingMapping)
   const [onGoingSaving, setOnGoingSaving] = useState<boolean>(false)
   // Which dropdowns have an edit that has not reached the server yet, and which just landed.
   // Tracking them per field is what lets the status sit next to the control the person touched
@@ -125,10 +134,10 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
   const [justSavedFields, setJustSavedFields] = useState<Set<string>>(new Set())
   const [saveError, setSaveError] = useState<string | null>(null)
   const [openStates, setOpenStates] = useState<Record<number, boolean>>({})
+  // Edits per field, so a save marks saved only the fields not edited again while it was out.
+  const [edits] = useState(createEditCounter)
 
   const dispatch = useDispatch()
-  // MainPage remounts every page on a church switch, so these never change under a mounted form.
-  const { email, churchId } = useChurch()
   const reTriggerIsUserTokens = useSelector(
     (item: RootState) => item.common.reTriggerIsUserTokens,
   )
@@ -154,56 +163,52 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
   useEffect(() => {
     if (initialised.current || !userData) return
     initialised.current = true
-    setMapping(savedMappingOf(userData))
+    setMapping(startingMapping())
   }, [userData]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // create user settings
-  const { mutateAsync } = useMutation<
-    unknown,
-    unknown,
-    SettingQBOProps & { churchId: number }
-  >(
-    // Only the email and the list go to the server.
-    ({ email, settingsData }) => createSettings({ email, settingsData }),
-    {
-      // Runs after unmount too (react-query v3), so a flushed save still reaches the cache.
-      onSuccess: (_, { churchId: forChurch, settingsData }) => {
-        if (!settingsData) return
-        writeSettingsCache(queryClient, forChurch, {
-          settingsData:
-            settingsData as unknown as UserSettingsProps['UserSetting']['settingsData'],
-        })
-      },
-    },
-  )
+  // Started from a save still on its way: if it fails, this form shows edits the server doesn't
+  // have. Say so, and keep a pending marker so the next save - or leaving the page - sends them.
+  useEffect(() => {
+    if (!startedFrom) return
+    let mounted = true
+    startedFrom.done.catch((e: any) => {
+      if (!mounted) return
+      setSaveError(e?.message ?? 'Your mapping could not be saved.')
+      setPending(new Set(pendingKeys.current).add(EARLIER_SAVE_KEY))
+    })
+    return () => {
+      mounted = false
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Saves run one at a time, in the order they were asked for, so the server and the cache end
-  // on the newest list even when an earlier request is slow.
-  const saveChain = React.useRef<Promise<unknown>>(Promise.resolve())
-  const enqueueSave = (list: qboSettings[]) => {
-    const forChurch = churchId as number
-    const run = saveChain.current
-      .catch(() => undefined)
-      .then(() =>
-        mutateAsync({ churchId: forChurch, email, settingsData: list }),
-      )
-    saveChain.current = run
-    return run
-  }
+  /** Into the church's save queue: after every earlier save for it, from any page. */
+  const enqueueSave = (list: qboSettings[]) =>
+    saveFundMapping({
+      queryClient,
+      churchId: churchId as number,
+      email,
+      list,
+    })
 
   const cancelScheduledSave = () => {
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = null
   }
 
-  /** The fields in `done` reached the server. */
-  const markSaved = (done: Set<string>) => {
+  /** The fields a save carried (`edits.snapshot` as it started) reached the server. */
+  const markSaved = (carried: Map<string, number>) => {
+    // A field edited again while the save was out still has that edit to send: it stays
+    // pending, and its own save marks it.
+    const saved = edits.unchangedSince(carried)
     const next = new Set(pendingKeys.current)
-    done.forEach((k) => next.delete(k))
+    saved.forEach((k) => next.delete(k))
+    // Every save sends the whole form, so it also carried any edits inherited from an earlier
+    // page's failed save.
+    next.delete(EARLIER_SAVE_KEY)
     setPending(next)
     setJustSavedFields((prev) => {
       const shown = new Set(prev)
-      done.forEach((k) => shown.add(k))
+      saved.forEach((k) => shown.add(k))
       return shown
     })
     setSaveError(null)
@@ -224,10 +229,10 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
     if (!email || !churchId) return
     // Snapshot what this write covers. More edits can land while it is in flight, and those
     // must stay pending rather than being marked saved by a request that did not include them.
-    const inFlight = new Set(pendingKeys.current)
+    const carried = edits.snapshot(pendingKeys.current)
     try {
       await enqueueSave(latestMapping.current)
-      markSaved(inFlight)
+      markSaved(carried)
     } catch (e: any) {
       // The fields stay pending, so their status flips to "Not saved" and the work is
       // visibly still outstanding. Typing is never interrupted.
@@ -240,11 +245,12 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
     saveTimer.current = setTimeout(autoSave, 1200)
   }
 
-  // Leaving the page (another tab, another page, another church) with a change still waiting for
-  // its debounce: save it now rather than drop it.
+  // Leaving the page (another tab, another page, another church) with any change not yet known
+  // to be saved - waiting for its debounce, in flight, or failed: save the newest list now
+  // rather than drop it. A duplicate of a save in flight queues behind it and is harmless.
   useEffect(
     () => () => {
-      if (!saveTimer.current) return
+      if (!churchId || pendingKeys.current.size === 0) return
       cancelScheduledSave()
       enqueueSave(latestMapping.current).catch(() =>
         failNotification({
@@ -252,6 +258,22 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
         }),
       )
     },
+    [], // eslint-disable-line react-hooks/exhaustive-deps
+  )
+
+  // While this page is open, its unsent edits - waiting for the auto-save delay, or left by a
+  // failed save - make closing the tab ask first, and signing out sends them before it goes.
+  // (Saves already on their way are counted by the queue.)
+  useEffect(
+    () =>
+      registerUnsentEdits({
+        hasUnsent: () => !!saveTimer.current || pendingKeys.current.size > 0,
+        flush: () => {
+          if (!churchId || pendingKeys.current.size === 0) return
+          cancelScheduledSave()
+          void autoSave()
+        },
+      }),
     [], // eslint-disable-line react-hooks/exhaustive-deps
   )
 
@@ -299,6 +321,7 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
     // Mark this exact dropdown as in-flight straight away, so the spinner appears on the
     // control the person just used rather than after the debounce has elapsed.
     const key = fieldKey(fundName, category)
+    edits.edit(key)
     setPending(new Set(pendingKeys.current).add(key))
     setJustSavedFields((prev) => {
       if (!prev.has(key)) return prev
@@ -342,7 +365,7 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
 
     // This save covers any change still waiting for its debounce.
     cancelScheduledSave()
-    const covered = new Set(pendingKeys.current)
+    const covered = edits.snapshot(pendingKeys.current)
     setOnGoingSaving(true)
     try {
       await enqueueSave(latestMapping.current)
@@ -405,14 +428,18 @@ const Donation: FC<DonationProps> = ({ fundData, userData }) => {
     // change still waiting for its debounce.
     setMapping(updatedSettingsData)
     cancelScheduledSave()
-    const covered = new Set(pendingKeys.current)
+    const covered = edits.snapshot(pendingKeys.current)
     setOnGoingSaving(true)
     try {
       await enqueueSave(updatedSettingsData)
     } catch (e: any) {
-      // Not archived: put the form back, or the next save would archive it after all.
+      // Not archived: put the form back, or the next save would archive it after all. Edits it
+      // carried are still unsaved: their fields say so (and leaving the page retries them).
       setMapping(before)
       setOnGoingSaving(false)
+      if (covered.size > 0) {
+        setSaveError(e?.message ?? 'Your mapping could not be saved.')
+      }
       failNotification({
         title: e?.message || `Couldn't archive ${fundName}.`,
       })

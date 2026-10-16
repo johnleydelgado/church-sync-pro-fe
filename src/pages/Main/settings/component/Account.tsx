@@ -5,7 +5,6 @@ import { failNotification, successNotification } from '@/common/utils/toast'
 import { deleteUserToken } from '@/common/api/user'
 import qboIcon from '@/common/assets/qbo-icon.png'
 import pcoIcon from '@/common/assets/pco-icon.png'
-import stripeIcon from '@/common/assets/stripe.png'
 import { CgSync } from 'react-icons/cg'
 import { BiSync } from 'react-icons/bi'
 import { useGetTokenList } from '@/common/hooks/useGetTokenList'
@@ -19,13 +18,12 @@ import ConfirmActionModal from '@/common/components/modal/ConfirmActionModal'
 import { MODALS_NAME } from '@/common/constant/modal'
 import { OPEN_MODAL } from '@/redux/common'
 
-/** Where QuickBooks / Planning Center / Stripe send the person back to once connected. */
+/** Where QuickBooks / Planning Center send the person back to once connected. */
 const RETURN_TO = `${mainRoute.SETTINGS}?tab=integrations`
 
 interface AccountProps {}
 
 interface LoadingProps {
-  stripeLoading: boolean
   pcoLoading: boolean
   qboLoading: boolean
 }
@@ -65,7 +63,6 @@ const Account: FC<AccountProps> = ({}) => {
     : null
 
   const [isBtnLoading, setIsBtnLoading] = useState<LoadingProps>({
-    stripeLoading: false,
     pcoLoading: false,
     qboLoading: false,
   })
@@ -99,10 +96,8 @@ const Account: FC<AccountProps> = ({}) => {
     }
   }
 
-  // One definition per integration. The three cards were previously ~60 lines of
-  // near-identical JSX each, which is how the Stripe card drifted: it kept the
-  // fixed h-28 while carrying a longer description, so its Connect button
-  // rendered outside the card border.
+  // One definition per integration, all drawn by the same card below. (Stripe Connect is gone:
+  // CSP can't use it, so only QuickBooks and Planning Center connect.)
   const INTEGRATIONS = [
     {
       type: 'qbo' as const,
@@ -119,14 +114,6 @@ const Account: FC<AccountProps> = ({}) => {
       loadingKey: 'pcoLoading' as const,
       description:
         'Where your donations come from. Online giving in Planning Center is the source for every entry.',
-    },
-    {
-      type: 'stripe' as const,
-      name: 'Stripe',
-      icon: stripeIcon,
-      loadingKey: 'stripeLoading' as const,
-      description:
-        'Used to reconcile payouts against your clearing account once the deposit lands.',
     },
   ]
 
