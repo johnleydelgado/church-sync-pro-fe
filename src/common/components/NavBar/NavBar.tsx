@@ -2,7 +2,14 @@ import useLogoutHandler from '@/common/hooks/useLogoutHandler'
 import { useChurch } from '@/common/hooks/useChurch'
 import { Drawer, IconButton, Navbar } from '@material-tailwind/react'
 import { isEmpty } from 'lodash'
-import React, { FC, ReactNode, useEffect, useState } from 'react'
+import React, {
+  FC,
+  ReactNode,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react'
 import { HiOutlineLogout } from 'react-icons/hi'
 import { useMediaQuery } from 'react-responsive'
 import { Link, useLocation } from 'react-router-dom'
@@ -126,6 +133,14 @@ const NavBar: FC<NavBarProps> = () => {
   // A link in the drawer moves to another page; the drawer closes behind it.
   const { pathname } = useLocation()
   useEffect(() => setOpenNav(false), [pathname])
+  // The menu stays mounted when closed, only moved off-screen, so its links and its copy of the
+  // church switcher were still Tab stops and read aloud - on desktop too, where it never shows.
+  // Inert while closed. Set by hand: React 18 doesn't know the attribute.
+  const drawerRef = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    if (openNav) drawerRef.current?.removeAttribute('inert')
+    else drawerRef.current?.setAttribute('inert', '')
+  }, [openNav])
   const { church } = useChurch()
   const logoutHandler = useLogoutHandler()
 
@@ -191,7 +206,17 @@ const NavBar: FC<NavBarProps> = () => {
         </div>
       </Navbar>
 
-      <Drawer open={openNav} onClose={() => setOpenNav(false)}>
+      <Drawer
+        ref={drawerRef}
+        open={openNav}
+        onClose={() => {
+          // Escape in a dialog opened from the menu (Add church) is the dialog's. The menu sees it
+          // first, and closing behind the dialog left focus on a card now off-screen.
+          if (document.querySelector('[role="dialog"][aria-modal="true"]'))
+            return
+          setOpenNav(false)
+        }}
+      >
         <div className="h-full bg-primary shadow-md flex flex-col gap-2 overflow-y-auto">
           <div className={`flex px-8 w-full pt-2 items-center justify-between`}>
             <p className="text-white p-2 text-xl">Church Sync Pro</p>

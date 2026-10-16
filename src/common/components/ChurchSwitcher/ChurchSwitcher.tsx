@@ -505,11 +505,8 @@ const PanelBody: FC<PanelBodyProps> = ({
                     >
                       {church.name}
                     </span>
-                    <span
-                      className={`block truncate text-xs leading-4 ${
-                        church.isActive ? 'text-[#6b7280]' : 'text-[#9ca3af]'
-                      }`}
-                    >
+                    {/* gray-500 for inactive churches too: gray-400 on white is too faint to read. */}
+                    <span className="block truncate text-xs leading-4 text-[#6b7280]">
                       {detail}
                     </span>
                   </span>
@@ -595,12 +592,14 @@ const PanelBody: FC<PanelBodyProps> = ({
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={(e) => {
-                    // Enter takes the first match, so "gra" then Enter is a switch.
+                    // Enter takes the first match, so "gra" then Enter is a switch - but only once
+                    // something is typed: the field has focus as soon as the list opens, and a
+                    // stray Enter there must not switch church.
+                    if (e.key !== 'Enter' || e.nativeEvent.isComposing || !term)
+                      return
+                    e.preventDefault()
                     const first = shown?.[0]
-                    if (e.key === 'Enter' && first) {
-                      e.preventDefault()
-                      onChoose(first.church)
-                    }
+                    if (first) onChoose(first.church)
                   }}
                   placeholder="Find a church"
                   aria-label="Find a church"
