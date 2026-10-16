@@ -32,13 +32,15 @@ const NOT_FINISHED =
 
 /**
  * A record from an older build (no `type` / `startedAt`), or one left from a Connect click the
- * person walked away from, can't say which church this return is for.
+ * person walked away from, can't say which church this return is for. Nor can one dated in the
+ * future: it would otherwise stay fresh forever.
  */
-const isFresh = (p: PendingConnection | null): p is PendingConnection =>
-  !!p &&
-  !!INTEGRATION_NAME[p.type] &&
-  typeof p.startedAt === 'number' &&
-  Date.now() - p.startedAt <= PENDING_CONNECTION_MAX_AGE_MS
+const isFresh = (p: PendingConnection | null): p is PendingConnection => {
+  if (!p || !INTEGRATION_NAME[p.type] || typeof p.startedAt !== 'number')
+    return false
+  const age = Date.now() - p.startedAt
+  return age >= 0 && age <= PENDING_CONNECTION_MAX_AGE_MS
+}
 
 /** Which service the address says sent the person back: QuickBooks adds `realmId`. */
 const serviceInUrl = (params: URLSearchParams): IntegrationType =>

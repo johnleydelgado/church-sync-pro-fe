@@ -3,6 +3,7 @@ import { useDispatch } from 'react-redux'
 import Session from 'supertokens-web-js/recipe/session'
 import { toast } from 'react-toastify'
 import { resetUserData } from '@/redux/common'
+import { persistor } from '@/redux/store'
 import {
   flushUnsentEdits,
   hasSavesOnTheirWay,
@@ -48,6 +49,9 @@ const useLogoutHandler = () => {
       storage.removeToken(storageKey.PERSONAL_TOKEN)
       storage.removeToken(storageKey.TOKENS)
       storage.removeToken(storageKey.SETTINGS)
+      // redux-persist writes asynchronously: reloading first could bring the signed-out person's
+      // church (and any connection in flight) back for whoever signs in next.
+      await persistor.flush().catch(() => undefined)
       // Signing out on purpose: the reload must not ask "Leave site?".
       leaveWithoutAsking()
       // Redirect the user to the login page or reload the page to update the authentication status
