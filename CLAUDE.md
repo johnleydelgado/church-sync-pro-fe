@@ -248,6 +248,22 @@ modal `PayoutReportUploadModal.tsx`, review list `PayoutReview.tsx`, sentences i
   that, not an expired session.
 - **Never commit a real payout report** - every row carries a donor's or registrant's name.
 
+### Still in transit at month-end (outstanding deposits)
+
+Plan and contract: `docs/plans/2026-10-22-outstanding-deposits.md`. The payout report's rows carry
+only charge dates, so the upload asks **which payouts the file holds** ("Payouts in this file: from /
+to", previous calendar month by default) and sends `payoutFrom` / `payoutTo` with preview and import;
+one calendar month, not in the future. Those ranges are the only source of "paid out yet?".
+
+- `OutstandingDeposits.tsx` sits under the monthly statement on `/daily` for the **same month**: the
+  month lives in `DailyJournalEntries` and `ClearingStatement` takes it as a prop - don't give
+  either its own month picker again. It prints with the statement and has Download CSV.
+- `getPayoutOutstanding` returns dollars, signed. The words, range checks and CSV are pure helpers
+  in `outstanding.ts` (types-only `@/` imports, so CRA jest loads it without an alias mapper;
+  tests in `outstanding.test.ts`, `npx craco test --watchAll=false <file>`).
+- Its query key is `PAYOUT_OUTSTANDING_KEY`; anything that changes Clearing or uploads (import,
+  review-list fixes, the true-up) invalidates it.
+
 ### Pages
 
 `src/pages/Main/*` are the app's feature areas: `transaction` (now the Daily Giving page; `view-details`, `view-detail-stripe` are legacy batch/payout views), `automation` (`mapping`, `archive`), `churches` (the Churches page: add, rename, connect, deactivate), `settings` (tabs: Profile, Billing, Integrations, People, Projects, Email), `dashboard`, `home`, `ask-us`, `quick-start-guide`, `accounts-token`. `src/pages/Auth/*` holds login/signup/password flows; `src/pages/Subscription/*` holds the Stripe subscription plan page. Feature-specific components live in a `components/` folder next to their page.
