@@ -99,15 +99,18 @@ const ClearingStatement: FC<{
           </p>
         </div>
         <div className="flex items-center gap-2 print:hidden">
-          <input
-            type="month"
-            value={month}
-            max={thisMonth()}
-            // Clearing the field leaves the month as it was rather than asking for "".
-            onChange={(e) => e.target.value && onMonthChange(e.target.value)}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
-            aria-label="Statement month"
-          />
+          {/* The same month as the in-transit section below: changing either changes both. */}
+          <label className="flex items-center gap-2 text-sm font-medium text-gray-600">
+            Month
+            <input
+              type="month"
+              value={month}
+              max={thisMonth()}
+              // Clearing the field leaves the month as it was rather than asking for "".
+              onChange={(e) => e.target.value && onMonthChange(e.target.value)}
+              className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-normal"
+            />
+          </label>
           <button
             type="button"
             onClick={() => window.print()}
@@ -206,8 +209,9 @@ const ClearingStatement: FC<{
               Nothing was posted in {monthLabel}.
             </p>
           ) : (
-            <div className="overflow-x-auto rounded-xl border border-gray-100">
-              <table className="w-full min-w-[52rem] text-sm">
+            // Printed, the table fits the page and wraps rather than being cut off at its scroll box.
+            <div className="overflow-x-auto rounded-xl border border-gray-100 print:overflow-visible">
+              <table className="w-full min-w-[52rem] text-sm print:min-w-0 print:text-xs">
                 <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-gray-400">
                   <tr>
                     <th className="px-4 py-3 text-left">Date</th>
@@ -263,7 +267,9 @@ const ClearingStatement: FC<{
                     )
                   })}
                 </tbody>
-                <tfoot className="border-t-2 bg-slate-50 font-semibold">
+                {/* A plain last row, not <tfoot>: printing repeats a tfoot at the foot of every page,
+                    where it reads like a subtotal. */}
+                <tbody className="break-inside-avoid border-t-2 bg-slate-50 font-semibold">
                   <tr>
                     <td className="px-4 py-3">Totals</td>
                     <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums">
@@ -290,7 +296,7 @@ const ClearingStatement: FC<{
                     </td>
                     <td className="px-4 py-3" />
                   </tr>
-                </tfoot>
+                </tbody>
               </table>
             </div>
           )}

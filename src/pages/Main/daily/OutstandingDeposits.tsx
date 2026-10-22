@@ -1,11 +1,13 @@
-import React, { FC } from 'react'
+import React, { FC, useState } from 'react'
 import { useQuery } from 'react-query'
 import { Link } from 'react-router-dom'
 import { Spinner } from 'flowbite-react'
+import { Button } from '@material-tailwind/react'
 import {
   HiOutlineDownload,
   HiOutlineExclamationCircle,
   HiOutlineInformationCircle,
+  HiOutlineUpload,
 } from 'react-icons/hi'
 
 import {
@@ -17,10 +19,13 @@ import { mainRoute } from '@/common/constant/route'
 import { useChurch } from '@/common/hooks/useChurch'
 import { formatDate } from '@/common/utils/helper'
 import {
+  IN_TRANSIT_ID,
   PAYOUT_OUTSTANDING_KEY,
   coverageWarning,
   csvFileName,
+  firstStepWords,
   groupByDay,
+  hasNoPayoutReports,
   inTransitSentence,
   itemCountWords,
   itemName,
@@ -33,8 +38,10 @@ import {
   outstandingCsv,
   paidOutWords,
   shortDay,
+  showAnywayWords,
 } from './outstanding'
-import { plural, usd } from './payoutCopy'
+import { mappingLinkFor, plural, usd } from './payoutCopy'
+import { usePayoutStatus } from './usePayoutStatus'
 
 const cents = (dollars: number | null | undefined) =>
   Math.round(Number(dollars ?? 0) * 100)
@@ -62,18 +69,71 @@ const downloadCsv = (fileName: string, csv: string) => {
   setTimeout(() => URL.revokeObjectURL(url), 10_000)
 }
 
+/** "Upload payout report", or - while the setup refuses files - what to set up and where. */
+const UploadAction: FC<{ onUpload: () => void; primary?: boolean }> = ({
+  onUpload,
+  primary,
+}) => {
+  const { data: status } = usePayoutStatus()
+  // Unknown readiness (still checking, or the check failed) leaves the button on: the dialog shows
+  // the server's reason if it refuses the file.
+  if (status && !status.ready)
+    return (
+      <p className="text-sm text-amber-800">
+        {status.notReadyReason ||
+          'Finish the registration setup on the Mapping page first.'}{' '}
+        <Link
+          to={mappingLinkFor(status.notReadyReason)}
+          className="font-semibold underline"
+        >
+          Open Mapping
+        </Link>
+      </p>
+    )
+  return primary ? (
+    <Button
+      size="sm"
+      onClick={onUpload}
+      className="flex items-center gap-2 bg-yellow normal-case"
+    >
+      <HiOutlineUpload size={16} />
+      Upload payout report
+    </Button>
+  ) : (
+    <button
+      type="button"
+      onClick={onUpload}
+      className="inline-flex items-center gap-2 rounded-md border border-amber-400 bg-white px-3 py-1.5 text-sm font-medium text-amber-900 hover:bg-amber-100"
+    >
+      <HiOutlineUpload size={16} />
+      Upload payout report
+    </button>
+  )
+}
+
 /**
  * Still in transit at month-end, under the monthly statement and for the same month. Every gift
  * and registration CSP put into Clearing that Stripe hadn't paid out by the month's last day,
  * tied to QuickBooks' Clearing balance on that day: the itemised backup the accountants
  * reconcile the Clearing account against. Paid-out dates come only from the payout reports
- * uploaded above, so a gap in them is said loudly. Plan: docs/plans/2026-10-22-outstanding-deposits.md.
+ * uploaded above, so with none the section asks for them first, and a gap in them turns the
+ * total into an "up to". Plan: docs/plans/2026-10-22-outstanding-deposits.md.
  */
-const OutstandingDeposits: FC<{ month: string }> = ({ month }) => {
+const OutstandingDeposits: FC<{
+  /** YYYY-MM, shared with the statement's month: changing either changes both. */
+  month: string
+  onMonthChange: (month: string) => void
+  /** Opens the payout-report upload dialog the Payout reports card uses. */
+  onUpload: () => void
+}> = ({ month, onMonthChange, onUpload }) => {
   const { email, churchId, church } = useChurch()
+  const today = localDay(new Date())
   const monthEnd = lastDayOfMonth(month)
   // A month that hasn't ended reads as today: nothing can have been paid out "after" it yet.
-  const soFar = monthEnd >= localDay(new Date())
+  const soFar = monthEnd >= today
+  // "Show the posted gifts anyway", for this month only: another month starts at the first step.
+  const [shownAnywayFor, setShownAnywayFor] = useState<string | null>(null)
+  const showAnyway = shownAnywayFor === month
 
   const { data, isLoading, isFetching, error, refetch } = useQuery<
     PayoutOutstanding,
@@ -91,16 +151,24 @@ const OutstandingDeposits: FC<{ month: string }> = ({ month }) => {
   )
 
   const asOf = data?.asOf ?? monthEnd
-  // Only a report with lines to download: not while loading, not on an error (even one that
-  // follows an earlier answer), not for an empty month.
+  // Only a list on show to download: not while loading, not on an error (even one that follows
+  // an earlier answer), not for an empty month, not behind the "upload your reports" step.
   const canDownload =
-    !!data && !error && !isLoading && !data.message && data.items.length > 0
+    !!data &&
+    !error &&
+    !isLoading &&
+    !data.message &&
+    data.items.length > 0 &&
+    (showAnyway || !hasNoPayoutReports(data))
   const title = soFar
     ? 'Still in transit today'
     : `Still in transit on ${longDay(asOf)}`
 
   return (
-    <section className="pt-10 print:break-before-page print:pt-0">
+    <section
+      id={IN_TRANSIT_ID}
+      className="scroll-mt-4 pt-10 print:break-before-page print:pt-0"
+    >
       <div className="flex flex-wrap items-end justify-between gap-4 border-b-2 pb-4">
         <div>
           <h2 className="text-lg font-bold text-primary">{title}</h2>
@@ -114,8 +182,19 @@ const OutstandingDeposits: FC<{ month: string }> = ({ month }) => {
                 )} that Stripe hadn't paid out by then. This is the backup for the Clearing balance at month-end.`}
           </p>
         </div>
-        {canDownload ? (
-          <div className="flex items-center gap-2 print:hidden">
+        <div className="flex flex-wrap items-center gap-2 print:hidden">
+          {/* The statement's month, again here so it can be changed without scrolling up. */}
+          <label className="flex items-center gap-2 text-sm font-medium text-gray-600">
+            Month
+            <input
+              type="month"
+              value={month}
+              max={today.slice(0, 7)}
+              onChange={(e) => e.target.value && onMonthChange(e.target.value)}
+              className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-normal"
+            />
+          </label>
+          {canDownload ? (
             <button
               type="button"
               onClick={() => {
@@ -131,8 +210,8 @@ const OutstandingDeposits: FC<{ month: string }> = ({ month }) => {
               <HiOutlineDownload size={16} />
               Download CSV
             </button>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
       </div>
 
       {isLoading ? (
@@ -159,16 +238,25 @@ const OutstandingDeposits: FC<{ month: string }> = ({ month }) => {
           </button>
         </div>
       ) : data ? (
-        <Report report={data} soFar={soFar} />
+        <Report
+          report={data}
+          soFar={soFar}
+          onUpload={onUpload}
+          showAnyway={showAnyway}
+          onShowAnyway={() => setShownAnywayFor(month)}
+        />
       ) : null}
     </section>
   )
 }
 
-const Report: FC<{ report: PayoutOutstanding; soFar: boolean }> = ({
-  report,
-  soFar,
-}) => {
+const Report: FC<{
+  report: PayoutOutstanding
+  soFar: boolean
+  onUpload: () => void
+  showAnyway: boolean
+  onShowAnyway: () => void
+}> = ({ report, soFar, onUpload, showAnyway, onShowAnyway }) => {
   const asOf = shortDay(report.asOf)
   const year = Number(report.asOf.slice(0, 4))
 
@@ -190,49 +278,88 @@ const Report: FC<{ report: PayoutOutstanding; soFar: boolean }> = ({
   const difference = report.difference
   const differs = difference !== null && cents(difference) !== 0
 
+  // Useful on its own, so it stays even before any payout report is uploaded.
+  const quickBooksCard = (
+    <div className="rounded-xl border border-gray-100 bg-slate-50 p-4">
+      <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+        {accountName} in QuickBooks {on}
+      </p>
+      <p className="pt-1 text-xl font-bold text-primary">
+        {report.qbo.balance === null ? '—' : usd(report.qbo.balance)}
+      </p>
+      {report.qbo.balance === null ? (
+        <p className="pt-0.5 text-xs text-amber-700">
+          {report.qbo.message || "QuickBooks couldn't be read just now."}
+        </p>
+      ) : null}
+    </div>
+  )
+
+  // No payout report covers any of these dates: every posted gift would read "not paid out yet",
+  // so the honest first thing to show is how to get an answer.
+  if (hasNoPayoutReports(report) && !showAnyway)
+    return (
+      <div className="space-y-6 pt-6">
+        <div className="rounded-xl border border-light-blue-200 bg-light-blue-50 p-5 text-light-blue-900">
+          <p className="text-base font-semibold">{firstStepWords(report)}</p>
+          <p className="pt-1 text-sm">
+            CSP needs them to know which gifts and registrations Stripe has
+            already paid out.
+          </p>
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-3 pt-4 print:hidden">
+            <UploadAction onUpload={onUpload} primary />
+            {report.items.length > 0 ? (
+              <button
+                type="button"
+                onClick={onShowAnyway}
+                className="text-sm text-light-blue-800 underline hover:text-light-blue-900"
+              >
+                {showAnywayWords(report.items)}
+              </button>
+            ) : null}
+          </div>
+        </div>
+        <div className="grid gap-4 md:grid-cols-3 print:grid-cols-3">
+          {quickBooksCard}
+        </div>
+      </div>
+    )
+
   return (
     <div className="space-y-6 pt-6">
       {warning ? (
+        // Payout reports missing: the total is a ceiling, so the headline and the reason are one
+        // message rather than a warning and a sentence that contradicts it.
         <div
           role="status"
           className="flex gap-3 rounded-xl border-2 border-amber-300 bg-amber-50 p-4 text-amber-900"
         >
           <HiOutlineExclamationCircle size={22} className="mt-0.5 shrink-0" />
-          <div className="text-sm">
-            <p className="text-base font-semibold">{warning}</p>
-            <p className="pt-1">
-              Until they are, anything Stripe paid out on those dates still
-              counts as in transit here. Upload them under Payout reports above,
-              with the payout dates you chose in Planning Center.
+          <div className="min-w-0 text-sm">
+            <p className="text-base font-semibold">
+              {inTransitSentence(report, soFar, usd)}
             </p>
+            <p className="pt-1">{warning}</p>
+            <div className="pt-3 print:hidden">
+              <UploadAction onUpload={onUpload} />
+            </div>
           </div>
         </div>
-      ) : null}
-
-      <p className="text-base font-semibold text-primary">
-        {inTransitSentence(report, soFar, usd)}
-      </p>
+      ) : (
+        <p className="text-base font-semibold text-primary">
+          {inTransitSentence(report, soFar, usd)}
+        </p>
+      )}
 
       {/* The tie-out: what QuickBooks says, what this list says, and the gap between them. */}
       <div className="grid gap-4 md:grid-cols-3 print:grid-cols-3">
-        <div className="rounded-xl border border-gray-100 bg-slate-50 p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-            {accountName} in QuickBooks {on}
-          </p>
-          <p className="pt-1 text-xl font-bold text-primary">
-            {report.qbo.balance === null ? '—' : usd(report.qbo.balance)}
-          </p>
-          {report.qbo.balance === null ? (
-            <p className="pt-0.5 text-xs text-amber-700">
-              {report.qbo.message || "QuickBooks couldn't be read just now."}
-            </p>
-          ) : null}
-        </div>
+        {quickBooksCard}
         <div className="rounded-xl border border-gray-100 bg-slate-50 p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
             Still in transit (this list)
           </p>
           <p className="pt-1 text-xl font-bold text-primary">
+            {warning ? 'Up to ' : ''}
             {usd(report.inTransit.net)}
           </p>
           <p
@@ -276,7 +403,9 @@ const Report: FC<{ report: PayoutOutstanding; soFar: boolean }> = ({
         </div>
       </div>
 
-      {differs || report.differenceNotes.length > 0 ? (
+      {/* The server's notes always; "CSP can't say why" only once the list is settled - with
+          payout reports missing the gap is mostly those reports, not something to look for. */}
+      {report.differenceNotes.length > 0 || (differs && !warning) ? (
         <DifferenceNotes report={report} />
       ) : null}
 
@@ -415,37 +544,39 @@ const DifferenceNotes: FC<{ report: PayoutOutstanding }> = ({ report }) => (
               </span>
             </p>
             {note.entries && note.entries.length > 0 ? (
-              <table className="mt-2 w-full text-xs">
-                <thead className="text-left uppercase tracking-wide text-gray-400">
-                  <tr>
-                    <th className="py-1 pr-3">Date</th>
-                    <th className="py-1 pr-3">Type</th>
-                    <th className="py-1 pr-3">No.</th>
-                    <th className="py-1 pr-3">Memo</th>
-                    <th className="py-1 text-right">Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {note.entries.map((entry, entryIndex) => (
-                    <tr
-                      key={`${entry.date}-${entry.docNumber}-${entryIndex}`}
-                      className="break-inside-avoid border-t border-gray-100 text-gray-600"
-                    >
-                      <td className="py-1 pr-3 whitespace-nowrap">
-                        {formatDate(entry.date)}
-                      </td>
-                      <td className="py-1 pr-3">{entry.type}</td>
-                      <td className="py-1 pr-3 font-mono">
-                        {entry.docNumber || '—'}
-                      </td>
-                      <td className="py-1 pr-3">{entry.memo || '—'}</td>
-                      <td className="py-1 whitespace-nowrap text-right tabular-nums">
-                        {usd(entry.amount)}
-                      </td>
+              <div className="mt-2 overflow-x-auto print:overflow-visible">
+                <table className="w-full min-w-[28rem] text-xs print:min-w-0">
+                  <thead className="text-left uppercase tracking-wide text-gray-400">
+                    <tr>
+                      <th className="py-1 pr-3">Date</th>
+                      <th className="py-1 pr-3">Type</th>
+                      <th className="py-1 pr-3">No.</th>
+                      <th className="py-1 pr-3">Memo</th>
+                      <th className="py-1 text-right">Amount</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {note.entries.map((entry, entryIndex) => (
+                      <tr
+                        key={`${entry.date}-${entry.docNumber}-${entryIndex}`}
+                        className="break-inside-avoid border-t border-gray-100 text-gray-600"
+                      >
+                        <td className="py-1 pr-3 whitespace-nowrap">
+                          {formatDate(entry.date)}
+                        </td>
+                        <td className="py-1 pr-3">{entry.type}</td>
+                        <td className="py-1 pr-3 font-mono">
+                          {entry.docNumber || '—'}
+                        </td>
+                        <td className="py-1 pr-3">{entry.memo || '—'}</td>
+                        <td className="py-1 whitespace-nowrap text-right tabular-nums">
+                          {usd(entry.amount)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             ) : null}
           </li>
         ))}
@@ -460,7 +591,7 @@ const NotInQuickBooksYet: FC<{
 }> = ({ days }) => {
   const net = days.reduce((total, day) => total + cents(day.net), 0) / 100
   return (
-    <div className="break-inside-avoid rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900">
+    <div className="break-inside-avoid rounded-xl border border-light-blue-200 bg-light-blue-50 p-4 text-sm text-light-blue-900">
       <p className="flex items-center gap-2 font-semibold">
         <HiOutlineInformationCircle size={18} className="shrink-0" />
         Not in QuickBooks yet

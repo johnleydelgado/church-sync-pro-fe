@@ -379,7 +379,7 @@ const OverlapNotice: FC<{ summary: PayoutSummary }> = ({ summary }) => {
   const latest = previousUploads[0]
 
   return (
-    <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sky-900">
+    <div className="rounded-lg border border-light-blue-200 bg-light-blue-50 p-3 text-light-blue-900">
       <p className="flex items-center gap-2 font-semibold">
         <HiOutlineInformationCircle size={16} className="shrink-0" />
         {everything

@@ -13,6 +13,9 @@ import type {
 /** `[PAYOUT_OUTSTANDING_KEY, churchId, month]`: the report for one church and month. */
 export const PAYOUT_OUTSTANDING_KEY = 'payoutOutstanding'
 
+/** The in-transit section's element id, so a link near the top of the page can take the reader there. */
+export const IN_TRANSIT_ID = 'still-in-transit'
+
 const MONTHS_SHORT = [
   'Jan',
   'Feb',
@@ -143,28 +146,60 @@ export const payoutRangeProblem = (
   return null
 }
 
+/** The payout dates no uploaded report covers, in words: "Sep 15 – Sep 30 and Oct 23". */
+export const missingDatesWords = (
+  coverage: PayoutOutstanding['coverage'],
+  asOf: string,
+) => {
+  const year = parts(asOf).y
+  return listWords(
+    (coverage.missing ?? []).map((range) => rangeWords(range, { year })),
+  )
+}
+
 /**
- * The coverage warning, or null when the uploaded payout dates cover every day: "Payout reports
- * for Sep 15 – Sep 30 haven't been uploaded, so this total is incomplete."
+ * Why the total isn't settled, or null when the uploaded payout dates cover every day: "Payout
+ * reports for Oct 23 – Oct 31 haven't been uploaded, so anything Stripe paid out on those dates
+ * still counts as in transit here."
  */
 export const coverageWarning = (
   coverage: PayoutOutstanding['coverage'],
   asOf: string,
 ): string | null => {
   if (coverage.complete) return null
-  const year = parts(asOf).y
-  const missing = (coverage.missing ?? []).map((range) =>
-    rangeWords(range, { year }),
-  )
-  if (missing.length === 0)
-    return `The payout reports uploaded don't cover every day up to ${shortDay(
+  const missing = missingDatesWords(coverage, asOf)
+  if (!missing)
+    return `Not every payout date up to ${shortDay(
       asOf,
-      year,
-    )}, so this total is incomplete.`
-  return `Payout reports for ${listWords(
-    missing,
-  )} haven't been uploaded, so this total is incomplete.`
+    )} is in an uploaded payout report, so anything Stripe paid out on the missing dates still counts as in transit here.`
+  return `Payout reports for ${missing} haven't been uploaded, so anything Stripe paid out on those dates still counts as in transit here.`
 }
+
+/**
+ * No uploaded payout report covers any day from the start of the report to its date - a church's
+ * first visit. Every posted gift then reads "not paid out yet", so the list says nothing useful and
+ * the page asks for the reports first.
+ */
+export const hasNoPayoutReports = (report: PayoutOutstanding) => {
+  const { complete, from, missing } = report.coverage
+  if (complete || !missing || missing.length !== 1) return false
+  const [only] = missing
+  return !!only && (!from || only.from <= from) && only.to >= report.asOf
+}
+
+/** The first step, when no payout report has been uploaded for the report's dates. */
+export const firstStepWords = (report: PayoutOutstanding) => {
+  const missing = missingDatesWords(report.coverage, report.asOf)
+  return `To see what's still in transit, upload your payout reports for ${
+    missing || `the dates up to ${shortDay(report.asOf)}`
+  }.`
+}
+
+/** "Show the 358 posted gifts anyway" - the list behind the first step, for whoever wants it. */
+export const showAnywayWords = (items: PayoutOutstandingItem[]) =>
+  items.every((item) => item.kind === 'gift')
+    ? `Show the ${plural(items.length, 'posted gift', 'posted gifts')} anyway`
+    : `Show the ${itemCountWords(items)} anyway`
 
 const KIND_WORDS: Record<string, string> = {
   gift: 'Gift',
@@ -242,6 +277,14 @@ export const inTransitSentence = (
   if (report.message) return report.message
   const year = parts(report.asOf).y
   const asOf = shortDay(report.asOf, year)
+  // With payout reports missing, anything paid out on the missing dates is still in the total, so
+  // it is a ceiling, not a fact.
+  if (!report.coverage.complete)
+    return soFar
+      ? `Up to ${money(report.inTransit.net)} may still be in transit today.`
+      : `Up to ${money(
+          report.inTransit.net,
+        )} may have been in transit on ${asOf}.`
   if (report.items.length === 0 && cents(report.inTransit.net) === 0)
     return soFar
       ? 'Nothing is in transit today: Stripe has paid out everything CSP put into Clearing.'
