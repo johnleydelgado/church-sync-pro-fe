@@ -2,7 +2,7 @@ import { ClearingStatementData, getClearingStatement } from '@/common/api/user'
 import { formatDate } from '@/common/utils/helper'
 import { useChurch } from '@/common/hooks/useChurch'
 import { FormatMoney } from 'format-money-js'
-import React, { FC, useState } from 'react'
+import React, { FC } from 'react'
 import { useQuery } from 'react-query'
 import { HiOutlinePrinter, HiOutlineQuestionMarkCircle } from 'react-icons/hi'
 import { Tooltip } from '@material-tailwind/react'
@@ -36,9 +36,10 @@ const thisMonth = () => new Date().toISOString().slice(0, 7)
 /**
  * The month the statement opens on. Month-end close happens in the first days of the next
  * month, so until the 10th it opens on LAST month - the one being closed - rather than a
- * month that has barely started.
+ * month that has barely started. The Clearing page holds the month, so the in-transit list
+ * under the statement always shows the same one.
  */
-const defaultMonth = () => {
+export const defaultStatementMonth = () => {
   const now = new Date()
   if (now.getDate() > 10) return thisMonth()
   const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
@@ -52,9 +53,12 @@ const defaultMonth = () => {
  * figure is CSP's cumulative additions; the live QuickBooks balance is shown next
  * to it so deposits already reconciled out of clearing are visible as the difference.
  */
-const ClearingStatement: FC = () => {
+const ClearingStatement: FC<{
+  /** YYYY-MM, chosen on this statement and shared with the page. */
+  month: string
+  onMonthChange: (month: string) => void
+}> = ({ month, onMonthChange }) => {
   const { email, churchId } = useChurch()
-  const [month, setMonth] = useState<string>(defaultMonth())
 
   const { data, isLoading } = useQuery<ClearingStatementData | null>(
     ['getClearingStatement', churchId, month],
@@ -99,7 +103,8 @@ const ClearingStatement: FC = () => {
             type="month"
             value={month}
             max={thisMonth()}
-            onChange={(e) => setMonth(e.target.value)}
+            // Clearing the field leaves the month as it was rather than asking for "".
+            onChange={(e) => e.target.value && onMonthChange(e.target.value)}
             className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
             aria-label="Statement month"
           />

@@ -12,6 +12,7 @@ import { FormatMoney } from 'format-money-js'
 import { ClearingTransition, markTransitionTruedUp } from '@/common/api/user'
 import { formatDate } from '@/common/utils/helper'
 import { failNotification, successNotification } from '@/common/utils/toast'
+import { PAYOUT_OUTSTANDING_KEY } from './outstanding'
 
 interface TransitionPanelProps {
   email: string
@@ -48,6 +49,8 @@ const TransitionPanel: FC<TransitionPanelProps> = ({
     onSuccess: () => {
       successNotification({ title: 'Transition marked as trued up' })
       queryClient.invalidateQueries('getClearingStatement')
+      // The in-transit report explains its difference with the switch-over.
+      queryClient.invalidateQueries(PAYOUT_OUTSTANDING_KEY)
     },
     onError: () => {
       failNotification({ title: 'Could not record the true-up' })
