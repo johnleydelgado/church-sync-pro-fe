@@ -13,6 +13,7 @@ import {
 
 import {
   PayoutImportResult,
+  PayoutRange,
   PayoutReportError,
   PayoutSummary,
   importPayoutReport,
@@ -27,6 +28,12 @@ import {
   reasonWords,
   usd,
 } from './payoutCopy'
+import {
+  PAYOUT_OUTSTANDING_KEY,
+  localDay,
+  payoutRangeProblem,
+  previousMonthRange,
+} from './outstanding'
 
 interface PayoutReportUploadModalProps {
   open: boolean
@@ -44,6 +51,8 @@ type Step =
       fileName: string
       csvText: string
       summary: PayoutSummary
+      /** The payout dates this preview was read with; recording sends the same ones. */
+      range: PayoutRange
     }
   | { name: 'result'; result: PayoutImportResult }
 
@@ -51,14 +60,21 @@ type Step =
 const MAX_FILE_BYTES = 5 * 1024 * 1024
 
 // What an import can change: the statement and the balance card above it, the status line, the
-// review list - and the event names the Mapping page offers.
+// review list, what is still in transit - and the event names the Mapping page offers.
 const CHANGED_BY_IMPORT = [
   'getClearingStatement',
   'getDailyJournalEntries',
   'payoutReportStatus',
   'payoutReview',
   'payoutSignups',
+  PAYOUT_OUTSTANDING_KEY,
 ]
+
+/** The upload's payout dates start as the previous calendar month - the usual month-end export. */
+const defaultRange = (): PayoutRange => {
+  const { from, to } = previousMonthRange(new Date())
+  return { payoutFrom: from, payoutTo: to }
+}
 
 /** How many lines of a list the preview shows before "and N more". */
 const PREVIEW_LIST_LIMIT = 5
@@ -79,6 +95,14 @@ const PayoutReportUploadModal: FC<PayoutReportUploadModalProps> = ({
   // Shown inline, in the step it belongs to, rather than as a toast: "this isn't a payout
   // report" or "set the start date first" has to stay readable while the person acts on it.
   const [error, setError] = useState<PayoutReportError | null>(null)
+  // Which payouts the file holds. Its rows carry only charge dates, so this is how CSP learns when
+  // their money was paid out (the "still in transit" list depends on it).
+  const [range, setRange] = useState<PayoutRange>(defaultRange)
+  const rangeProblem = payoutRangeProblem(
+    range.payoutFrom,
+    range.payoutTo,
+    localDay(new Date()),
+  )
 
   // Every opening starts clean: a preview left over from the last file must never be the one
   // that gets confirmed.
@@ -86,22 +110,39 @@ const PayoutReportUploadModal: FC<PayoutReportUploadModalProps> = ({
     if (open) {
       setStep({ name: 'choose' })
       setError(null)
+      setRange(defaultRange())
     }
   }, [open])
 
+  const changeRange = (change: Partial<PayoutRange>) => {
+    // A refusal of the old dates no longer applies to the new ones.
+    setError(null)
+    setRange((current) => ({ ...current, ...change }))
+  }
+
   const preview = useMutation<
-    { fileName: string; csvText: string; summary: PayoutSummary },
+    {
+      fileName: string
+      csvText: string
+      summary: PayoutSummary
+      range: PayoutRange
+    },
     PayoutReportError,
-    File
+    { file: File; range: PayoutRange }
   >(
-    async (file) => {
+    async ({ file, range: payouts }) => {
       if (file.size > MAX_FILE_BYTES)
         throw new Error(
           'That file is over 5 MB — far bigger than a payout report. Check you picked the right file.',
         )
       const csvText = await file.text()
-      const summary = await previewPayoutReport(email, file.name, csvText)
-      return { fileName: file.name, csvText, summary }
+      const summary = await previewPayoutReport(
+        email,
+        file.name,
+        csvText,
+        payouts,
+      )
+      return { fileName: file.name, csvText, summary, range: payouts }
     },
     {
       onMutate: () => setError(null),
@@ -113,10 +154,10 @@ const PayoutReportUploadModal: FC<PayoutReportUploadModalProps> = ({
   const record = useMutation<
     PayoutImportResult,
     PayoutReportError,
-    { fileName: string; csvText: string }
+    { fileName: string; csvText: string; range: PayoutRange }
   >(
-    async ({ fileName, csvText }) =>
-      importPayoutReport(email, fileName, csvText),
+    async ({ fileName, csvText, range: payouts }) =>
+      importPayoutReport(email, fileName, csvText, payouts),
     {
       onMutate: () => setError(null),
       onSuccess: (result) => setStep({ name: 'result', result }),
@@ -137,7 +178,7 @@ const PayoutReportUploadModal: FC<PayoutReportUploadModalProps> = ({
     const file = e.target.files?.[0]
     // Cleared, so picking the same file again - after fixing it - still fires a change.
     e.target.value = ''
-    if (file) preview.mutate(file)
+    if (file && !rangeProblem) preview.mutate({ file, range })
   }
 
   const title =
@@ -193,10 +234,18 @@ const PayoutReportUploadModal: FC<PayoutReportUploadModalProps> = ({
                       </span>
                       . Nothing is recorded until you confirm on the next step.
                     </p>
+                    <PayoutDates
+                      range={range}
+                      problem={rangeProblem}
+                      disabled={busy}
+                      onChange={changeRange}
+                    />
                     <label
                       className={`mt-4 flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-300 px-4 py-8 font-semibold text-gray-600 focus-within:border-primary ${
                         busy
                           ? 'cursor-wait opacity-60'
+                          : rangeProblem
+                          ? 'cursor-not-allowed opacity-60'
                           : 'cursor-pointer hover:border-primary hover:text-primary'
                       }`}
                     >
@@ -204,7 +253,7 @@ const PayoutReportUploadModal: FC<PayoutReportUploadModalProps> = ({
                         type="file"
                         accept=".csv,text/csv"
                         className="sr-only"
-                        disabled={busy}
+                        disabled={busy || !!rangeProblem}
                         onChange={chooseFile}
                       />
                       {preview.isLoading ? (
@@ -224,6 +273,7 @@ const PayoutReportUploadModal: FC<PayoutReportUploadModalProps> = ({
                   <PreviewStep
                     fileName={step.fileName}
                     summary={step.summary}
+                    range={step.range}
                     registrationStartDay={registrationStartDay}
                   />
                 ) : (
@@ -271,6 +321,7 @@ const PayoutReportUploadModal: FC<PayoutReportUploadModalProps> = ({
                           record.mutate({
                             fileName: step.fileName,
                             csvText: step.csvText,
+                            range: step.range,
                           })
                         }
                         disabled={busy}
@@ -373,8 +424,9 @@ const OverlapNotice: FC<{ summary: PayoutSummary }> = ({ summary }) => {
 const PreviewStep: FC<{
   fileName: string
   summary: PayoutSummary
+  range: PayoutRange
   registrationStartDay: string | null
-}> = ({ fileName, summary, registrationStartDay }) => {
+}> = ({ fileName, summary, range, registrationStartDay }) => {
   const { registrations, entries, giving, held } = summary
   const { toPost } = registrations
   const refunds = entries
@@ -385,7 +437,8 @@ const PreviewStep: FC<{
   return (
     <div className="space-y-3 pt-2 text-sm text-gray-700">
       <p className="text-gray-500">
-        {fileName} · {plural(summary.file.rows, 'line', 'lines')}
+        {fileName} · {plural(summary.file.rows, 'line', 'lines')} · payouts{' '}
+        {dayRange(range.payoutFrom, range.payoutTo)}
         {summary.file.firstDay || summary.file.lastDay
           ? ` · charges ${dayRange(
               summary.file.firstDay,
@@ -501,6 +554,71 @@ const PreviewStep: FC<{
         </details>
       ) : null}
     </div>
+  )
+}
+
+/**
+ * "Payouts in this file: from [date] to [date]". Planning Center exports the payout report for a
+ * range of PAYOUT dates the bookkeeper picks, and nothing in the file says which - so it is asked
+ * here, before the file is read. Controlled inputs; the browser check mirrors the server's.
+ */
+const PayoutDates: FC<{
+  range: PayoutRange
+  problem: string | null
+  disabled: boolean
+  onChange: (change: Partial<PayoutRange>) => void
+}> = ({ range, problem, disabled, onChange }) => {
+  const today = localDay(new Date())
+  const inputClass = `rounded-md border px-3 py-1.5 text-sm text-gray-700 ${
+    problem ? 'border-red-300' : 'border-gray-300'
+  }`
+  return (
+    <fieldset className="mt-4" disabled={disabled}>
+      <legend className="sr-only">Payouts in this file</legend>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-semibold text-gray-800">
+          Payouts in this file:
+        </span>
+        <label className="flex items-center gap-2">
+          from
+          <input
+            type="date"
+            required
+            value={range.payoutFrom}
+            max={today}
+            onChange={(e) => onChange({ payoutFrom: e.target.value })}
+            aria-invalid={!!problem}
+            aria-describedby="payout-dates-help"
+            className={inputClass}
+          />
+        </label>
+        <label className="flex items-center gap-2">
+          to
+          <input
+            type="date"
+            required
+            value={range.payoutTo}
+            max={today}
+            onChange={(e) => onChange({ payoutTo: e.target.value })}
+            aria-invalid={!!problem}
+            aria-describedby="payout-dates-help"
+            className={inputClass}
+          />
+        </label>
+      </div>
+      <p id="payout-dates-help" className="pt-1 text-xs text-gray-500">
+        Pick the payout dates you chose when exporting from Planning Center.
+      </p>
+      {problem ? (
+        <p
+          role="alert"
+          className="flex items-center gap-1.5 pt-1 text-sm text-red-600"
+        >
+          <HiOutlineExclamationCircle size={16} className="shrink-0" />
+          {problem}
+        </p>
+      ) : null}
+    </fieldset>
   )
 }
 

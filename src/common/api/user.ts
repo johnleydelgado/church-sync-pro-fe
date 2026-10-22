@@ -688,16 +688,27 @@ const payoutReportError = (e: any, fallback: string): PayoutReportError => {
   return err
 }
 
+/**
+ * The PAYOUT dates the bookkeeper chose when exporting the file from Planning Center, YYYY-MM-DD,
+ * both ends included. The file's rows carry only charge dates, so this range is the one fact that
+ * says when its money was paid out. Within one calendar month, not in the future.
+ */
+export interface PayoutRange {
+  payoutFrom: string
+  payoutTo: string
+}
+
 /** What importing the file would do. Writes nothing. */
 const previewPayoutReport = async (
   email: string,
   fileName: string,
   csvText: string,
+  { payoutFrom, payoutTo }: PayoutRange,
 ): Promise<PayoutSummary> => {
   try {
     const res = await apiCall.post(
       userRoutes.payoutReportPreview,
-      JSON.stringify({ email, fileName, csvText }),
+      JSON.stringify({ email, fileName, csvText, payoutFrom, payoutTo }),
     )
     return res.data.data
   } catch (e: any) {
@@ -710,11 +721,12 @@ const importPayoutReport = async (
   email: string,
   fileName: string,
   csvText: string,
+  { payoutFrom, payoutTo }: PayoutRange,
 ): Promise<PayoutImportResult> => {
   try {
     const res = await apiCall.post(
       userRoutes.payoutReportImport,
-      JSON.stringify({ email, fileName, csvText }),
+      JSON.stringify({ email, fileName, csvText, payoutFrom, payoutTo }),
     )
     return res.data.data
   } catch (e: any) {
