@@ -1,14 +1,9 @@
-import React, { FC, useState } from 'react'
-import { useQuery } from 'react-query'
+import React, { FC } from 'react'
 import { Link } from 'react-router-dom'
 import { Button } from '@material-tailwind/react'
 import { HiOutlineExclamationCircle, HiOutlineUpload } from 'react-icons/hi'
 
-import {
-  PayoutReportError,
-  PayoutStatus,
-  getPayoutReportStatus,
-} from '@/common/api/user'
+import { PayoutStatus } from '@/common/api/user'
 import { formatDate } from '@/common/utils/helper'
 import { useChurch } from '@/common/hooks/useChurch'
 import PayoutReportUploadModal from './PayoutReportUploadModal'
@@ -19,6 +14,37 @@ import {
   mappingLinkFor,
   plural,
 } from './payoutCopy'
+import { rangeWords } from './outstanding'
+import { usePayoutStatus } from './usePayoutStatus'
+
+/**
+ * "Last upload: payouts Sep 1 – Sep 30 · loaded 10/22/2026 by Ana · file.csv". An upload from
+ * before payout dates were asked for has none, so it names its charge dates instead.
+ */
+const lastUploadWords = (last: NonNullable<PayoutStatus['lastUpload']>) => {
+  const loaded = `loaded ${formatDate(last.uploadedAt)}${
+    last.uploadedBy ? ` by ${last.uploadedBy}` : ''
+  }`
+  const payouts =
+    last.payoutFrom && last.payoutTo
+      ? `payouts ${rangeWords(
+          { from: last.payoutFrom, to: last.payoutTo },
+          { year: new Date().getFullYear() },
+        )}`
+      : null
+  const charges =
+    !payouts && (last.firstDay || last.lastDay)
+      ? `charges ${dayRange(last.firstDay, last.lastDay)}`
+      : null
+  return [
+    `Last upload: ${payouts ?? loaded}`,
+    payouts ? loaded : null,
+    last.fileName,
+    charges,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+}
 
 /**
  * Payout reports, on the Clearing page.
@@ -28,24 +54,13 @@ import {
  * church uploads the payout report instead; this card says when that last happened, what is
  * still waiting for a person, and opens the upload.
  */
-const PayoutReports: FC = () => {
-  const { email, churchId } = useChurch()
-  const [uploading, setUploading] = useState(false)
-
-  const {
-    data: status,
-    isLoading,
-    error,
-  } = useQuery<PayoutStatus | null, PayoutReportError>(
-    ['payoutReportStatus', churchId],
-    async () => (email ? await getPayoutReportStatus(email) : null),
-    {
-      staleTime: 60_000,
-      refetchOnWindowFocus: false,
-      enabled: !!churchId,
-      retry: false,
-    },
-  )
+const PayoutReports: FC<{
+  /** The upload dialog. The Clearing page holds it, so the in-transit section can open it too. */
+  uploading: boolean
+  onUploadingChange: (open: boolean) => void
+}> = ({ uploading, onUploadingChange }) => {
+  const { email } = useChurch()
+  const { data: status, isLoading, error } = usePayoutStatus()
 
   const last = status?.lastUpload ?? null
   const needsReview = status?.needsReview ?? 0
@@ -74,15 +89,17 @@ const PayoutReports: FC = () => {
           <div className="max-w-2xl">
             <h2 className="text-lg font-bold text-primary">Payout reports</h2>
             <p className="pt-1 text-sm text-gray-500">
-              Stripe deposits carry event and registration payments as well as
-              giving. Upload Planning Center&apos;s payout report each week, and
-              once before month-end, so CSP records those payments too.
+              Upload Planning Center&apos;s payout report for each month (part
+              of a month is fine; add the rest later) with the payout dates you
+              chose when exporting it. CSP uses it to record event and
+              registration payments, and to show what&apos;s still in transit at
+              month-end.
             </p>
           </div>
           <div className="flex max-w-xs flex-col items-end gap-2">
             <Button
               size="sm"
-              onClick={() => setUploading(true)}
+              onClick={() => onUploadingChange(true)}
               // Off while still checking, so it never flashes on for a church that isn't set up.
               disabled={!email || isLoading || blocked}
               className="flex items-center gap-2 bg-yellow normal-case"
@@ -111,17 +128,7 @@ const PayoutReports: FC = () => {
             : error
             ? error.message
             : last
-            ? [
-                `Last loaded ${formatDate(last.uploadedAt)}${
-                  last.uploadedBy ? ` by ${last.uploadedBy}` : ''
-                }`,
-                last.fileName,
-                last.firstDay || last.lastDay
-                  ? `charges ${dayRange(last.firstDay, last.lastDay)}`
-                  : '',
-              ]
-                .filter(Boolean)
-                .join(' · ')
+            ? lastUploadWords(last)
             : 'No payout report loaded yet.'}
         </p>
 
@@ -147,7 +154,7 @@ const PayoutReports: FC = () => {
         open={uploading}
         email={email}
         registrationStartDay={status?.registrationStartDay ?? null}
-        onClose={() => setUploading(false)}
+        onClose={() => onUploadingChange(false)}
       />
     </section>
   )

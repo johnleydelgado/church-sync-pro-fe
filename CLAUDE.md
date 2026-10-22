@@ -267,6 +267,15 @@ one calendar month, not in the future. Those ranges are the only source of "paid
   show it instead of the report. `paidOut.from` is null for uploads made before payout dates were
   asked; `ref` is null on a day CSP can't split into gifts; `inTransit.*.count` counts charge
   lines only (the page counts refunds and whole days from `items`).
+- With NO uploaded payout report covering any date of the report (`hasNoPayoutReports`), the section
+  shows a first step (upload, plus "Show the N posted gifts anyway") instead of the list; with some
+  missing, the total is a ceiling ("Up to $X may still be in transit"). The upload dialog's open
+  state lives on the Clearing page (`DailyJournalEntries`): the Payout reports card and this section
+  both open it; both read the status through `usePayoutStatus`.
+- **Colours:** `withMT` (Material Tailwind) replaces Tailwind's palette - there is no `sky-*` or
+  `slate-*`, and those classes silently generate nothing. Use `light-blue`, `blue`, `gray`, `amber`.
+- The Clearing page card is `w-screen min-w-0`: without `min-w-0` a wide table holds it at the
+  window's width and a phone scrolls the whole page sideways.
 - **Printing:** the sidebar is `print:hidden` - fixed and window-high, it made Chrome add blank
   pages after a long printout. Never put totals in a `<tfoot>`: Chrome repeats it at the foot of
   every printed page. Test print with `Page.printToPDF` on a FRESH load: once printed, the app's

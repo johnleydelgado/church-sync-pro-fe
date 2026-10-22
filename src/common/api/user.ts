@@ -604,6 +604,12 @@ export interface PayoutStatus {
     uploadedAt: string
     firstDay: string | null
     lastDay: string | null
+    /**
+     * The payout dates the file covers. Null on uploads made before they were asked for; absent
+     * from a backend older than the field.
+     */
+    payoutFrom?: string | null
+    payoutTo?: string | null
     uploadedBy: string | null
   } | null
   /** Held rows plus postings that were interrupted. */

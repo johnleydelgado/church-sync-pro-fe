@@ -6,7 +6,9 @@ import {
   coverageWarning,
   csvCell,
   csvFileName,
+  firstStepWords,
   groupByDay,
+  hasNoPayoutReports,
   inTransitSentence,
   itemCountWords,
   itemName,
@@ -19,6 +21,7 @@ import {
   payoutRangeProblem,
   previousMonthRange,
   rangeWords,
+  showAnywayWords,
 } from './outstanding'
 
 // Synthetic data only: never a real donor's name.
@@ -138,23 +141,20 @@ describe('dates', () => {
   })
 })
 
-describe('coverageWarning', () => {
+describe('coverage', () => {
+  const sepGap = {
+    complete: false,
+    from: '2026-09-15',
+    missing: [{ from: '2026-09-15', to: '2026-09-30' }],
+  }
+
   it('is null when the payout reports cover every day', () => {
     expect(coverageWarning(report().coverage, '2026-09-30')).toBeNull()
   })
 
-  it('names the missing ranges in words', () => {
-    expect(
-      coverageWarning(
-        {
-          complete: false,
-          from: '2026-09-15',
-          missing: [{ from: '2026-09-15', to: '2026-09-30' }],
-        },
-        '2026-09-30',
-      ),
-    ).toBe(
-      "Payout reports for Sep 15 – Sep 30 haven't been uploaded, so this total is incomplete.",
+  it('names the missing dates in words and says what they do to the total', () => {
+    expect(coverageWarning(sepGap, '2026-09-30')).toBe(
+      "Payout reports for Sep 15 – Sep 30 haven't been uploaded, so anything Stripe paid out on those dates still counts as in transit here.",
     )
     expect(
       coverageWarning(
@@ -169,8 +169,8 @@ describe('coverageWarning', () => {
         },
         '2026-10-22',
       ),
-    ).toBe(
-      "Payout reports for Sep 1 – Sep 7, Sep 21 and Oct 1 – Oct 22 haven't been uploaded, so this total is incomplete.",
+    ).toMatch(
+      /^Payout reports for Sep 1 – Sep 7, Sep 21 and Oct 1 – Oct 22 haven't/,
     )
   })
 
@@ -180,7 +180,79 @@ describe('coverageWarning', () => {
         { complete: false, from: '2026-09-15', missing: [] },
         '2026-09-30',
       ),
-    ).toMatch(/incomplete/)
+    ).toMatch(
+      /^Not every payout date up to Sep 30 is in an uploaded payout report/,
+    )
+  })
+
+  it('knows when no payout report covers any of the dates', () => {
+    // A church's first visit: one gap from the start to the report's date.
+    const none = report({
+      asOf: '2026-10-22',
+      coverage: {
+        complete: false,
+        from: '2026-09-15',
+        missing: [{ from: '2026-09-15', to: '2026-10-22' }],
+      },
+    })
+    expect(hasNoPayoutReports(none)).toBe(true)
+    expect(firstStepWords(none)).toBe(
+      "To see what's still in transit, upload your payout reports for Sep 15 – Oct 22.",
+    )
+    // Some uploaded: a gap at the end only, or two gaps.
+    expect(
+      hasNoPayoutReports(
+        report({
+          asOf: '2026-10-31',
+          coverage: {
+            complete: false,
+            from: '2026-09-15',
+            missing: [{ from: '2026-10-23', to: '2026-10-31' }],
+          },
+        }),
+      ),
+    ).toBe(false)
+    expect(
+      hasNoPayoutReports(
+        report({
+          coverage: {
+            complete: false,
+            from: '2026-09-01',
+            missing: [
+              { from: '2026-09-01', to: '2026-09-07' },
+              { from: '2026-09-21', to: '2026-09-30' },
+            ],
+          },
+        }),
+      ),
+    ).toBe(false)
+    expect(hasNoPayoutReports(report())).toBe(false)
+  })
+
+  it('offers the posted list behind the first step', () => {
+    expect(showAnywayWords([item(), item(), item()])).toBe(
+      'Show the 3 posted gifts anyway',
+    )
+    expect(showAnywayWords([item()])).toBe('Show the 1 posted gift anyway')
+    expect(
+      showAnywayWords([item(), item({ kind: 'gift_refund', net: -5 })]),
+    ).toBe('Show the 1 gift and 1 refund anyway')
+  })
+
+  it('makes the headline a ceiling while reports are missing', () => {
+    const r = report({
+      coverage: {
+        complete: false,
+        from: '2026-09-15',
+        missing: [{ from: '2026-10-23', to: '2026-10-31' }],
+      },
+    })
+    expect(inTransitSentence({ ...r, asOf: '2026-10-22' }, true, money)).toBe(
+      'Up to $97.50 may still be in transit today.',
+    )
+    expect(inTransitSentence(r, false, money)).toBe(
+      'Up to $97.50 may have been in transit on Sep 30.',
+    )
   })
 })
 
@@ -414,7 +486,7 @@ describe('CSV', () => {
       }),
     )
     expect(csv.split('\r\n')[0]).toMatch(
-      /,Coverage,"Incomplete\. Payout reports for Sep 15 – Sep 30 haven't been uploaded, so this total is incomplete\."$/,
+      /,Coverage,"Incomplete\. Payout reports for Sep 15 – Sep 30 haven't been uploaded, so anything Stripe paid out on those dates still counts as in transit here\."$/,
     )
   })
 

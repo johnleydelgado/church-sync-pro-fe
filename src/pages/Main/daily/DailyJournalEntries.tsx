@@ -9,6 +9,7 @@ import { useQuery } from 'react-query'
 import { Link } from 'react-router-dom'
 import ClearingStatement, { defaultStatementMonth } from './ClearingStatement'
 import OutstandingDeposits from './OutstandingDeposits'
+import { IN_TRANSIT_ID } from './outstanding'
 import PayoutReports from './PayoutReports'
 import { HiOutlineDocumentText } from 'react-icons/hi'
 
@@ -44,6 +45,8 @@ const DailyJournalEntries: FC<ClearingPageProps> = () => {
   const { email, churchId } = useChurch()
   // The statement's month, held here so what is still in transit is shown for the same month.
   const [month, setMonth] = useState<string>(defaultStatementMonth)
+  // The payout-report upload dialog: opened from the Payout reports card or the in-transit section.
+  const [uploading, setUploading] = useState(false)
 
   const { data, isLoading } = useQuery(
     ['getDailyJournalEntries', churchId],
@@ -60,7 +63,10 @@ const DailyJournalEntries: FC<ClearingPageProps> = () => {
   return (
     <MainLayout>
       <div className="flex h-full gap-4">
-        <div className="w-screen rounded-lg bg-white p-8">
+        {/* min-w-0: lets the card fit the screen. Without it the wide tables (statement, in transit)
+            hold it at the window's width and a phone scrolls the whole page sideways; with it they
+            scroll inside their own boxes. */}
+        <div className="w-screen min-w-0 rounded-lg bg-white p-8">
           {/* Header */}
           <div className="border-b-2 pb-4">
             <div className="flex items-center gap-2">
@@ -107,15 +113,39 @@ const DailyJournalEntries: FC<ClearingPageProps> = () => {
                     >
                       See each day on Daily Giving
                     </Link>
+                    <span className="print:hidden">
+                      {' · '}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          document
+                            .getElementById(IN_TRANSIT_ID)
+                            ?.scrollIntoView({
+                              behavior: 'smooth',
+                              block: 'start',
+                            })
+                        }
+                        className="font-semibold text-blue-400 underline"
+                      >
+                        See what&apos;s still in transit
+                      </button>
+                    </span>
                   </p>
                 </div>
               </div>
 
-              <PayoutReports />
+              <PayoutReports
+                uploading={uploading}
+                onUploadingChange={setUploading}
+              />
 
               <ClearingStatement month={month} onMonthChange={setMonth} />
 
-              <OutstandingDeposits month={month} />
+              <OutstandingDeposits
+                month={month}
+                onMonthChange={setMonth}
+                onUpload={() => setUploading(true)}
+              />
             </>
           )}
         </div>
