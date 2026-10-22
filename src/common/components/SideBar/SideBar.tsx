@@ -203,8 +203,10 @@ const SideBar: FC<SideBarProps> = ({ isTrigger, setIsTrigger }) => {
         //     isTrigger ? 'w-24' : 'sm:w-64'
         //   }`}
         // >
+        // Not printed: the fixed, window-high menu made Chrome add blank pages after a long
+        // printout (the Clearing page's statement and in-transit list), and isn't wanted on paper.
         <aside
-          className={`fixed h-full bg-primary left-0 top-0 z-40 w-0 transform transition-width ease-in duration-300 ${
+          className={`fixed h-full bg-primary left-0 top-0 z-40 w-0 transform transition-width ease-in duration-300 print:hidden ${
             isTrigger ? 'w-24' : 'sm:w-64'
           }`}
         >

@@ -26,6 +26,7 @@ import { formatDate } from '@/common/utils/helper'
 import { failNotification, successNotification } from '@/common/utils/toast'
 import { useChurch } from '@/common/hooks/useChurch'
 import { PAYOUT_REVIEW_ID, plural, reasonWords, usd } from './payoutCopy'
+import { PAYOUT_OUTSTANDING_KEY } from './outstanding'
 
 type Option = { value: string; label: string }
 
@@ -35,12 +36,14 @@ interface QboLists {
   classes?: { value: string; label: string }[]
 }
 
-// Resolving a row can post to QuickBooks, so the statement and balance move as well as the list.
+// Resolving a row can post to QuickBooks, so the statement, the balance and what is still in
+// transit move as well as the list.
 const CHANGED_BY_RESOLVE = [
   'payoutReview',
   'payoutReportStatus',
   'getClearingStatement',
   'getDailyJournalEntries',
+  PAYOUT_OUTSTANDING_KEY,
 ]
 
 const cents = (dollars: number) => Math.round(dollars * 100)

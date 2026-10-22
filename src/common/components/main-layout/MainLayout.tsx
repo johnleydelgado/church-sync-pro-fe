@@ -25,7 +25,9 @@ const MainLayout: FC<MainLayoutProps> = ({
       <div
         className={`transform duration-200 delay-150 h-full bg-white ${
           removePadding ? '' : 'px-6 pb-6'
-        } flex-1 ${isTabletOrMobile ? `ml-0` : isTrigger ? `ml-24` : 'ml-64'}`}
+        } flex-1 print:ml-0 ${
+          isTabletOrMobile ? `ml-0` : isTrigger ? `ml-24` : 'ml-64'
+        }`}
       >
         {children}
       </div>

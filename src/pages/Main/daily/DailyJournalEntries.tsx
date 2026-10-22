@@ -4,10 +4,11 @@ import { getDailyJournalEntries } from '@/common/api/user'
 import { mainRoute } from '@/common/constant/route'
 import { useChurch } from '@/common/hooks/useChurch'
 import { FormatMoney } from 'format-money-js'
-import React, { FC } from 'react'
+import React, { FC, useState } from 'react'
 import { useQuery } from 'react-query'
 import { Link } from 'react-router-dom'
-import ClearingStatement from './ClearingStatement'
+import ClearingStatement, { defaultStatementMonth } from './ClearingStatement'
+import OutstandingDeposits from './OutstandingDeposits'
 import PayoutReports from './PayoutReports'
 import { HiOutlineDocumentText } from 'react-icons/hi'
 
@@ -41,6 +42,8 @@ const balanceMeaning = (balance: number | null | undefined) => {
  */
 const DailyJournalEntries: FC<ClearingPageProps> = () => {
   const { email, churchId } = useChurch()
+  // The statement's month, held here so what is still in transit is shown for the same month.
+  const [month, setMonth] = useState<string>(defaultStatementMonth)
 
   const { data, isLoading } = useQuery(
     ['getDailyJournalEntries', churchId],
@@ -110,7 +113,9 @@ const DailyJournalEntries: FC<ClearingPageProps> = () => {
 
               <PayoutReports />
 
-              <ClearingStatement />
+              <ClearingStatement month={month} onMonthChange={setMonth} />
+
+              <OutstandingDeposits month={month} />
             </>
           )}
         </div>
