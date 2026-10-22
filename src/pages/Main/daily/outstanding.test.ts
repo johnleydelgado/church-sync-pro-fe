@@ -8,7 +8,8 @@ import {
   csvFileName,
   groupByDay,
   inTransitSentence,
-  isBeforeSyncStart,
+  itemCountWords,
+  itemName,
   itemTotals,
   kindWords,
   lastDayOfMonth,
@@ -26,7 +27,7 @@ const item = (
 ): PayoutOutstandingItem => ({
   day: '2026-09-30',
   kind: 'gift',
-  ref: 'D1',
+  ref: 'Donation #1',
   name: 'Test Donor',
   fundOrEvent: 'General Fund',
   gross: 100,
@@ -198,16 +199,52 @@ describe('report words', () => {
     expect(paidOutWords(null)).toBe('Not paid out yet')
   })
 
+  it('words an older upload that has no payout start date', () => {
+    expect(paidOutWords({ from: null, to: '2026-10-31' }, 2026)).toBe(
+      'Paid out in payouts up to Oct 31',
+    )
+  })
+
+  it("shows the server's names, and blank ones as no name", () => {
+    expect(itemName(item({ name: 'Anonymous Donor' }))).toBe('Anonymous Donor')
+    expect(itemName(item({ name: '   ' }))).toBe('')
+    expect(itemName(item({ name: null }))).toBe('')
+  })
+
+  it('counts every kind of line, not only gifts and registrations', () => {
+    expect(
+      itemCountWords([
+        item(),
+        item(),
+        item({ kind: 'registration', ref: 'Registration #456' }),
+        item({ kind: 'gift_refund', net: -20 }),
+        item({ kind: 'registration_refund', net: -10 }),
+        item({ kind: 'day_unresolved', ref: null, name: null }),
+      ]),
+    ).toBe(
+      "2 gifts, 1 registration, 2 refunds and 1 day CSP can't split into gifts",
+    )
+    expect(itemCountWords([item({ kind: 'gift_refund' })])).toBe('1 refund')
+    expect(itemCountWords([])).toBe('')
+  })
+
   it('writes the one sentence for a closed month', () => {
     const r = report({
       inTransit: {
         net: 6439.32,
-        gifts: { count: 19, gross: 6450, fee: 10.68, net: 6439.32 },
+        // The server counts charge lines only; the sentence counts the lines themselves.
+        gifts: { count: 2, gross: 6450, fee: 10.68, net: 6400.82 },
         registrations: { count: 2, gross: 40, fee: 1.5, net: 38.5 },
       },
+      items: [
+        item(),
+        item({ ref: 'Donation #2' }),
+        item({ kind: 'registration', ref: 'Registration #456' }),
+        item({ kind: 'registration', ref: 'Registration #457' }),
+      ],
     })
     expect(inTransitSentence(r, false, money)).toBe(
-      "$6439.32 was still in transit on Sep 30: 19 gifts and 2 registrations that Stripe paid out after Sep 30 (or hasn't paid out yet).",
+      "$6439.32 was still in transit on Sep 30: 2 gifts and 2 registrations that Stripe paid out after Sep 30 (or hasn't paid out yet).",
     )
   })
 
@@ -234,17 +271,23 @@ describe('report words', () => {
     )
   })
 
-  it('knows a month before the sync start date', () => {
-    expect(isBeforeSyncStart(report())).toBe(false)
-    expect(
-      isBeforeSyncStart(
-        report({
-          month: '2026-08',
-          asOf: '2026-08-31',
-          coverage: { complete: true, from: '2026-09-15', missing: [] },
-        }),
-      ),
-    ).toBe(true)
+  it("gives an empty report's own reason, not 'all paid out'", () => {
+    // Nothing posted yet: the server sends coverage.from null and says why there is nothing.
+    const nothingPosted = report({
+      message:
+        "CSP hasn't posted anything to Clearing yet, so nothing is in transit.",
+      coverage: { complete: true, from: null, missing: [] },
+      difference: null,
+      items: [],
+      inTransit: {
+        net: 0,
+        gifts: { count: 0, gross: 0, fee: 0, net: 0 },
+        registrations: { count: 0, gross: 0, fee: 0, net: 0 },
+      },
+    })
+    expect(inTransitSentence(nothingPosted, true, money)).toBe(
+      "CSP hasn't posted anything to Clearing yet, so nothing is in transit.",
+    )
   })
 })
 
@@ -293,7 +336,7 @@ describe('CSV', () => {
         items: [
           item({
             day: '2026-09-30',
-            ref: 'R2',
+            ref: 'Registration #456',
             kind: 'registration',
             name: 'Doe, John',
             fundOrEvent: 'Youth Retreat',
@@ -304,7 +347,7 @@ describe('CSV', () => {
           }),
           item({
             day: '2026-09-15',
-            ref: 'G1',
+            ref: 'Donation #123',
             kind: 'gift_refund',
             gross: -25,
             fee: 0,
@@ -317,9 +360,45 @@ describe('CSV', () => {
       'Church,"Grace, ""Downtown""",Month,2026-09,As of,2026-09-30,Items,2,Gross,15.00,Fee,1.50,Net,13.50,Coverage,Complete',
       '',
       'Day,Kind,Ref,Name,Fund or event,Gross,Fee,Net,Paid out from,Paid out to',
-      '2026-09-15,Gift refund,G1,Test Donor,General Fund,-25.00,0.00,-25.00,,',
-      '2026-09-30,Registration,R2,"Doe, John",Youth Retreat,40.00,1.50,38.50,2026-10-01,2026-10-31',
+      '2026-09-15,Gift refund,Donation #123,Test Donor,General Fund,-25.00,0.00,-25.00,,',
+      '2026-09-30,Registration,Registration #456,"Doe, John",Youth Retreat,40.00,1.50,38.50,2026-10-01,2026-10-31',
       '',
+    ])
+  })
+
+  it("writes the backend's awkward values cleanly", () => {
+    const rows = outstandingCsv(
+      'Test Church',
+      report({
+        items: [
+          item({ ref: 'Donation #124', name: 'Anonymous Donor' }),
+          item({ ref: 'Donation #125', name: '  ', fundOrEvent: ' Missions ' }),
+          // An older upload: paid out by Oct 3, start unknown.
+          item({
+            ref: 'Donation #126',
+            name: null,
+            paidOut: { from: null, to: '2026-10-03' },
+          }),
+          // A day CSP can't split: no single record, so no ref and no name.
+          item({
+            kind: 'day_unresolved',
+            ref: null,
+            name: null,
+            fundOrEvent: null,
+            gross: 50,
+            fee: 1,
+            net: 49,
+          }),
+        ],
+      }),
+    )
+      .split('\r\n')
+      .slice(3, 7)
+    expect(rows).toEqual([
+      '2026-09-30,Gift,Donation #124,Anonymous Donor,General Fund,100.00,2.50,97.50,,',
+      '2026-09-30,Gift,Donation #125,,Missions,100.00,2.50,97.50,,',
+      '2026-09-30,Gift,Donation #126,,General Fund,100.00,2.50,97.50,,2026-10-03',
+      "2026-09-30,Can't tell which gifts,,,,50.00,1.00,49.00,,",
     ])
   })
 

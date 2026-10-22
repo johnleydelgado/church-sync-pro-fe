@@ -263,6 +263,14 @@ one calendar month, not in the future. Those ranges are the only source of "paid
   tests in `outstanding.test.ts`, `npx craco test --watchAll=false <file>`).
 - Its query key is `PAYOUT_OUTSTANDING_KEY`; anything that changes Clearing or uploads (import,
   review-list fixes, the true-up) invalidates it.
+- An empty report carries a top-level `message` (nothing posted yet, before the sync start date):
+  show it instead of the report. `paidOut.from` is null for uploads made before payout dates were
+  asked; `ref` is null on a day CSP can't split into gifts; `inTransit.*.count` counts charge
+  lines only (the page counts refunds and whole days from `items`).
+- **Printing:** the sidebar is `print:hidden` - fixed and window-high, it made Chrome add blank
+  pages after a long printout. Never put totals in a `<tfoot>`: Chrome repeats it at the foot of
+  every printed page. Test print with `Page.printToPDF` on a FRESH load: once printed, the app's
+  `max-width: 767px` media query flips it to the mobile layout until reload.
 
 ### Pages
 

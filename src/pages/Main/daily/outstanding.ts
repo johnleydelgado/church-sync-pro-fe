@@ -7,6 +7,7 @@ import type {
   PayoutDayRange,
   PayoutOutstanding,
   PayoutOutstandingItem,
+  PayoutPaidOut,
 } from '@/common/api/user'
 
 /** `[PAYOUT_OUTSTANDING_KEY, churchId, month]`: the report for one church and month. */
@@ -165,10 +166,6 @@ export const coverageWarning = (
   )} haven't been uploaded, so this total is incomplete.`
 }
 
-/** True when the whole month is before the church's sync start date: CSP put nothing in then. */
-export const isBeforeSyncStart = (report: PayoutOutstanding) =>
-  !!report.coverage.from && report.coverage.from > report.asOf
-
 const KIND_WORDS: Record<string, string> = {
   gift: 'Gift',
   gift_refund: 'Gift refund',
@@ -181,38 +178,76 @@ const KIND_WORDS: Record<string, string> = {
 export const kindWords = (kind: string) =>
   KIND_WORDS[kind] ?? kind.replace(/_/g, ' ')
 
-/** "Paid out in payouts of Oct 1 – 31", or "Not paid out yet". */
-export const paidOutWords = (paidOut: PayoutDayRange | null, year?: number) =>
-  paidOut
-    ? `Paid out in payouts of ${rangeWords(paidOut, { year, compact: true })}`
-    : 'Not paid out yet'
+/**
+ * "Paid out in payouts of Oct 1 – 31", or "Not paid out yet". An upload from before payout dates
+ * were asked for gives only an end: "Paid out in payouts up to Nov 3".
+ */
+export const paidOutWords = (paidOut: PayoutPaidOut | null, year?: number) => {
+  if (!paidOut) return 'Not paid out yet'
+  const { from, to } = paidOut
+  return from
+    ? `Paid out in payouts of ${rangeWords(
+        { from, to },
+        { year, compact: true },
+      )}`
+    : `Paid out in payouts up to ${shortDay(to, year)}`
+}
+
+/** The name to show: "Anonymous Donor" as the server sends it; blank (or spaces) is no name. */
+export const itemName = (item: PayoutOutstandingItem) => item.name?.trim() ?? ''
+
+/**
+ * What the list holds, in words: "19 gifts, 2 registrations, 1 refund and 1 day CSP can't split
+ * into gifts". Counted from the lines themselves - the server's counts are charge lines only, so
+ * a list of refunds alone would otherwise read as nothing.
+ */
+export const itemCountWords = (items: PayoutOutstandingItem[]) => {
+  const count = (...kinds: string[]) =>
+    items.filter((item) => kinds.includes(item.kind)).length
+  const known = count(
+    'gift',
+    'registration',
+    'gift_refund',
+    'registration_refund',
+    'day_unresolved',
+  )
+  const lines = [
+    [count('gift'), 'gift', 'gifts'],
+    [count('registration'), 'registration', 'registrations'],
+    [count('gift_refund', 'registration_refund'), 'refund', 'refunds'],
+    [
+      count('day_unresolved'),
+      "day CSP can't split into gifts",
+      "days CSP can't split into gifts",
+    ],
+    [items.length - known, 'other line', 'other lines'],
+  ] as const
+  return listWords(
+    lines.filter(([n]) => n > 0).map(([n, one, many]) => plural(n, one, many)),
+  )
+}
 
 /**
  * The report's one sentence. Past month: "$X was still in transit on Sep 30: 19 gifts and 2
  * registrations that Stripe paid out after Sep 30 (or hasn't paid out yet)." A month still
- * running reads as today ("so far"), when nothing can have been paid out after it yet.
+ * running reads as today ("so far"), when nothing can have been paid out after it yet. An empty
+ * report carries the server's reason (nothing posted yet, before the sync start date), which is
+ * the sentence then: "nothing in transit, all paid out" is only true when something was posted.
  */
 export const inTransitSentence = (
   report: PayoutOutstanding,
   soFar: boolean,
   money: (dollars: number) => string,
 ) => {
+  if (report.message) return report.message
   const year = parts(report.asOf).y
   const asOf = shortDay(report.asOf, year)
-  const { gifts, registrations } = report.inTransit
   if (report.items.length === 0 && cents(report.inTransit.net) === 0)
     return soFar
       ? 'Nothing is in transit today: Stripe has paid out everything CSP put into Clearing.'
       : `Nothing was in transit on ${asOf}: Stripe had paid out everything CSP put into Clearing by then.`
   const what =
-    listWords(
-      [
-        gifts.count > 0 ? plural(gifts.count, 'gift', 'gifts') : '',
-        registrations.count > 0
-          ? plural(registrations.count, 'registration', 'registrations')
-          : '',
-      ].filter(Boolean),
-    ) || plural(report.items.length, 'item', 'items')
+    itemCountWords(report.items) || plural(report.items.length, 'item', 'items')
   return soFar
     ? `${money(
         report.inTransit.net,
@@ -289,7 +324,8 @@ export const CSV_COLUMNS = [
 
 /**
  * The list as CSV: a header line naming the church, month and totals, a blank line, then one row
- * per item, oldest day first. Amounts are cells of their own, never quoted or prefixed.
+ * per item, oldest day first. Amounts are cells of their own, never quoted or prefixed. "Paid out
+ * from" is blank both for "not paid out yet" (with "to") and for an older upload's unknown start.
  */
 export const outstandingCsv = (
   churchName: string,
@@ -312,8 +348,8 @@ export const outstandingCsv = (
           item.day,
           kindWords(item.kind),
           item.ref,
-          item.name,
-          item.fundOrEvent,
+          itemName(item),
+          item.fundOrEvent?.trim(),
         ]),
         amount(item.gross),
         amount(item.fee),

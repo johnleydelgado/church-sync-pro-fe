@@ -22,7 +22,8 @@ import {
   csvFileName,
   groupByDay,
   inTransitSentence,
-  isBeforeSyncStart,
+  itemCountWords,
+  itemName,
   itemTotals,
   kindWords,
   lastDayOfMonth,
@@ -90,6 +91,10 @@ const OutstandingDeposits: FC<{ month: string }> = ({ month }) => {
   )
 
   const asOf = data?.asOf ?? monthEnd
+  // Only a report with lines to download: not while loading, not on an error (even one that
+  // follows an earlier answer), not for an empty month.
+  const canDownload =
+    !!data && !error && !isLoading && !data.message && data.items.length > 0
   const title = soFar
     ? 'Still in transit today'
     : `Still in transit on ${longDay(asOf)}`
@@ -109,21 +114,25 @@ const OutstandingDeposits: FC<{ month: string }> = ({ month }) => {
                 )} that Stripe hadn't paid out by then. This is the backup for the Clearing balance at month-end.`}
           </p>
         </div>
-        <div className="flex items-center gap-2 print:hidden">
-          <button
-            type="button"
-            disabled={!data}
-            onClick={() => {
-              if (!data) return
-              const name = church?.name ?? ''
-              downloadCsv(csvFileName(name, month), outstandingCsv(name, data))
-            }}
-            className="inline-flex items-center gap-2 rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <HiOutlineDownload size={16} />
-            Download CSV
-          </button>
-        </div>
+        {canDownload ? (
+          <div className="flex items-center gap-2 print:hidden">
+            <button
+              type="button"
+              onClick={() => {
+                if (!data) return
+                const name = church?.name ?? ''
+                downloadCsv(
+                  csvFileName(name, month),
+                  outstandingCsv(name, data),
+                )
+              }}
+              className="inline-flex items-center gap-2 rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
+            >
+              <HiOutlineDownload size={16} />
+              Download CSV
+            </button>
+          </div>
+        ) : null}
       </div>
 
       {isLoading ? (
@@ -163,13 +172,13 @@ const Report: FC<{ report: PayoutOutstanding; soFar: boolean }> = ({
   const asOf = shortDay(report.asOf)
   const year = Number(report.asOf.slice(0, 4))
 
-  if (isBeforeSyncStart(report))
+  // An empty report says why there is nothing (nothing posted yet, before the sync start date):
+  // that reason is the whole answer, with no tie-out to show against it.
+  if (report.message)
     return (
-      <p className="py-6 text-sm text-gray-500">
-        {monthWords(report.month)} is before your sync start date
-        {report.coverage.from ? ` of ${formatDate(report.coverage.from)}` : ''},
-        so CSP put nothing into Clearing then and nothing of CSP&apos;s can be
-        in transit.
+      <p className="flex items-center gap-2 py-6 text-sm text-gray-600">
+        <HiOutlineInformationCircle size={18} className="shrink-0" />
+        {report.message}
       </p>
     )
 
@@ -233,15 +242,7 @@ const Report: FC<{ report: PayoutOutstanding; soFar: boolean }> = ({
           >
             {warning
               ? 'Incomplete: payout reports are missing'
-              : `${plural(
-                  report.inTransit.gifts.count,
-                  'gift',
-                  'gifts',
-                )}, ${plural(
-                  report.inTransit.registrations.count,
-                  'registration',
-                  'registrations',
-                )}`}
+              : itemCountWords(report.items) || 'Nothing listed'}
           </p>
         </div>
         <div className="rounded-xl border border-gray-100 bg-slate-50 p-4">
@@ -250,22 +251,27 @@ const Report: FC<{ report: PayoutOutstanding; soFar: boolean }> = ({
           </p>
           <p
             className={`pt-1 text-xl font-bold ${
-              differs ? 'text-amber-700' : 'text-primary'
+              differs || warning ? 'text-amber-700' : 'text-primary'
             }`}
           >
             {difference === null ? '—' : usd(difference)}
           </p>
-          <p className="pt-0.5 text-xs text-gray-400">
-            {difference === null
+          {/* With payout reports missing the list itself is unsettled, so even a zero difference
+              proves nothing yet. */}
+          <p
+            className={`pt-0.5 text-xs ${
+              warning ? 'font-semibold text-amber-700' : 'text-gray-400'
+            }`}
+          >
+            {warning
+              ? 'Not final: payout reports are missing'
+              : difference === null
               ? 'Needs the QuickBooks balance'
               : !differs
               ? 'QuickBooks and this list agree'
               : difference > 0
               ? `QuickBooks holds ${usd(difference)} more than this list`
               : `QuickBooks holds ${usd(-difference)} less than this list`}
-            {differs && warning
-              ? '. Not final until the missing reports are in.'
-              : ''}
           </p>
         </div>
       </div>
@@ -327,10 +333,10 @@ const Report: FC<{ report: PayoutOutstanding; soFar: boolean }> = ({
                       {kindWords(item.kind)}
                     </td>
                     <td className="px-4 py-2 text-gray-700 print:px-2">
-                      {item.name || '—'}
+                      {itemName(item) || '—'}
                     </td>
                     <td className="px-4 py-2 text-gray-600 print:px-2">
-                      {item.fundOrEvent || '—'}
+                      {item.fundOrEvent?.trim() || '—'}
                     </td>
                     <td
                       className={`px-4 py-2 whitespace-nowrap text-right tabular-nums print:px-2 ${amountClass(
@@ -356,7 +362,9 @@ const Report: FC<{ report: PayoutOutstanding; soFar: boolean }> = ({
                 ))}
               </tbody>
             ))}
-            <tfoot className="break-inside-avoid border-t-2 bg-slate-50 font-semibold">
+            {/* A plain last row, not <tfoot>: printing repeats a tfoot at the foot of every page,
+                where it reads like a page subtotal. */}
+            <tbody className="break-inside-avoid border-t-2 bg-slate-50 font-semibold">
               <tr>
                 <td className="px-4 py-3 print:px-2" colSpan={3}>
                   Totals · {plural(totals.count, 'item', 'items')}
@@ -372,7 +380,7 @@ const Report: FC<{ report: PayoutOutstanding; soFar: boolean }> = ({
                 </td>
                 <td className="px-4 py-3 print:px-2" />
               </tr>
-            </tfoot>
+            </tbody>
           </table>
         </div>
       ) : null}

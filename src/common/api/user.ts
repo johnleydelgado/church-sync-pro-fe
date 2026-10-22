@@ -811,6 +811,15 @@ export interface PayoutDayRange {
   to: string
 }
 
+/**
+ * The payouts an item was paid out in. `from` is null for an upload made before uploads asked
+ * for payout dates: all CSP knows then is that it was paid out by `to`.
+ */
+export interface PayoutPaidOut {
+  from: string | null
+  to: string
+}
+
 export type PayoutOutstandingKind =
   | 'gift'
   | 'gift_refund'
@@ -822,7 +831,9 @@ export type PayoutOutstandingKind =
 export interface PayoutOutstandingItem {
   day: string
   kind: PayoutOutstandingKind
-  ref: string
+  /** "Donation #123" / "Registration #456"; null where there is no single record (a whole day). */
+  ref: string | null
+  /** "Anonymous Donor" for a gift with no person; can still be blank. */
   name: string | null
   fundOrEvent: string | null
   gross: number
@@ -832,9 +843,10 @@ export interface PayoutOutstandingItem {
    * The payout dates of the earliest uploaded file that lists it. Null: in no uploaded file, so
    * not paid out yet as far as CSP knows.
    */
-  paidOut: PayoutDayRange | null
+  paidOut: PayoutPaidOut | null
 }
 
+/** `count` is charge lines only (gifts, or registrations); refunds and whole days are in the amounts. */
 export interface PayoutOutstandingTotals {
   count: number
   gross: number
@@ -864,6 +876,11 @@ export interface PayoutOutstanding {
   month: string
   /** The month's last day, or today while the month is still running. */
   asOf: string
+  /**
+   * Only on an empty report, saying why there is nothing (before the sync start date, nothing
+   * posted yet). Shown instead of the report.
+   */
+  message?: string
   /**
    * Whether uploaded payout ranges cover every day from the sync start date (`from`) to `asOf`.
    * Gaps are listed in `missing`; anything paid out in a gap still counts as in transit.
