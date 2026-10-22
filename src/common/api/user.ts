@@ -786,6 +786,126 @@ const getPayoutSignups = async (email: string): Promise<string[]> => {
   }
 }
 
+/*
+ * Still in transit at month-end: everything CSP put into Clearing that Stripe had not paid out by
+ * the month's last day, tied to QuickBooks' Clearing balance on that day. Plan and contract:
+ * docs/plans/2026-10-22-outstanding-deposits.md. DOLLARS, signed (refunds negative), like every
+ * payout-report endpoint. Days are YYYY-MM-DD.
+ */
+
+/** A span of days, both ends included. */
+export interface PayoutDayRange {
+  from: string
+  to: string
+}
+
+export type PayoutOutstandingKind =
+  | 'gift'
+  | 'gift_refund'
+  | 'registration'
+  | 'registration_refund'
+  /** A posted day whose gifts CSP can't single out: shown as one line rather than guessed. */
+  | 'day_unresolved'
+
+export interface PayoutOutstandingItem {
+  day: string
+  kind: PayoutOutstandingKind
+  ref: string
+  name: string | null
+  fundOrEvent: string | null
+  gross: number
+  fee: number
+  net: number
+  /**
+   * The payout dates of the earliest uploaded file that lists it. Null: in no uploaded file, so
+   * not paid out yet as far as CSP knows.
+   */
+  paidOut: PayoutDayRange | null
+}
+
+export interface PayoutOutstandingTotals {
+  count: number
+  gross: number
+  fee: number
+  net: number
+}
+
+/** A QuickBooks entry in Clearing that CSP didn't make. */
+export interface PayoutDifferenceEntry {
+  date: string
+  type: string
+  amount: number
+  memo: string | null
+  docNumber: string | null
+}
+
+export interface PayoutDifferenceNote {
+  kind: 'switch_over' | 'not_csp'
+  /** The server's own sentence, shown as-is. */
+  text: string
+  amount: number
+  entries?: PayoutDifferenceEntry[]
+}
+
+export interface PayoutOutstanding {
+  /** YYYY-MM. */
+  month: string
+  /** The month's last day, or today while the month is still running. */
+  asOf: string
+  /**
+   * Whether uploaded payout ranges cover every day from the sync start date (`from`) to `asOf`.
+   * Gaps are listed in `missing`; anything paid out in a gap still counts as in transit.
+   */
+  coverage: {
+    complete: boolean
+    from: string | null
+    missing: PayoutDayRange[]
+  }
+  qbo: {
+    account: { id: string; name: string } | null
+    /** Null when QuickBooks couldn't be read; `message` says why. */
+    balance: number | null
+    message?: string
+  }
+  inTransit: {
+    net: number
+    gifts: PayoutOutstandingTotals
+    registrations: PayoutOutstandingTotals
+  }
+  /** QuickBooks balance minus `inTransit.net`; null without a QuickBooks balance. */
+  difference: number | null
+  differenceNotes: PayoutDifferenceNote[]
+  /** Settled giving on or before `asOf` that CSP hasn't posted: not in Clearing, so not listed. */
+  notInQuickBooksYet: {
+    day: string
+    count: number
+    gross: number
+    net: number
+  }[]
+  items: PayoutOutstandingItem[]
+}
+
+/** Read-only. Throws a PayoutReportError carrying the server's message; never a stand-in value. */
+const getPayoutOutstanding = async ({
+  email,
+  month,
+}: {
+  email: string
+  month: string
+}): Promise<PayoutOutstanding> => {
+  try {
+    const res = await apiCall.get(
+      userRoutes.payoutReportOutstanding +
+        `?email=${encodeURIComponent(email)}&month=${encodeURIComponent(
+          month,
+        )}`,
+    )
+    return res.data.data
+  } catch (e: any) {
+    throw payoutReportError(e, 'Could not work out what is still in transit.')
+  }
+}
+
 const manualSync = async ({
   ...rest
 }: {
@@ -1088,4 +1208,5 @@ export {
   resolvePayoutRow,
   recheckPayoutGiving,
   getPayoutSignups,
+  getPayoutOutstanding,
 }
