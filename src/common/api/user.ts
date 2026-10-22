@@ -864,7 +864,8 @@ export interface PayoutDifferenceEntry {
 }
 
 export interface PayoutDifferenceNote {
-  kind: 'switch_over' | 'not_csp'
+  // deposits: payouts in the uploaded reports against the deposits recorded in Clearing, one line.
+  kind: 'switch_over' | 'not_csp' | 'deposits'
   /** The server's own sentence, shown as-is. */
   text: string
   amount: number
