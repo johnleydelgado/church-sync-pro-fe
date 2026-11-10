@@ -28,47 +28,19 @@ const REASON_WORDS: Record<string, string> = {
   returned_day_unsettled:
     "The donor's bank returned this gift, but its day isn't fully in QuickBooks yet, so CSP can't tell whether it was posted. Bring the day up to date on Daily Giving, then press Check again",
   returned_without_charge:
-    "Part of a gift the donor's bank returned, but the gift isn't in any payout report you've uploaded. Upload that report, or book this yourself and mark it handled",
+    "Part of a gift the donor's bank returned, but the gift isn't in any payout report you've uploaded yet. Upload the report with the gift and CSP ties them together",
   returned_unconfirmed:
-    "Looks like a returned gift, but Planning Center doesn't show the gift as returned. Check it in Planning Center",
+    "Looks like part of a returned gift, but Planning Center doesn't show the gift as returned yet. Press Check again later",
   returned_ambiguous:
-    'Part of a returned gift, but more than one gift matches it. Book it yourself, then mark it handled',
-  planning_center_unreachable: "Couldn't reach Planning Center to check",
+    "Part of a returned gift, but CSP can't tell which gift it belongs to. Find the gift in Planning Center, then mark this handled",
+  planning_center_unreachable:
+    "Couldn't reach Planning Center to check. Press Check again later",
+  refund_not_posted: "This refund isn't in QuickBooks yet",
   posting_interrupted:
     'Posting was interrupted — check QuickBooks for this entry',
 }
 
-/** The states of a gift the donor's bank returned (a review-list reason or a summary `state`). */
-export const RETURNED_STATES = [
-  'returned_gift',
-  'returned_after_posting',
-  'returned_day_unsettled',
-]
-
-/**
- * A gift the donor's bank returned, in full: what happened and exactly what to book. CSP posts nothing
- * for it (docs/plans/2026-11-10-payout-bounces.md). `cost` is in dollars, positive = a cost.
- */
-export const returnedGiftWords = (g: {
-  state: string
-  returnedOn: string | null
-  cost: number | null
-}) => {
-  const on = g.returnedOn ? ` on ${formatDate(g.returnedOn)}` : ''
-  const book =
-    g.cost !== null && g.returnedOn
-      ? `book the ${usd(
-          g.cost,
-        )} it cost in fees (debit bank fees, credit Clearing, dated ${formatDate(
-          g.returnedOn,
-        )})`
-      : 'book what it cost in fees once the payout report with the return is uploaded'
-  if (g.state === 'returned_after_posting')
-    return `The donor's bank returned this gift${on} after CSP had posted it, so QuickBooks still has it. Take the gift out of QuickBooks and ${book}, then mark it handled.`
-  if (g.state === 'returned_day_unsettled')
-    return `The donor's bank returned this gift${on}, but its day isn't fully in QuickBooks yet, so CSP can't tell whether it was posted. Bring the day up to date on Daily Giving, then press Check again.`
-  return `The donor's bank returned this gift${on}, so it was never in QuickBooks. To settle it, ${book}, then mark it handled.`
-}
+export { RETURNED_STATES, returnedGiftWords } from './returnedGiftCopy'
 
 /** A code the page doesn't know is still shown: an odd line must never pass quietly. */
 export const reasonWords = (code: string | null | undefined) =>

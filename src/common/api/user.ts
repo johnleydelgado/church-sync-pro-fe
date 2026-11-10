@@ -635,6 +635,8 @@ export interface PayoutReturnedGift {
   givenOn: string
   returnedOn: string | null
   gift: number
+  /** The Stripe fee on the gift's charge (what CSP booked with it, if it posted it). */
+  fee: number
   cost: number | null
   state: string
 }
@@ -688,6 +690,8 @@ export interface PayoutResolveResult {
 export interface PayoutRecheckResult {
   checked: number
   nowCovered: number
+  /** Returned gifts "Check again" filed for a person (tied to their return, or found returned). */
+  returnedFiled?: number
   stillNotPosted: number
 }
 

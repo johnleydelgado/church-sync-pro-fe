@@ -485,7 +485,7 @@ const PreviewStep: FC<{
           <li key={gift.ref}>
             <strong>A returned gift:</strong> {gift.ref} for {usd(gift.gift)} on{' '}
             {formatDate(gift.givenOn)}. {returnedGiftWords(gift)} It waits in
-            the review list until then.
+            the review list.
           </li>
         ))}
         {registrations.beforeStart.count > 0 ? (
@@ -705,8 +705,7 @@ const ResultStep: FC<{ result: PayoutImportResult }> = ({ result }) => {
             'returned gift waits',
             'returned gifts wait',
           )}{' '}
-          in the review list, with what to book for{' '}
-          {(result.returned ?? []).length === 1 ? 'it' : 'each'}.
+          in the review list.
         </p>
       ) : null}
       {notPostedLines > 0 ? (

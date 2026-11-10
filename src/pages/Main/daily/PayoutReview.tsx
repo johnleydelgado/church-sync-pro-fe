@@ -158,6 +158,8 @@ const RowSummary: FC<{ row: PayoutReviewRow; reason: string | null }> = ({
           {RETURNED_STATES.includes(reason)
             ? returnedGiftWords({
                 state: reason,
+                gift: Number(row.gross),
+                fee: Number(row.fee),
                 returnedOn: row.returned?.returnedOn ?? null,
                 cost: row.returned?.cost ?? null,
               })
@@ -641,17 +643,30 @@ const PayoutReview: FC<{ email: string }> = ({ email }) => {
       onSuccess: (result) => {
         successNotification({
           title:
-            result.nowCovered > 0
-              ? `${plural(
-                  result.nowCovered,
-                  'giving line is',
-                  'giving lines are',
-                )} in QuickBooks now; ${result.stillNotPosted} still not`
-              : `Checked ${plural(
-                  result.checked,
-                  'giving line',
-                  'giving lines',
-                )}: none are in QuickBooks yet`,
+            [
+              result.nowCovered > 0
+                ? `${plural(
+                    result.nowCovered,
+                    'giving line is',
+                    'giving lines are',
+                  )} in QuickBooks now; ${result.stillNotPosted} still not`
+                : result.checked > 0 && !result.returnedFiled
+                ? `Checked ${plural(
+                    result.checked,
+                    'giving line',
+                    'giving lines',
+                  )}: none are in QuickBooks yet`
+                : '',
+              result.returnedFiled
+                ? `${plural(
+                    result.returnedFiled,
+                    'returned gift is',
+                    'returned gifts are',
+                  )} ready to settle in the list`
+                : '',
+            ]
+              .filter(Boolean)
+              .join('. ') || 'Nothing new to check',
         })
         queryClient.invalidateQueries('payoutReview')
         queryClient.invalidateQueries('payoutReportStatus')
@@ -743,8 +758,8 @@ const PayoutReview: FC<{ email: string }> = ({ email }) => {
           </div>
           <p className="max-w-2xl pt-1 text-xs text-gray-500">
             Giving in your payout that isn&apos;t in QuickBooks yet, or that CSP
-            couldn&apos;t check. Each line says what to do; press Check again
-            once it&apos;s done.
+            couldn&apos;t check. Press Check again once you&apos;ve dealt with
+            it.
           </p>
           <ul className="divide-y divide-gray-100">
             {givingDays.map(({ day, rows }) => (
