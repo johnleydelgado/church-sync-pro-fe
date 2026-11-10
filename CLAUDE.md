@@ -188,6 +188,10 @@ gift date, so a day can read *Posted* while more of its money is still on the wa
 and refunded), and the row shows them as "3 in transit · $487.60 not settled yet".
 They are deliberately NOT in `gross`, `fees` or `net`; only settled money is.
 
+A gift the donor's bank **returned** shows on its day as "$600.00 returned by the bank (1 gift)"
+(`returned` / `returnedGross` from `getStripeGivingByDay`). It is not in the totals. A day with nothing else
+reads "Nothing to post".
+
 When those gifts settle, Planning Center's total for the day outgrows `postedGross`
 and the row reads *Partly in QuickBooks* with an **Add $X** button (`unpostedDifference()` in
 `StripeGivingTable.tsx`). It calls the same `postStripeGivingDay`; the engine posts
@@ -247,6 +251,13 @@ modal `PayoutReportUploadModal.tsx`, review list `PayoutReview.tsx`, sentences i
 - The endpoints (like every church endpoint now) check the signed-in user is a member of the church; a 403 means
   that, not an expired session.
 - **Never commit a real payout report** - every row carries a donor's or registrant's name.
+- **Returned gifts** (a bank gift the donor's bank sent back): CSP posts NOTHING for them.
+  - The preview lists each one, and the review list has one item for it, with exactly what to book. The
+    sentences are in `returnedGiftCopy.ts` (tested).
+  - The real file's "Charge failure" / "Fee" lines name only Stripe's `py_` id, not the donation.
+  - A **late-evening gift** the file dates the next day is found on its own day.
+  - Design and history (Matt's team booked two gifts by hand because of the old preview):
+    `docs/plans/2026-11-10-payout-bounces.md`.
 
 ### Still in transit at month-end (outstanding deposits)
 
