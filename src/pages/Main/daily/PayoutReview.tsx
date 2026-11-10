@@ -25,7 +25,14 @@ import { mainRoute } from '@/common/constant/route'
 import { formatDate } from '@/common/utils/helper'
 import { failNotification, successNotification } from '@/common/utils/toast'
 import { useChurch } from '@/common/hooks/useChurch'
-import { PAYOUT_REVIEW_ID, plural, reasonWords, usd } from './payoutCopy'
+import {
+  PAYOUT_REVIEW_ID,
+  RETURNED_STATES,
+  plural,
+  reasonWords,
+  returnedGiftWords,
+  usd,
+} from './payoutCopy'
 import { PAYOUT_OUTSTANDING_KEY } from './outstanding'
 
 type Option = { value: string; label: string }
@@ -54,6 +61,15 @@ const cents = (dollars: number) => Math.round(dollars * 100)
  * up front beats offering a button that can only fail.
  */
 const whyNotPostable = (row: PayoutReviewRow): string | null => {
+  // A gift's own lines are never coded as income here: Daily Giving posts gifts, and a returned
+  // gift is settled by booking what it cost (the server refuses these too).
+  if (
+    row.source === 'Giving' &&
+    (row.type === 'Charge' ||
+      /fail/i.test(row.type) ||
+      /^fee$/i.test(row.type.trim()))
+  )
+    return givingLineNote(row)
   if (
     row.reason === 'amounts_do_not_add_up' ||
     cents(row.gross) - cents(row.fee) !== cents(row.net)
@@ -63,6 +79,30 @@ const whyNotPostable = (row: PayoutReviewRow): string | null => {
     return "CSP can't post a refund that returns a fee. Record it in QuickBooks yourself, then mark it handled."
   if (cents(row.gross) === 0) return 'There is no amount to post.'
   return null
+}
+
+/** Return lines CSP ties to their gift by itself, on a later upload or "Check again". */
+const TIED_LATER = [
+  'returned_without_charge',
+  'returned_unconfirmed',
+  'planning_center_unreachable',
+]
+
+/**
+ * What to do with a gift's own line in the list - never "code it": Daily Giving posts gifts, and a
+ * returned gift is settled by booking what it cost. Marking a line handled takes it out of CSP's
+ * matching for good, so lines that wait say so.
+ */
+const givingLineNote = (row: PayoutReviewRow): string => {
+  if (TIED_LATER.includes(row.reason ?? ''))
+    return "Leave this here: CSP ties it to its gift by itself. Don't book it, and don't mark it handled yet."
+  if (row.reason === 'returned_ambiguous')
+    return "CSP can't match this to one gift. Find the gift in Planning Center and settle it in QuickBooks, then mark this handled."
+  if (RETURNED_STATES.includes(row.reason ?? ''))
+    return row.returned?.cost == null
+      ? 'The amount to book appears here once the return is uploaded. Leave this until then.'
+      : 'Settle it in QuickBooks as described above, then mark it handled.'
+  return "CSP doesn't post giving lines from here. If QuickBooks needs it, book it yourself, then mark it handled."
 }
 
 const ActionButton: FC<{
@@ -137,7 +177,15 @@ const RowSummary: FC<{ row: PayoutReviewRow; reason: string | null }> = ({
       </p>
       {reason ? (
         <p className="pt-1 text-xs font-medium text-amber-700">
-          {reasonWords(reason)}
+          {RETURNED_STATES.includes(reason)
+            ? returnedGiftWords({
+                state: reason,
+                gift: Number(row.gross),
+                fee: Number(row.fee),
+                returnedOn: row.returned?.returnedOn ?? null,
+                cost: row.returned?.cost ?? null,
+              })
+            : reasonWords(reason)}
         </p>
       ) : null}
     </div>
@@ -538,7 +586,9 @@ const GivingDay: FC<{
   // Daily Giving is where a day gets posted; it can't help a gift Planning Center doesn't list.
   const postOnDailyGiving = rows.some(
     (row) =>
-      row.reason === 'day_not_posted' || row.reason === 'day_partly_posted',
+      row.reason === 'day_not_posted' ||
+      row.reason === 'day_partly_posted' ||
+      row.reason === 'returned_day_unsettled',
   )
 
   return (
@@ -615,17 +665,30 @@ const PayoutReview: FC<{ email: string }> = ({ email }) => {
       onSuccess: (result) => {
         successNotification({
           title:
-            result.nowCovered > 0
-              ? `${plural(
-                  result.nowCovered,
-                  'giving line is',
-                  'giving lines are',
-                )} in QuickBooks now; ${result.stillNotPosted} still not`
-              : `Checked ${plural(
-                  result.checked,
-                  'giving line',
-                  'giving lines',
-                )}: none are in QuickBooks yet`,
+            [
+              result.nowCovered > 0
+                ? `${plural(
+                    result.nowCovered,
+                    'giving line is',
+                    'giving lines are',
+                  )} in QuickBooks now; ${result.stillNotPosted} still not`
+                : result.checked > 0 && !result.returnedFiled
+                ? `Checked ${plural(
+                    result.checked,
+                    'giving line',
+                    'giving lines',
+                  )}: none are in QuickBooks yet`
+                : '',
+              result.returnedFiled
+                ? `${plural(
+                    result.returnedFiled,
+                    'returned gift is',
+                    'returned gifts are',
+                  )} ready to settle in the list`
+                : '',
+            ]
+              .filter(Boolean)
+              .join('. ') || 'Nothing new to check',
         })
         queryClient.invalidateQueries('payoutReview')
         queryClient.invalidateQueries('payoutReportStatus')
@@ -682,12 +745,34 @@ const PayoutReview: FC<{ email: string }> = ({ email }) => {
 
       {needsCoding.length > 0 ? (
         <div className="pt-5">
-          <h4 className="text-sm font-semibold text-gray-800">
-            Needs coding{' '}
-            <span className="font-normal text-gray-400">
-              ({needsCoding.length})
-            </span>
-          </h4>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h4 className="text-sm font-semibold text-gray-800">
+              Needs coding{' '}
+              <span className="font-normal text-gray-400">
+                ({needsCoding.length})
+              </span>
+            </h4>
+            {/* A line here that says "Press Check again" needs the button even when every day is
+                posted (the giving section, which has one too, is then not shown). */}
+            {givingLines === 0 &&
+            needsCoding.some((row) =>
+              ['returned_unconfirmed', 'planning_center_unreachable'].includes(
+                row.reason ?? '',
+              ),
+            ) ? (
+              <ActionButton
+                onClick={() => recheck.mutate()}
+                disabled={recheck.isLoading}
+              >
+                {recheck.isLoading ? (
+                  <Spinner size="xs" />
+                ) : (
+                  <HiOutlineRefresh size={14} />
+                )}
+                Check again
+              </ActionButton>
+            ) : null}
+          </div>
           <ul className="divide-y divide-gray-100">
             {needsCoding.map((row) => (
               <NeedsCodingRow key={row.id} row={row} email={email} />
@@ -716,8 +801,9 @@ const PayoutReview: FC<{ email: string }> = ({ email }) => {
             </ActionButton>
           </div>
           <p className="max-w-2xl pt-1 text-xs text-gray-500">
-            Giving in your payout that CSP hasn&apos;t posted yet. Post those
-            days on Daily Giving, then press Check again.
+            Giving in your payout that isn&apos;t in QuickBooks yet, or that CSP
+            couldn&apos;t check. Press Check again once you&apos;ve dealt with
+            it.
           </p>
           <ul className="divide-y divide-gray-100">
             {givingDays.map(({ day, rows }) => (

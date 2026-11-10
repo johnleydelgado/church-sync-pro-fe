@@ -19,11 +19,28 @@ const REASON_WORDS: Record<string, string> = {
   no_account_mapped: 'No income account set for this event',
   day_not_posted: "That day isn't in QuickBooks yet",
   day_partly_posted: 'That day is only partly in QuickBooks',
-  not_in_planning_center: "Planning Center doesn't list this gift on that day",
-  planning_center_unreachable: "Couldn't reach Planning Center to check",
+  not_in_planning_center:
+    "Planning Center doesn't list this gift on or around that day",
+  returned_gift:
+    "The donor's bank returned this gift; it was never in QuickBooks",
+  returned_after_posting:
+    "The donor's bank returned this gift after CSP posted it; QuickBooks still has it",
+  returned_day_unsettled:
+    "The donor's bank returned this gift, but its day isn't fully in QuickBooks yet, so CSP can't tell whether it was posted. Bring the day up to date on Daily Giving, then press Check again",
+  returned_without_charge:
+    "Part of a gift the donor's bank returned, but the gift isn't in any payout report you've uploaded yet. Upload the report with the gift and CSP ties them together",
+  returned_unconfirmed:
+    "Looks like part of a returned gift, but Planning Center doesn't show the gift as returned yet. Press Check again later",
+  returned_ambiguous:
+    "CSP can't match this return to one gift. Find the gift in Planning Center, settle it in QuickBooks, then mark this handled",
+  planning_center_unreachable:
+    "Couldn't reach Planning Center to check. Press Check again later",
+  refund_not_posted: "This refund isn't in QuickBooks yet",
   posting_interrupted:
     'Posting was interrupted — check QuickBooks for this entry',
 }
+
+export { RETURNED_STATES, returnedGiftWords } from './returnedGiftCopy'
 
 /** A code the page doesn't know is still shown: an odd line must never pass quietly. */
 export const reasonWords = (code: string | null | undefined) =>
