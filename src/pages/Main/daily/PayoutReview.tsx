@@ -25,7 +25,14 @@ import { mainRoute } from '@/common/constant/route'
 import { formatDate } from '@/common/utils/helper'
 import { failNotification, successNotification } from '@/common/utils/toast'
 import { useChurch } from '@/common/hooks/useChurch'
-import { PAYOUT_REVIEW_ID, plural, reasonWords, usd } from './payoutCopy'
+import {
+  PAYOUT_REVIEW_ID,
+  RETURNED_STATES,
+  plural,
+  reasonWords,
+  returnedGiftWords,
+  usd,
+} from './payoutCopy'
 import { PAYOUT_OUTSTANDING_KEY } from './outstanding'
 
 type Option = { value: string; label: string }
@@ -54,6 +61,17 @@ const cents = (dollars: number) => Math.round(dollars * 100)
  * up front beats offering a button that can only fail.
  */
 const whyNotPostable = (row: PayoutReviewRow): string | null => {
+  // A gift's own lines are never coded as income here: Daily Giving posts gifts, and a returned
+  // gift is settled by booking what it cost (the server refuses these too).
+  if (
+    row.source === 'Giving' &&
+    (row.type === 'Charge' ||
+      /fail/i.test(row.type) ||
+      /^fee$/i.test(row.type.trim()))
+  )
+    return RETURNED_STATES.includes(row.reason ?? '')
+      ? 'Settle it in QuickBooks as described above, then mark it handled.'
+      : "CSP doesn't post giving lines from here. If QuickBooks needs it, book it yourself, then mark it handled."
   if (
     row.reason === 'amounts_do_not_add_up' ||
     cents(row.gross) - cents(row.fee) !== cents(row.net)
@@ -137,7 +155,13 @@ const RowSummary: FC<{ row: PayoutReviewRow; reason: string | null }> = ({
       </p>
       {reason ? (
         <p className="pt-1 text-xs font-medium text-amber-700">
-          {reasonWords(reason)}
+          {RETURNED_STATES.includes(reason)
+            ? returnedGiftWords({
+                state: reason,
+                returnedOn: row.returned?.returnedOn ?? null,
+                cost: row.returned?.cost ?? null,
+              })
+            : reasonWords(reason)}
         </p>
       ) : null}
     </div>
@@ -538,7 +562,9 @@ const GivingDay: FC<{
   // Daily Giving is where a day gets posted; it can't help a gift Planning Center doesn't list.
   const postOnDailyGiving = rows.some(
     (row) =>
-      row.reason === 'day_not_posted' || row.reason === 'day_partly_posted',
+      row.reason === 'day_not_posted' ||
+      row.reason === 'day_partly_posted' ||
+      row.reason === 'returned_day_unsettled',
   )
 
   return (
@@ -716,8 +742,9 @@ const PayoutReview: FC<{ email: string }> = ({ email }) => {
             </ActionButton>
           </div>
           <p className="max-w-2xl pt-1 text-xs text-gray-500">
-            Giving in your payout that CSP hasn&apos;t posted yet. Post those
-            days on Daily Giving, then press Check again.
+            Giving in your payout that isn&apos;t in QuickBooks yet, or that CSP
+            couldn&apos;t check. Each line says what to do; press Check again
+            once it&apos;s done.
           </p>
           <ul className="divide-y divide-gray-100">
             {givingDays.map(({ day, rows }) => (

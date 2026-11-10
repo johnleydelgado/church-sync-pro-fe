@@ -26,6 +26,7 @@ import {
   mappingLinkFor,
   plural,
   reasonWords,
+  returnedGiftWords,
   usd,
 } from './payoutCopy'
 import {
@@ -428,11 +429,16 @@ const PreviewStep: FC<{
   registrationStartDay: string | null
 }> = ({ fileName, summary, range, registrationStartDay }) => {
   const { registrations, entries, giving, held } = summary
+  const returned = summary.returned ?? []
   const { toPost } = registrations
   const refunds = entries
     .filter((entry) => entry.kind === 'refund')
     .reduce((n, entry) => n + entry.count, 0)
   const notPostedLines = giving.notPosted.reduce((n, day) => n + day.count, 0)
+  // Only a day that isn't (fully) posted is fixed on Daily Giving; say so only for those.
+  const fixOnDailyGiving = giving.notPosted.some((day) =>
+    ['day_not_posted', 'day_partly_posted'].includes(day.reason),
+  )
 
   return (
     <div className="space-y-3 pt-2 text-sm text-gray-700">
@@ -474,6 +480,14 @@ const PreviewStep: FC<{
         {registrations.alreadyRecorded > 0 ? (
           <li>{registrations.alreadyRecorded} already recorded (skipped).</li>
         ) : null}
+        {returned.map((gift) => (
+          // A gift the donor's bank returned: explained once, with what to book. CSP posts nothing.
+          <li key={gift.ref}>
+            <strong>A returned gift:</strong> {gift.ref} for {usd(gift.gift)} on{' '}
+            {formatDate(gift.givenOn)}. {returnedGiftWords(gift)} It waits in
+            the review list until then.
+          </li>
+        ))}
         {registrations.beforeStart.count > 0 ? (
           <li>
             {registrations.beforeStart.count} charged before your start date
@@ -497,8 +511,12 @@ const PreviewStep: FC<{
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900">
           <p className="flex items-center gap-2 font-semibold">
             <HiOutlineExclamationCircle size={16} className="shrink-0" />
-            {plural(notPostedLines, 'giving line is', 'giving lines are')} on
-            days that aren&apos;t in QuickBooks yet:
+            {plural(
+              notPostedLines,
+              "giving line isn't",
+              "giving lines aren't",
+            )}{' '}
+            in QuickBooks yet:
           </p>
           <ul className="list-disc space-y-0.5 pl-9 pt-1">
             {giving.notPosted.map((day) => (
@@ -509,14 +527,20 @@ const PreviewStep: FC<{
             ))}
           </ul>
           <p className="pt-2">
-            They will wait in the review list. Post those days on{' '}
-            <Link
-              to={mainRoute.TRANSACTION}
-              className="font-semibold underline"
-            >
-              Daily Giving
-            </Link>
-            , then press Check again in the review list.
+            They will wait in the review list.
+            {fixOnDailyGiving ? (
+              <>
+                {' '}
+                Post those days on{' '}
+                <Link
+                  to={mainRoute.TRANSACTION}
+                  className="font-semibold underline"
+                >
+                  Daily Giving
+                </Link>
+                , then press Check again in the review list.
+              </>
+            ) : null}
           </p>
         </div>
       ) : null}
@@ -674,10 +698,21 @@ const ResultStep: FC<{ result: PayoutImportResult }> = ({ result }) => {
           review list.
         </p>
       ) : null}
+      {(result.returned ?? []).length > 0 ? (
+        <p>
+          {plural(
+            (result.returned ?? []).length,
+            'returned gift waits',
+            'returned gifts wait',
+          )}{' '}
+          in the review list, with what to book for{' '}
+          {(result.returned ?? []).length === 1 ? 'it' : 'each'}.
+        </p>
+      ) : null}
       {notPostedLines > 0 ? (
         <p>
-          {plural(notPostedLines, 'giving line is', 'giving lines are')} on days
-          not in QuickBooks yet — they are in the review list too.
+          {plural(notPostedLines, "giving line isn't", "giving lines aren't")}{' '}
+          in QuickBooks yet — they are in the review list too.
         </p>
       ) : null}
     </div>

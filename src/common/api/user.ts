@@ -584,6 +584,15 @@ export interface PayoutSummary {
     covered: number
     notPosted: { day: string; count: number; net: number; reason: string }[]
   }
+  /**
+   * Gifts the donor's bank returned (a bank gift that failed after Stripe charged it). CSP posts
+   * nothing for them. `state`: 'returned_gift' (never in QuickBooks - only `cost` is left to book),
+   * 'returned_after_posting' (CSP posted it first, so QuickBooks still has it) or
+   * 'returned_day_unsettled' (its day isn't fully in QuickBooks yet). `cost` (dollars, positive = a
+   * cost) and `returnedOn` are null until the payout report with the return is uploaded.
+   * Optional: a backend older than this field doesn't send it.
+   */
+  returned?: PayoutReturnedGift[]
   held: {
     line: number
     day: string
@@ -621,6 +630,15 @@ export interface PayoutStatus {
   notReadyReason: string | null
 }
 
+export interface PayoutReturnedGift {
+  ref: string
+  givenOn: string
+  returnedOn: string | null
+  gift: number
+  cost: number | null
+  state: string
+}
+
 export interface PayoutReviewRow {
   id: number
   status: 'held' | 'giving_not_posted' | 'posting_interrupted'
@@ -638,6 +656,8 @@ export interface PayoutReviewRow {
   accountRef: string | null
   classRef: string | null
   uploadedAt: string
+  /** On a returned gift's line: when it came back and what that cost (null until uploaded). */
+  returned?: { returnedOn: string | null; cost: number | null }
 }
 
 export interface PayoutReview {
