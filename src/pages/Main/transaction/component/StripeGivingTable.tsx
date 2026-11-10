@@ -11,6 +11,7 @@ import {
   HiOutlineClock,
   HiOutlineExclamationCircle,
   HiOutlineMinusCircle,
+  HiOutlineReply,
 } from 'react-icons/hi'
 
 import {
@@ -78,6 +79,24 @@ const unpostedDifference = (day: StripeGivingDay): number => {
   return cents > 0 ? cents / 100 : 0
 }
 
+/** Nothing given that day but gifts the donor's bank sent back: nothing to post, nothing waiting. */
+const onlyReturnedDay = (day: StripeGivingDay): boolean =>
+  (day.status || '').toLowerCase() !== 'posted' &&
+  day.donations === 0 &&
+  !day.inTransit &&
+  (day.returned || 0) > 0
+
+/**
+ * Returned gifts, in words that stay true whether or not a gift had been posted: CSP doesn't post a
+ * gift that failed, and what the return cost comes with the payout report.
+ */
+const returnedSentence = (n: number) =>
+  `${n} gift${
+    n === 1 ? ' was' : 's were'
+  } returned by the donor's bank. CSP doesn't post returned gifts; the payout report shows what ${
+    n === 1 ? 'it' : 'each'
+  } cost in fees.`
+
 /**
  * Where a day stands in QuickBooks - one state per day, so a reader never has to combine a
  * badge with a line of small print to work it out.
@@ -89,8 +108,18 @@ const StatusBadge: FC<{
   toAdd?: number
   /** The day has giving, but all of it is still settling. */
   onlySettling?: boolean
-}> = ({ status, excluded, toAdd = 0, onlySettling }) => {
+  /** The day's only giving was returned by the donor's bank: there is nothing to post. */
+  onlyReturned?: boolean
+}> = ({ status, excluded, toAdd = 0, onlySettling, onlyReturned }) => {
   const normalized = (status || '').toLowerCase()
+  if (onlyReturned && normalized !== 'posted') {
+    return (
+      <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-400">
+        <HiOutlineMinusCircle size={16} />
+        Nothing to post
+      </span>
+    )
+  }
   // Excluded outranks "not posted": a day before the church's start date is not outstanding
   // work, it is giving they have decided not to bring across. Saying "not posted yet" about it
   // turns the table into a to-do list of things nobody intends to do.
@@ -189,7 +218,9 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({
           .join(', ')
         if (unmapped.length && !result?.postedDays?.length) {
           failNotification({
-            title: `Nothing posted for ${formatDate(day)}: ${unmappedText} has no QuickBooks account. Map it on the Mapping page, then press the button again.`,
+            title: `Nothing posted for ${formatDate(
+              day,
+            )}: ${unmappedText} has no QuickBooks account. Map it on the Mapping page, then press the button again.`,
           })
           // By prefix: the dates may have changed while the post was running.
           queryClient.invalidateQueries('getStripeGivingByDay')
@@ -197,7 +228,9 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({
         }
         if (unmapped.length) {
           failNotification({
-            title: `Posted ${formatDate(day)}, but left out ${unmappedText}: that fund has no QuickBooks account yet. Map it on the Mapping page, then post the day again.`,
+            title: `Posted ${formatDate(
+              day,
+            )}, but left out ${unmappedText}: that fund has no QuickBooks account yet. Map it on the Mapping page, then post the day again.`,
           })
         }
         if (result?.postedDays?.length) {
@@ -206,7 +239,9 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({
           successNotification({
             title:
               difference > 0
-                ? `Added ${formatUsd(difference)} to ${formatDate(day)} as an adjusting entry`
+                ? `Added ${formatUsd(difference)} to ${formatDate(
+                    day,
+                  )} as an adjusting entry`
                 : `Posted ${formatDate(day)} to QuickBooks`,
           })
         } else if (result?.failedDays?.length) {
@@ -292,9 +327,13 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({
             unpostedDifference(d) === 0
               ? 1
               : 0),
-          syncable: acc.syncable + (isExcluded(d.date) ? 0 : 1),
+          // A day whose only gift was returned has nothing to post, so it is not outstanding.
+          syncable:
+            acc.syncable + (isExcluded(d.date) || onlyReturnedDay(d) ? 0 : 1),
           grown: acc.grown + (unpostedDifference(d) > 0 ? 1 : 0),
           inTransit: acc.inTransit + (d.inTransit || 0),
+          returned: acc.returned + (d.returned || 0),
+          returnedOnly: acc.returnedOnly + (onlyReturnedDay(d) ? 1 : 0),
         }),
         {
           gross: 0,
@@ -305,6 +344,8 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({
           syncable: 0,
           grown: 0,
           inTransit: 0,
+          returned: 0,
+          returnedOnly: 0,
         },
       ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -503,8 +544,7 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({
           <span className="font-semibold text-primary">
             {totals.posted} of {totals.syncable}
           </span>{' '}
-          {totals.syncable === 1 ? 'day is' : 'days are'} fully in
-          QuickBooks.
+          {totals.syncable === 1 ? 'day is' : 'days are'} fully in QuickBooks.
           {totals.posted + totals.grown < totals.syncable
             ? autoSyncOn
               ? ' The rest post at 8am, or press Post.'
@@ -519,6 +559,9 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({
               </span>
             </>
           ) : null}
+          {totals.returned > 0 ? (
+            <> {returnedSentence(totals.returned)}</>
+          ) : null}
           {totals.inTransit > 0 ? (
             <>
               {' '}
@@ -527,6 +570,11 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({
               {totals.inTransit === 1 ? 'it clears' : 'they clear'}.
             </>
           ) : null}
+        </p>
+      ) : totals.returnedOnly > 0 ? (
+        // Nothing outstanding, but not because of the start date: the only giving was returned.
+        <p className="pb-4 text-sm text-gray-500">
+          Nothing to post in these days. {returnedSentence(totals.returned)}
         </p>
       ) : (
         // Every visible day is excluded, so "0 of 0 days have been posted" would be both true
@@ -596,6 +644,17 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({
                       </span>
                     </p>
                   ) : null}
+                  {(day.returned || 0) > 0 ? (
+                    <p className="flex flex-wrap items-center gap-x-1 pl-6 text-xs text-gray-500">
+                      <HiOutlineReply size={12} />
+                      <span className="whitespace-nowrap">
+                        {formatUsd(day.returnedGross || 0)} returned by the bank
+                      </span>
+                      <span className="whitespace-nowrap">
+                        ({day.returned} {day.returned === 1 ? 'gift' : 'gifts'})
+                      </span>
+                    </p>
+                  ) : null}
                   {day.inTransit > 0 ? (
                     <p className="flex flex-wrap items-center gap-x-1 pl-6 text-xs text-gray-500">
                       <HiOutlineClock size={12} />
@@ -627,13 +686,18 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({
                     excluded={excluded}
                     toAdd={difference}
                     onlySettling={nothingToPostYet && day.inTransit > 0}
+                    onlyReturned={onlyReturnedDay(day)}
                   />
                   {!canPost || nothingToPostYet ? null : (
                     <Tooltip
                       content={
                         <span className="block max-w-xs text-xs leading-snug">
                           {difference > 0
-                            ? `${formatUsd(difference)} settled after this day was posted. It goes in as a second, adjusting entry dated ${formatDate(day.date)}; the first entry is not touched.`
+                            ? `${formatUsd(
+                                difference,
+                              )} settled after this day was posted. It goes in as a second, adjusting entry dated ${formatDate(
+                                day.date,
+                              )}; the first entry is not touched.`
                             : excluded
                             ? "This day is before your sync start date. You'll be asked to confirm."
                             : autoSyncOn

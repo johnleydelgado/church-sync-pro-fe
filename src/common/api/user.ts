@@ -427,6 +427,12 @@ export interface StripeGivingDay {
   /** Stripe gifts dated this day that have not settled yet (ACH, mostly). Not in `gross`. */
   inTransit: number
   inTransitGross: number
+  /**
+   * Gifts the donor's bank returned after they were charged (failed in Planning Center). Not in
+   * `gross`; CSP doesn't post them. Optional: a backend older than these fields doesn't send them.
+   */
+  returned?: number
+  returnedGross?: number
 }
 
 export interface StripeGivingByDayData {
