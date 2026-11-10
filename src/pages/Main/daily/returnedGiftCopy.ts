@@ -28,7 +28,8 @@ export interface ReturnedGiftFacts {
   state: string
   /** The gift's amount (its charge's gross) and the Stripe fee on that charge. */
   gift: number
-  fee: number
+  /** Unknown (absent) from an older backend: the exact entry then waits. */
+  fee?: number | null
   returnedOn: string | null
   /** What the return cost (positive) or gave back (negative); null until it is uploaded. */
   cost: number | null
@@ -62,7 +63,12 @@ export const returnedGiftWords = (g: ReturnedGiftFacts): string => {
 
   if (g.state === 'returned_after_posting') {
     const lead = `The donor's bank returned this gift${on} after CSP had posted it, so QuickBooks still has it.`
-    if (g.cost === null || !g.returnedOn)
+    if (
+      g.cost === null ||
+      !g.returnedOn ||
+      typeof g.fee !== 'number' ||
+      Number.isNaN(g.fee)
+    )
       return `${lead} Once the payout report with the return is uploaded, this shows the exact entry to add; then mark it handled.`
     // Reverse the gift (income, its fee, its net in Clearing) and book the cost, as one entry.
     const feeCents = cents(g.cost) - cents(g.fee)

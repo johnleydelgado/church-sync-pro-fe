@@ -69,9 +69,7 @@ const whyNotPostable = (row: PayoutReviewRow): string | null => {
       /fail/i.test(row.type) ||
       /^fee$/i.test(row.type.trim()))
   )
-    return RETURNED_STATES.includes(row.reason ?? '')
-      ? 'Settle it in QuickBooks as described above, then mark it handled.'
-      : "CSP doesn't post giving lines from here. If QuickBooks needs it, book it yourself, then mark it handled."
+    return givingLineNote(row)
   if (
     row.reason === 'amounts_do_not_add_up' ||
     cents(row.gross) - cents(row.fee) !== cents(row.net)
@@ -81,6 +79,30 @@ const whyNotPostable = (row: PayoutReviewRow): string | null => {
     return "CSP can't post a refund that returns a fee. Record it in QuickBooks yourself, then mark it handled."
   if (cents(row.gross) === 0) return 'There is no amount to post.'
   return null
+}
+
+/** Return lines CSP ties to their gift by itself, on a later upload or "Check again". */
+const TIED_LATER = [
+  'returned_without_charge',
+  'returned_unconfirmed',
+  'planning_center_unreachable',
+]
+
+/**
+ * What to do with a gift's own line in the list - never "code it": Daily Giving posts gifts, and a
+ * returned gift is settled by booking what it cost. Marking a line handled takes it out of CSP's
+ * matching for good, so lines that wait say so.
+ */
+const givingLineNote = (row: PayoutReviewRow): string => {
+  if (TIED_LATER.includes(row.reason ?? ''))
+    return "Leave this here: CSP ties it to its gift by itself. Don't book it, and don't mark it handled yet."
+  if (row.reason === 'returned_ambiguous')
+    return "CSP can't match this to one gift. Find the gift in Planning Center and settle it in QuickBooks, then mark this handled."
+  if (RETURNED_STATES.includes(row.reason ?? ''))
+    return row.returned?.cost == null
+      ? 'The amount to book appears here once the return is uploaded. Leave this until then.'
+      : 'Settle it in QuickBooks as described above, then mark it handled.'
+  return "CSP doesn't post giving lines from here. If QuickBooks needs it, book it yourself, then mark it handled."
 }
 
 const ActionButton: FC<{
@@ -723,12 +745,34 @@ const PayoutReview: FC<{ email: string }> = ({ email }) => {
 
       {needsCoding.length > 0 ? (
         <div className="pt-5">
-          <h4 className="text-sm font-semibold text-gray-800">
-            Needs coding{' '}
-            <span className="font-normal text-gray-400">
-              ({needsCoding.length})
-            </span>
-          </h4>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h4 className="text-sm font-semibold text-gray-800">
+              Needs coding{' '}
+              <span className="font-normal text-gray-400">
+                ({needsCoding.length})
+              </span>
+            </h4>
+            {/* A line here that says "Press Check again" needs the button even when every day is
+                posted (the giving section, which has one too, is then not shown). */}
+            {givingLines === 0 &&
+            needsCoding.some((row) =>
+              ['returned_unconfirmed', 'planning_center_unreachable'].includes(
+                row.reason ?? '',
+              ),
+            ) ? (
+              <ActionButton
+                onClick={() => recheck.mutate()}
+                disabled={recheck.isLoading}
+              >
+                {recheck.isLoading ? (
+                  <Spinner size="xs" />
+                ) : (
+                  <HiOutlineRefresh size={14} />
+                )}
+                Check again
+              </ActionButton>
+            ) : null}
+          </div>
           <ul className="divide-y divide-gray-100">
             {needsCoding.map((row) => (
               <NeedsCodingRow key={row.id} row={row} email={email} />

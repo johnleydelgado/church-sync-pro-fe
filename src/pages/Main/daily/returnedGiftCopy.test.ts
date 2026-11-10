@@ -75,3 +75,14 @@ describe('returnedGiftWords', () => {
     )
   })
 })
+
+test("an older backend without the gift's fee never gets a made-up entry", () => {
+  expect(
+    returnedGiftWords({
+      state: 'returned_after_posting',
+      gift: 600,
+      returnedOn: '2026-10-05',
+      cost: 1,
+    }),
+  ).toContain('this shows the exact entry to add')
+})

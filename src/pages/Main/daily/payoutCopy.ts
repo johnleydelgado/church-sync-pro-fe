@@ -22,9 +22,9 @@ const REASON_WORDS: Record<string, string> = {
   not_in_planning_center:
     "Planning Center doesn't list this gift on or around that day",
   returned_gift:
-    "The donor's bank returned this gift, so it was never in QuickBooks. Book what it cost in fees, then mark it handled",
+    "The donor's bank returned this gift; it was never in QuickBooks",
   returned_after_posting:
-    "The donor's bank returned this gift after CSP posted it, so QuickBooks still has it. Take it out of QuickBooks and book what it cost in fees, then mark it handled",
+    "The donor's bank returned this gift after CSP posted it; QuickBooks still has it",
   returned_day_unsettled:
     "The donor's bank returned this gift, but its day isn't fully in QuickBooks yet, so CSP can't tell whether it was posted. Bring the day up to date on Daily Giving, then press Check again",
   returned_without_charge:
@@ -32,7 +32,7 @@ const REASON_WORDS: Record<string, string> = {
   returned_unconfirmed:
     "Looks like part of a returned gift, but Planning Center doesn't show the gift as returned yet. Press Check again later",
   returned_ambiguous:
-    "Part of a returned gift, but CSP can't tell which gift it belongs to. Find the gift in Planning Center, then mark this handled",
+    "CSP can't match this return to one gift. Find the gift in Planning Center, settle it in QuickBooks, then mark this handled",
   planning_center_unreachable:
     "Couldn't reach Planning Center to check. Press Check again later",
   refund_not_posted: "This refund isn't in QuickBooks yet",

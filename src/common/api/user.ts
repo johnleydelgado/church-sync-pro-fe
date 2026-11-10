@@ -635,8 +635,8 @@ export interface PayoutReturnedGift {
   givenOn: string
   returnedOn: string | null
   gift: number
-  /** The Stripe fee on the gift's charge (what CSP booked with it, if it posted it). */
-  fee: number
+  /** The Stripe fee on the gift's charge (what CSP booked with it, if it posted it). Absent from an older backend. */
+  fee?: number
   cost: number | null
   state: string
 }
