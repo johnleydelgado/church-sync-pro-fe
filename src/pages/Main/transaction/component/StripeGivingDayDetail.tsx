@@ -23,8 +23,9 @@ interface StripeGivingDayDetailProps {
   day: string
   /** The church's timezone, so each gift's time reads as the church would see it. */
   orgTimeZone?: string
-  /** Gifts the donor's bank returned that day: the list holds only gifts that went through. */
+  /** Gifts the donor's bank returned that day, and gifts still settling: the list holds only gifts that went through. */
   returned?: number
+  inTransit?: number
 }
 
 // Dollars, like the rest of this page's API contract.
@@ -69,6 +70,7 @@ const StripeGivingDayDetail: FC<StripeGivingDayDetailProps> = ({
   day,
   orgTimeZone,
   returned = 0,
+  inTransit = 0,
 }) => {
   // Keyed by day, so a day already opened once reopens instantly instead of re-querying
   // Planning Center every time the row is toggled.
@@ -127,7 +129,9 @@ const StripeGivingDayDetail: FC<StripeGivingDayDetailProps> = ({
   if (!donations.length) {
     return (
       <div className="px-4 py-6 text-sm text-gray-400">
-        {returned > 0
+        {returned > 0 && inTransit > 0
+          ? `No Stripe donations have gone through this day yet: ${returned} returned by the donor's bank, ${inTransit} still settling.`
+          : returned > 0
           ? `No Stripe donations went through this day: the donor's bank returned ${
               returned === 1 ? 'the only gift' : `all ${returned} gifts`
             }.`

@@ -744,6 +744,7 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({
                   day={day.date}
                   orgTimeZone={data?.orgTimeZone}
                   returned={day.returned}
+                  inTransit={day.inTransit}
                 />
               ) : null}
             </div>
