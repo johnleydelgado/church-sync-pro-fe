@@ -93,9 +93,9 @@ const onlyReturnedDay = (day: StripeGivingDay): boolean =>
 const returnedSentence = (n: number) =>
   `${n} gift${
     n === 1 ? ' was' : 's were'
-  } returned by the donor's bank. CSP doesn't post returned gifts; the payout report shows what ${
+  } returned by the donor's bank. CSP doesn't post a gift once it's been returned; the payout report upload shows what ${
     n === 1 ? 'it' : 'each'
-  } cost in fees.`
+  } cost, and flags any CSP had posted before it came back.`
 
 /**
  * Where a day stands in QuickBooks - one state per day, so a reader never has to combine a
@@ -574,7 +574,7 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({
       ) : totals.returnedOnly > 0 ? (
         // Nothing outstanding, but not because of the start date: the only giving was returned.
         <p className="pb-4 text-sm text-gray-500">
-          Nothing to post in these days. {returnedSentence(totals.returned)}
+          Nothing to post on these days. {returnedSentence(totals.returned)}
         </p>
       ) : (
         // Every visible day is excluded, so "0 of 0 days have been posted" would be both true
@@ -743,6 +743,7 @@ const StripeGivingTable: FC<StripeGivingTableProps> = ({
                   email={email as string}
                   day={day.date}
                   orgTimeZone={data?.orgTimeZone}
+                  returned={day.returned}
                 />
               ) : null}
             </div>
