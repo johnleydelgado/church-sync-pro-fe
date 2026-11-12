@@ -236,6 +236,10 @@ modal `PayoutReportUploadModal.tsx`, review list `PayoutReview.tsx`, sentences i
   charge or refund **once**, dated its charge or refund day, as `CSP-E-<day>-<n>` /
   `CSP-ER-<day>-<n>` entries, and checks every giving line in the file is already in QuickBooks.
   Re-uploading the same or an overlapping file never posts twice.
+- **Each event gets its own income line**, with the file's Fund/Signup as the line's description, even
+  when several events share an account and class. Matt's team used to type the names in and split the
+  line by hand (all 23 October 2026 entries); entries posted before this change keep their single
+  unnamed line.
 - Anything CSP doesn't recognise waits in the review list (code it, or mark it handled with a
   note); so do giving lines whose day isn't fully posted yet, and the rare post QuickBooks
   accepted but CSP couldn't record ("posting interrupted": mark posted with the entry, or post now).
